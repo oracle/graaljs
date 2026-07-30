@@ -309,15 +309,17 @@ void ComputeSecret(const FunctionCallbackInfo<Value>& args) {
   BignumPointer key(key_buf.data(), key_buf.size());
 
   switch (dh.checkPublicKey(key)) {
-    case DHPointer::CheckPublicKeyResult::INVALID:
-      // Fall-through
     case DHPointer::CheckPublicKeyResult::CHECK_FAILED:
       return THROW_ERR_CRYPTO_INVALID_KEYTYPE(env,
                                               "Unspecified validation error");
+#ifndef OPENSSL_IS_BORINGSSL
     case DHPointer::CheckPublicKeyResult::TOO_SMALL:
       return THROW_ERR_CRYPTO_INVALID_KEYLEN(env, "Supplied key is too small");
     case DHPointer::CheckPublicKeyResult::TOO_LARGE:
       return THROW_ERR_CRYPTO_INVALID_KEYLEN(env, "Supplied key is too large");
+#endif
+    case DHPointer::CheckPublicKeyResult::INVALID:
+      return THROW_ERR_CRYPTO_INVALID_KEYTYPE(env, "Supplied key is invalid");
     case DHPointer::CheckPublicKeyResult::NONE:
       break;
   }
@@ -505,20 +507,16 @@ Maybe<void> DHBitsTraits::AdditionalConfig(
     const FunctionCallbackInfo<Value>& args,
     unsigned int offset,
     DHBitsConfig* params) {
-  CHECK(args[offset]->IsObject());  // public key
-  CHECK(args[offset + 1]->IsObject());  // private key
+  auto public_key = KeyObjectData::GetPublicOrPrivateKeyFromJs(args, &offset);
+  if (!public_key) [[unlikely]]
+    return Nothing<void>();
 
-  KeyObjectHandle* private_key;
-  KeyObjectHandle* public_key;
+  auto private_key = KeyObjectData::GetPrivateKeyFromJs(args, &offset, true);
+  if (!private_key) [[unlikely]]
+    return Nothing<void>();
 
-  ASSIGN_OR_RETURN_UNWRAP(&public_key, args[offset], Nothing<void>());
-  ASSIGN_OR_RETURN_UNWRAP(&private_key, args[offset + 1], Nothing<void>());
-
-  CHECK(private_key->Data().GetKeyType() == kKeyTypePrivate);
-  CHECK(public_key->Data().GetKeyType() != kKeyTypeSecret);
-
-  params->public_key = public_key->Data().addRef();
-  params->private_key = private_key->Data().addRef();
+  params->public_key = std::move(public_key);
+  params->private_key = std::move(private_key);
 
   return JustVoid();
 }

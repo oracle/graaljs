@@ -287,7 +287,7 @@ added: v22.5.0
 Closes the database connection. An exception is thrown if the database is not
 open. This method is a wrapper around [`sqlite3_close_v2()`][].
 
-### `database.loadExtension(path)`
+### `database.loadExtension(path[, entryPoint])`
 
 <!-- YAML
 added:
@@ -296,10 +296,36 @@ added:
 -->
 
 * `path` {string} The path to the shared library to load.
+* `entryPoint` {string} The name of the extension's entry-point function. When
+  omitted, SQLite derives the entry point from the shared library's filename;
+  pass this argument explicitly when the derived name does not match.
 
 Loads a shared library into the database connection. This method is a wrapper
 around [`sqlite3_load_extension()`][]. It is required to enable the
 `allowExtension` option when constructing the `DatabaseSync` instance.
+
+```mjs
+import { DatabaseSync } from 'node:sqlite';
+const database = new DatabaseSync(':memory:', { allowExtension: true });
+
+// Load using the entry point derived from the filename.
+database.loadExtension('./decimal.dylib');
+
+// Override the entry point when the derived name does not match.
+database.loadExtension('./base64.dylib', 'sqlite3_base64_init');
+```
+
+```cjs
+'use strict';
+const { DatabaseSync } = require('node:sqlite');
+const database = new DatabaseSync(':memory:', { allowExtension: true });
+
+// Load using the entry point derived from the filename.
+database.loadExtension('./decimal.dylib');
+
+// Override the entry point when the derived name does not match.
+database.loadExtension('./base64.dylib', 'sqlite3_base64_init');
+```
 
 ### `database.enableLoadExtension(allow)`
 
@@ -774,8 +800,12 @@ added:
 
 * `changeset` {Uint8Array} A binary changeset or patchset.
 * `options` {Object} The configuration options for how the changes will be applied.
-  * `filter` {Function} Skip changes that, when targeted table name is supplied to this function, return a truthy value.
-    By default, all changes are attempted.
+  * `filter` {Function} for each table affected by at least
+    one change in the changeset, the `filter` callback is invoked with the
+    table name as the first argument. If the return value is falsy, then no
+    attempt is made to apply any changes to the table.
+    Otherwise, if the return value is truthy or no `filter` callback is provided,
+    all changes related to the table are attempted.
   * `onConflict` {Function} A function that determines how to handle conflicts. The function receives one argument,
     which can be one of the following values:
 

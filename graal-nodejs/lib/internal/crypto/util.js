@@ -3,19 +3,19 @@
 const {
   ArrayBufferIsView,
   ArrayBufferPrototypeGetByteLength,
-  ArrayFrom,
   ArrayPrototypeIncludes,
   ArrayPrototypePush,
   BigInt,
   DataViewPrototypeGetBuffer,
   DataViewPrototypeGetByteLength,
   DataViewPrototypeGetByteOffset,
-  FunctionPrototypeBind,
   Number,
   ObjectDefineProperty,
   ObjectEntries,
   ObjectKeys,
   ObjectPrototypeHasOwnProperty,
+  PromisePrototypeThen,
+  PromiseReject,
   PromiseWithResolvers,
   SafeSet,
   StringPrototypeToUpperCase,
@@ -78,6 +78,7 @@ const {
   emitExperimentalWarning,
   filterDuplicateStrings,
   lazyDOMException,
+  setOwnProperty,
 } = require('internal/util');
 
 const {
@@ -91,10 +92,10 @@ const {
   isDataView,
   isArrayBufferView,
   isAnyArrayBuffer,
+  isPromise,
 } = require('internal/util/types');
 
 const kHandle = Symbol('kHandle');
-const kKeyObject = Symbol('kKeyObject');
 
 // This is here because many functions accepted binary strings without
 // any explicit encoding in older versions of node, and we don't want
@@ -246,6 +247,10 @@ const kAlgorithmDefinitions = {
   },
   'cSHAKE128': { 'digest': 'CShakeParams' },
   'cSHAKE256': { 'digest': 'CShakeParams' },
+  'KT128': { 'digest': 'KangarooTwelveParams' },
+  'KT256': { 'digest': 'KangarooTwelveParams' },
+  'TurboSHAKE128': { 'digest': 'TurboShakeParams' },
+  'TurboSHAKE256': { 'digest': 'TurboShakeParams' },
   'ECDH': {
     'generateKey': 'EcKeyGenParams',
     'exportKey': null,
@@ -393,12 +398,11 @@ const kAlgorithmDefinitions = {
 
 // Conditionally supported algorithms
 const conditionalAlgorithms = {
-  'AES-KW': !process.features.openssl_is_boringssl,
   'AES-OCB': !!hasAesOcbMode,
   'Argon2d': !!Argon2Job,
   'Argon2i': !!Argon2Job,
   'Argon2id': !!Argon2Job,
-  'ChaCha20-Poly1305': !process.features.openssl_is_boringssl ||
+  'ChaCha20-Poly1305': process.features.openssl_is_boringssl ||
     ArrayPrototypeIncludes(getCiphers(), 'chacha20-poly1305'),
   'cSHAKE128': !process.features.openssl_is_boringssl ||
     ArrayPrototypeIncludes(getHashes(), 'shake128'),
@@ -443,6 +447,10 @@ const experimentalAlgorithms = [
   'SHA3-256',
   'SHA3-384',
   'SHA3-512',
+  'TurboSHAKE128',
+  'TurboSHAKE256',
+  'KT128',
+  'KT256',
   'X448',
 ];
 
@@ -515,12 +523,16 @@ const simpleAlgorithmDictionaries = {
   KmacParams: {
     customization: 'BufferSource',
   },
+  KangarooTwelveParams: {
+    customization: 'BufferSource',
+  },
+  TurboShakeParams: {},
 };
 
-function validateMaxBufferLength(data, name) {
-  if (data.byteLength > kMaxBufferLength) {
+function validateMaxBufferLength(data, name, max = kMaxBufferLength) {
+  if (data.byteLength > max) {
     throw lazyDOMException(
-      `${name} must be less than ${kMaxBufferLength + 1} bits`,
+      `${name} must be at most ${max} bytes`,
       'OperationError');
   }
 }
@@ -648,25 +660,80 @@ const validateByteSource = hideStackFrames((val, name) => {
     val);
 });
 
-function onDone(resolve, reject, err, result) {
-  if (err) {
-    return reject(lazyDOMException(
+// CryptoJob constructors can synchronously throw while running their native
+// AdditionalConfig hook. WebCrypto needs those operation-specific setup
+// failures to reject with an OperationError.
+function jobPromise(getJob) {
+  try {
+    return getJob().run();
+  } catch (err) {
+    return PromiseReject(lazyDOMException(
       'The operation failed for an operation-specific reason',
       { name: 'OperationError', cause: err }));
   }
-  resolve(result);
 }
 
-function jobPromise(getJob) {
-  const { promise, resolve, reject } = PromiseWithResolvers();
-  try {
-    const job = getJob();
-    job.ondone = FunctionPrototypeBind(onDone, job, resolve, reject);
-    job.run();
-  } catch (err) {
-    onDone(resolve, reject, err);
+// Temporarily shadow inherited then accessors on WebCrypto result objects.
+// Promise resolution reads "then" synchronously for thenable assimilation.
+// Returning an own undefined data property keeps that lookup from reaching
+// user-mutated prototypes.
+function prepareWebCryptoResult(value) {
+  if ((value === null || typeof value !== 'object') &&
+      typeof value !== 'function') {
+    return false;
   }
-  return promise;
+  if (isPromise(value) || ObjectPrototypeHasOwnProperty(value, 'then'))
+    return false;
+  setOwnProperty(value, 'then', undefined);
+  return true;
+}
+
+// Remove the temporary then property installed by prepareWebCryptoResult().
+function cleanupWebCryptoResult(value) {
+  delete value.then;
+}
+
+// Resolve a WebCrypto promise while inherited then accessors are shadowed.
+function resolveWebCryptoResult(resolve, value) {
+  const shouldCleanupResult = prepareWebCryptoResult(value);
+  try {
+    resolve(value);
+  } finally {
+    if (shouldCleanupResult)
+      cleanupWebCryptoResult(value);
+  }
+}
+
+// Run a WebCrypto promise reaction and settle the outer promise.
+function settleJobPromise(handler, resolve, reject, value, isRejected) {
+  try {
+    if (typeof handler === 'function') {
+      resolveWebCryptoResult(resolve, handler(value));
+    } else if (isRejected) {
+      reject(value);
+    } else {
+      resolveWebCryptoResult(resolve, value);
+    }
+  } catch (err) {
+    reject(err);
+  }
+}
+
+// Promise.prototype.then gets promise.constructor to determine the result
+// promise's species. These promises are internal WebCrypto intermediates, so
+// make that lookup stay on the promise itself instead of user-mutated state.
+function jobPromiseThen(promise, onFulfilled, onRejected) {
+  const {
+    promise: resultPromise,
+    resolve,
+    reject,
+  } = PromiseWithResolvers();
+  setOwnProperty(promise, 'constructor', undefined);
+  PromisePrototypeThen(
+    promise,
+    (value) => settleJobPromise(onFulfilled, resolve, reject, value, false),
+    (value) => settleJobPromise(onRejected, resolve, reject, value, true));
+  return resultPromise;
 }
 
 // In WebCrypto, the publicExponent option in RSA is represented as a
@@ -707,6 +774,12 @@ function getStringOption(options, key) {
   return value;
 }
 
+/**
+ * Returns the requested usages that are present in `usageSet`.
+ * @param {SafeSet<string>} usageSet
+ * @param {...string} usages
+ * @returns {SafeSet<string>}
+ */
 function getUsagesUnion(usageSet, ...usages) {
   const newset = new SafeSet();
   for (let n = 0; n < usages.length; n++) {
@@ -716,28 +789,76 @@ function getUsagesUnion(usageSet, ...usages) {
   return newset;
 }
 
-const kCanonicalUsageOrder = new SafeSet([
+// Must be at most 31 entries.
+const kCanonicalUsageOrder = [
   'encrypt', 'decrypt',
   'sign', 'verify',
   'deriveKey', 'deriveBits',
   'wrapKey', 'unwrapKey',
   'encapsulateKey', 'encapsulateBits',
   'decapsulateKey', 'decapsulateBits',
-]);
+];
+
+const kUsageMasks = {
+  __proto__: null,
+};
+const kUsageByMask = {
+  __proto__: null,
+};
+// Derive both lookup tables from kCanonicalUsageOrder so adding a new
+// usage only requires updating the canonical list above. The numeric
+// mask uses the usage's canonical index as its bit position.
+for (let n = 0; n < kCanonicalUsageOrder.length; n++) {
+  const usage = kCanonicalUsageOrder[n];
+  const mask = 1 << n;
+  kUsageMasks[usage] = mask;
+  kUsageByMask[mask] = usage;
+}
 
 /**
- * Returns the usages from `usageSet` as an array in the canonical order
- * defined by {@link kCanonicalUsageOrder}.
+ * Returns a bit mask representing the usages from `usageSet`.
  * @param {SafeSet<string>} usageSet
+ * @returns {number}
+ */
+function getUsagesMask(usageSet) {
+  // No usages is a valid state for some public keys, represented by a
+  // zero mask.
+  if (usageSet.size === 0) return 0;
+  let mask = 0;
+  for (const usage of usageSet) {
+    mask |= kUsageMasks[usage];
+  }
+  return mask;
+}
+
+/**
+ * Returns whether `mask` contains `usage`.
+ * @param {number} mask
+ * @param {string} usage
+ * @returns {boolean}
+ */
+function hasUsage(mask, usage) {
+  return (mask & kUsageMasks[usage]) !== 0;
+}
+
+/**
+ * Returns the usages represented by `mask` in canonical order.
+ * @param {number} mask
  * @returns {string[]}
  */
-function getSortedUsages(usageSet) {
-  if (usageSet.size <= 1) {
-    return ArrayFrom(usageSet);
+function getUsagesFromMask(mask) {
+  // Short circuit most common cases, empty and single usage
+  // No usages is a valid state for some public keys
+  if (mask === 0) return [];
+  // A mask with exactly one bit set maps directly to one usage
+  if ((mask & (mask - 1)) === 0) {
+    return [kUsageByMask[mask]];
   }
+  // Multiple usages need to be expanded in canonical order.
   const result = [];
-  for (const usage of kCanonicalUsageOrder) {
-    if (usageSet.has(usage)) ArrayPrototypePush(result, usage);
+  for (let n = 0; n < kCanonicalUsageOrder.length; n++) {
+    if (mask & (1 << n))
+      ArrayPrototypePush(result, kCanonicalUsageOrder[n]);
   }
   return result;
 }
@@ -779,32 +900,20 @@ function getDigestSizeInBytes(name) {
   }
 }
 
-const kKeyOps = {
-  __proto__: null,
-  sign: 1,
-  verify: 2,
-  encrypt: 3,
-  decrypt: 4,
-  wrapKey: 5,
-  unwrapKey: 6,
-  deriveKey: 7,
-  deriveBits: 8,
-};
-
 function validateKeyOps(keyOps, usagesSet) {
   if (keyOps === undefined) return;
   validateArray(keyOps, 'keyData.key_ops');
-  let flags = 0;
+  let keyOpsMask = 0;
   for (let n = 0; n < keyOps.length; n++) {
     const op = keyOps[n];
-    const op_flag = kKeyOps[op];
+    const opMask = kUsageMasks[op];
     // Skipping unknown key ops
-    if (op_flag === undefined)
+    if (opMask === undefined)
       continue;
     // Have we seen it already? if so, error
-    if (flags & (1 << op_flag))
+    if (keyOpsMask & opMask)
       throw lazyDOMException('Duplicate key operation', 'DataError');
-    flags |= (1 << op_flag);
+    keyOpsMask |= opMask;
 
     // TODO(@jasnell): RFC7517 section 4.3 strong recommends validating
     // key usage combinations. Specifically, it says that unrelated key
@@ -812,12 +921,11 @@ function validateKeyOps(keyOps, usagesSet) {
   }
 
   if (usagesSet !== undefined) {
-    for (const use of usagesSet) {
-      if (!ArrayPrototypeIncludes(keyOps, use)) {
-        throw lazyDOMException(
-          'Key operations and usage mismatch',
-          'DataError');
-      }
+    const usagesMask = getUsagesMask(usagesSet);
+    if ((keyOpsMask & usagesMask) !== usagesMask) {
+      throw lazyDOMException(
+        'Key operations and usage mismatch',
+        'DataError');
     }
   }
 }
@@ -840,7 +948,6 @@ module.exports = {
   getDataViewOrTypedArrayBuffer,
   getHashes,
   kHandle,
-  kKeyObject,
   setEngine,
   toBuf,
 
@@ -851,6 +958,9 @@ module.exports = {
   validateByteSource,
   validateKeyOps,
   jobPromise,
+  jobPromiseThen,
+  cleanupWebCryptoResult,
+  prepareWebCryptoResult,
   validateMaxBufferLength,
   bigIntArrayToUnsignedBigInt,
   bigIntArrayToUnsignedInt,
@@ -858,7 +968,9 @@ module.exports = {
   getDigestSizeInBytes,
   getStringOption,
   getUsagesUnion,
-  getSortedUsages,
+  getUsagesMask,
+  getUsagesFromMask,
+  hasUsage,
   secureHeapUsed,
   getCachedHashId,
   getHashCache,

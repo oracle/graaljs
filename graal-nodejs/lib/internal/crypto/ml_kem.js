@@ -1,7 +1,6 @@
 'use strict';
 
 const {
-  PromiseWithResolvers,
   SafeSet,
   StringPrototypeToLowerCase,
   TypedArrayPrototypeGetBuffer,
@@ -10,47 +9,49 @@ const {
 } = primordials;
 
 const {
-  kCryptoJobAsync,
+  kCryptoJobWebCrypto,
   KEMDecapsulateJob,
   KEMEncapsulateJob,
-  KeyObjectHandle,
   kKeyFormatDER,
-  kKeyTypePrivate,
-  kKeyTypePublic,
+  kKeyFormatRawPrivate,
+  kKeyFormatRawPublic,
   kWebCryptoKeyFormatPKCS8,
   kWebCryptoKeyFormatRaw,
   kWebCryptoKeyFormatSPKI,
+  NidKeyPairGenJob,
+  EVP_PKEY_ML_KEM_512,
+  EVP_PKEY_ML_KEM_768,
+  EVP_PKEY_ML_KEM_1024,
 } = internalBinding('crypto');
 
 const {
+  getUsagesMask,
   getUsagesUnion,
   hasAnyNotIn,
-  kHandle,
-  kKeyObject,
+  jobPromise,
 } = require('internal/crypto/util');
 
 const {
   lazyDOMException,
-  promisify,
 } = require('internal/util');
 
 const {
-  generateKeyPair: _generateKeyPair,
-} = require('internal/crypto/keygen');
-
-const {
+  getCryptoKeyAlgorithm,
+  getCryptoKeyHandle,
+  getCryptoKeyType,
+  getKeyObjectHandle,
+  getKeyObjectType,
   InternalCryptoKey,
-  PrivateKeyObject,
-  PublicKeyObject,
-  createPrivateKey,
-  createPublicKey,
-  kAlgorithm,
-  kKeyType,
 } = require('internal/crypto/keys');
 
-const generateKeyPair = promisify(_generateKeyPair);
+const {
+  importDerKey,
+  importJwkKey,
+  importRawKey,
+  validateJwk,
+} = require('internal/crypto/webcrypto_util');
 
-async function mlKemGenerateKey(algorithm, extractable, keyUsages) {
+function mlKemGenerateKey(algorithm, extractable, keyUsages) {
   const { name } = algorithm;
 
   const usageSet = new SafeSet(keyUsages);
@@ -60,59 +61,56 @@ async function mlKemGenerateKey(algorithm, extractable, keyUsages) {
       'SyntaxError');
   }
 
-  let keyPair;
-  try {
-    keyPair = await generateKeyPair(name.toLowerCase());
-  } catch (err) {
-    throw lazyDOMException(
-      'The operation failed for an operation-specific reason',
-      { name: 'OperationError', cause: err });
-  }
+  const nid = {
+    '__proto__': null,
+    'ML-KEM-512': EVP_PKEY_ML_KEM_512,
+    'ML-KEM-768': EVP_PKEY_ML_KEM_768,
+    'ML-KEM-1024': EVP_PKEY_ML_KEM_1024,
+  }[name];
 
-  const publicUsages = getUsagesUnion(usageSet, 'encapsulateKey', 'encapsulateBits');
-  const privateUsages = getUsagesUnion(usageSet, 'decapsulateKey', 'decapsulateBits');
+  const publicUsages =
+    getUsagesUnion(usageSet, 'encapsulateKey', 'encapsulateBits');
+  const privateUsages =
+    getUsagesUnion(usageSet, 'decapsulateKey', 'decapsulateBits');
 
   const keyAlgorithm = { name };
 
-  const publicKey =
-    new InternalCryptoKey(
-      keyPair.publicKey,
-      keyAlgorithm,
-      publicUsages,
-      true);
+  if (privateUsages.size === 0) {
+    throw lazyDOMException(
+      'Usages cannot be empty when creating a key.',
+      'SyntaxError');
+  }
 
-  const privateKey =
-    new InternalCryptoKey(
-      keyPair.privateKey,
-      keyAlgorithm,
-      privateUsages,
-      extractable);
-
-  return { __proto__: null, privateKey, publicKey };
+  return jobPromise(() => new NidKeyPairGenJob(
+    kCryptoJobWebCrypto,
+    nid,
+    keyAlgorithm,
+    getUsagesMask(publicUsages),
+    getUsagesMask(privateUsages),
+    extractable));
 }
 
 function mlKemExportKey(key, format) {
   try {
+    const handle = getCryptoKeyHandle(key);
     switch (format) {
       case kWebCryptoKeyFormatRaw: {
-        if (key[kKeyType] === 'private') {
-          return TypedArrayPrototypeGetBuffer(key[kKeyObject][kHandle].rawSeed());
-        }
-
-        return TypedArrayPrototypeGetBuffer(key[kKeyObject][kHandle].rawPublicKey());
+        return TypedArrayPrototypeGetBuffer(
+          getCryptoKeyType(key) === 'private' ? handle.rawSeed() : handle.rawPublicKey());
       }
       case kWebCryptoKeyFormatSPKI: {
-        return TypedArrayPrototypeGetBuffer(key[kKeyObject][kHandle].export(kKeyFormatDER, kWebCryptoKeyFormatSPKI));
+        return TypedArrayPrototypeGetBuffer(
+          handle.export(kKeyFormatDER, kWebCryptoKeyFormatSPKI));
       }
       case kWebCryptoKeyFormatPKCS8: {
-        const seed = key[kKeyObject][kHandle].rawSeed();
+        const seed = handle.rawSeed();
         const buffer = new Uint8Array(86);
         const orc = {
           '__proto__': null,
           'ML-KEM-512': 0x01,
           'ML-KEM-768': 0x02,
           'ML-KEM-1024': 0x03,
-        }[key[kAlgorithm].name];
+        }[getCryptoKeyAlgorithm(key).name];
         TypedArrayPrototypeSet(buffer, [
           0x30, 0x54, 0x02, 0x01, 0x00, 0x30, 0x0b, 0x06,
           0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04,
@@ -140,16 +138,6 @@ function verifyAcceptableMlKemKeyUse(name, isPublic, usages) {
   }
 }
 
-function createMlKemRawKey(name, keyData, isPublic) {
-  const handle = new KeyObjectHandle();
-  const keyType = isPublic ? kKeyTypePublic : kKeyTypePrivate;
-  if (!handle.initPqcRaw(name, keyData, keyType)) {
-    throw lazyDOMException('Invalid keyData', 'DataError');
-  }
-
-  return isPublic ? new PublicKeyObject(handle) : new PrivateKeyObject(handle);
-}
-
 function mlKemImportKey(
   format,
   keyData,
@@ -158,26 +146,18 @@ function mlKemImportKey(
   keyUsages) {
 
   const { name } = algorithm;
-  let keyObject;
+  let handle;
   const usagesSet = new SafeSet(keyUsages);
   switch (format) {
     case 'KeyObject': {
-      verifyAcceptableMlKemKeyUse(name, keyData.type === 'public', usagesSet);
-      keyObject = keyData;
+      verifyAcceptableMlKemKeyUse(
+        name, getKeyObjectType(keyData) === 'public', usagesSet);
+      handle = getKeyObjectHandle(keyData);
       break;
     }
     case 'spki': {
       verifyAcceptableMlKemKeyUse(name, true, usagesSet);
-      try {
-        keyObject = createPublicKey({
-          key: keyData,
-          format: 'der',
-          type: 'spki',
-        });
-      } catch (err) {
-        throw lazyDOMException(
-          'Invalid keyData', { name: 'DataError', cause: err });
-      }
+      handle = importDerKey(keyData, true);
       break;
     }
     case 'pkcs8': {
@@ -195,105 +175,70 @@ function mlKemImportKey(
           'NotSupportedError');
       }
 
-      try {
-        keyObject = createPrivateKey({
-          key: keyData,
-          format: 'der',
-          type: 'pkcs8',
-        });
-      } catch (err) {
-        throw lazyDOMException(
-          'Invalid keyData', { name: 'DataError', cause: err });
-      }
+      handle = importDerKey(keyData, false);
       break;
     }
     case 'raw-public':
     case 'raw-seed': {
       const isPublic = format === 'raw-public';
       verifyAcceptableMlKemKeyUse(name, isPublic, usagesSet);
+      handle = importRawKey(isPublic, keyData, isPublic ? kKeyFormatRawPublic : kKeyFormatRawPrivate, name);
+      break;
+    }
+    case 'jwk': {
+      validateJwk(keyData, 'AKP', extractable, usagesSet, 'enc');
 
-      try {
-        keyObject = createMlKemRawKey(name, keyData, isPublic);
-      } catch (err) {
-        throw lazyDOMException('Invalid keyData', { name: 'DataError', cause: err });
-      }
+      if (keyData.alg !== name)
+        throw lazyDOMException(
+          'JWK "alg" Parameter and algorithm name mismatch', 'DataError');
+
+      const isPublic = keyData.priv === undefined;
+      verifyAcceptableMlKemKeyUse(name, isPublic, usagesSet);
+      handle = importJwkKey(isPublic, keyData);
       break;
     }
     default:
       return undefined;
   }
 
-  if (keyObject.asymmetricKeyType !== StringPrototypeToLowerCase(name)) {
+  if (handle.getAsymmetricKeyType() !== StringPrototypeToLowerCase(name)) {
     throw lazyDOMException('Invalid key type', 'DataError');
   }
 
   return new InternalCryptoKey(
-    keyObject,
+    handle,
     { name },
-    usagesSet,
+    getUsagesMask(usagesSet),
     extractable);
 }
 
 function mlKemEncapsulate(encapsulationKey) {
-  if (encapsulationKey[kKeyType] !== 'public') {
+  if (getCryptoKeyType(encapsulationKey) !== 'public') {
     throw lazyDOMException(`Key must be a public key`, 'InvalidAccessError');
   }
 
-  const { promise, resolve, reject } = PromiseWithResolvers();
-
-  const job = new KEMEncapsulateJob(
-    kCryptoJobAsync,
-    encapsulationKey[kKeyObject][kHandle],
+  return jobPromise(() => new KEMEncapsulateJob(
+    kCryptoJobWebCrypto,
+    getCryptoKeyHandle(encapsulationKey),
     undefined,
     undefined,
-    undefined);
-
-  job.ondone = (error, result) => {
-    if (error) {
-      reject(lazyDOMException(
-        'The operation failed for an operation-specific reason',
-        { name: 'OperationError', cause: error }));
-    } else {
-      const { 0: sharedKey, 1: ciphertext } = result;
-
-      resolve({
-        sharedKey: TypedArrayPrototypeGetBuffer(sharedKey),
-        ciphertext: TypedArrayPrototypeGetBuffer(ciphertext),
-      });
-    }
-  };
-  job.run();
-
-  return promise;
+    undefined,
+    undefined));
 }
 
 function mlKemDecapsulate(decapsulationKey, ciphertext) {
-  if (decapsulationKey[kKeyType] !== 'private') {
+  if (getCryptoKeyType(decapsulationKey) !== 'private') {
     throw lazyDOMException(`Key must be a private key`, 'InvalidAccessError');
   }
 
-  const { promise, resolve, reject } = PromiseWithResolvers();
-
-  const job = new KEMDecapsulateJob(
-    kCryptoJobAsync,
-    decapsulationKey[kKeyObject][kHandle],
+  return jobPromise(() => new KEMDecapsulateJob(
+    kCryptoJobWebCrypto,
+    getCryptoKeyHandle(decapsulationKey),
     undefined,
     undefined,
     undefined,
-    ciphertext);
-
-  job.ondone = (error, result) => {
-    if (error) {
-      reject(lazyDOMException(
-        'The operation failed for an operation-specific reason',
-        { name: 'OperationError', cause: error }));
-    } else {
-      resolve(TypedArrayPrototypeGetBuffer(result));
-    }
-  };
-  job.run();
-
-  return promise;
+    undefined,
+    ciphertext));
 }
 
 module.exports = {

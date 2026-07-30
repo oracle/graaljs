@@ -1110,10 +1110,12 @@ creates and returns an `Http2Stream` instance that can be used to send an
 HTTP/2 request to the connected server.
 
 When a `ClientHttp2Session` is first created, the socket may not yet be
-connected. if `clienthttp2session.request()` is called during this time, the
+connected. If `clienthttp2session.request()` is called during this time, the
 actual request will be deferred until the socket is ready to go.
-If the `session` is closed before the actual request be executed, an
-`ERR_HTTP2_GOAWAY_SESSION` is thrown.
+
+If the session becomes unavailable before the request can be created, the
+returned stream will emit `ERR_HTTP2_GOAWAY_SESSION` or
+`ERR_HTTP2_INVALID_SESSION` asynchronously.
 
 This method is only available if `http2session.type` is equal to
 `http2.constants.NGHTTP2_SESSION_CLIENT`.
@@ -1338,10 +1340,11 @@ added: v8.4.0
 
 * `headers` {HTTP/2 Headers Object} An object describing the headers
 * `flags` {number} The associated numeric flags
+* `rawHeaders` {HTTP/2 Raw Headers}
 
 The `'trailers'` event is emitted when a block of headers associated with
-trailing header fields is received. The listener callback is passed the
-[HTTP/2 Headers Object][] and flags associated with the headers.
+trailing header fields is received. The listener callback is passed the [HTTP/2 Headers Object][], flags associated
+with the headers, and the headers in raw format (see [HTTP/2 Raw Headers][]).
 
 This event might not be emitted if `http2stream.end()` is called
 before trailers are received and the incoming data is not being read or
@@ -1695,10 +1698,11 @@ added: v8.4.0
 
 * `headers` {HTTP/2 Headers Object}
 * `flags` {number}
+* `rawHeaders` {HTTP/2 Raw Headers}
 
 The `'push'` event is emitted when response headers for a Server Push stream
-are received. The listener callback is passed the [HTTP/2 Headers Object][] and
-flags associated with the headers.
+are received. The listener callback is passed the [HTTP/2 Headers Object][], flags associated
+with the headers, and the headers in raw format (see [HTTP/2 Raw Headers][]).
 
 ```js
 stream.on('push', (headers, flags) => {
@@ -2856,9 +2860,10 @@ changes:
     This is a credit based limit, existing `Http2Stream`s may cause this
     limit to be exceeded, but new `Http2Stream` instances will be rejected
     while this limit is exceeded. The current number of `Http2Stream` sessions,
-    the current memory use of the header compression tables, current data
-    queued to be sent, and unacknowledged `PING` and `SETTINGS` frames are all
-    counted towards the current limit. **Default:** `10`.
+    the current memory use of the header compression tables, header blocks
+    retained by open streams, current data queued to be sent, and
+    unacknowledged `PING` and `SETTINGS` frames are all counted towards the
+    current limit. **Default:** `10`.
   * `maxHeaderListPairs` {number} Sets the maximum number of header entries.
     This is similar to [`server.maxHeadersCount`][] or
     [`request.maxHeadersCount`][] in the `node:http` module. The minimum value
@@ -3073,9 +3078,10 @@ changes:
     credit based limit, existing `Http2Stream`s may cause this
     limit to be exceeded, but new `Http2Stream` instances will be rejected
     while this limit is exceeded. The current number of `Http2Stream` sessions,
-    the current memory use of the header compression tables, current data
-    queued to be sent, and unacknowledged `PING` and `SETTINGS` frames are all
-    counted towards the current limit. **Default:** `10`.
+    the current memory use of the header compression tables, header blocks
+    retained by open streams, current data queued to be sent, and
+    unacknowledged `PING` and `SETTINGS` frames are all counted towards the
+    current limit. **Default:** `10`.
   * `maxHeaderListPairs` {number} Sets the maximum number of header entries.
     This is similar to [`server.maxHeadersCount`][] or
     [`request.maxHeadersCount`][] in the `node:http` module. The minimum value
@@ -3253,9 +3259,10 @@ changes:
     This is a credit based limit, existing `Http2Stream`s may cause this
     limit to be exceeded, but new `Http2Stream` instances will be rejected
     while this limit is exceeded. The current number of `Http2Stream` sessions,
-    the current memory use of the header compression tables, current data
-    queued to be sent, and unacknowledged `PING` and `SETTINGS` frames are all
-    counted towards the current limit. **Default:** `10`.
+    the current memory use of the header compression tables, header blocks
+    retained by open streams, current data queued to be sent, and
+    unacknowledged `PING` and `SETTINGS` frames are all counted towards the
+    current limit. **Default:** `10`.
   * `maxHeaderListPairs` {number} Sets the maximum number of header entries.
     This is similar to [`server.maxHeadersCount`][] or
     [`request.maxHeadersCount`][] in the `node:http` module. The minimum value
@@ -3958,7 +3965,7 @@ const server = createSecureServer(
 ).listen(8000);
 
 function onRequest(req, res) {
-  // Detects if it is a HTTPS request or HTTP/2
+  // Detects if it is an HTTPS request or HTTP/2
   const { socket: { alpnProtocol } } = req.httpVersion === '2.0' ?
     req.stream.session : req;
   res.writeHead(200, { 'content-type': 'application/json' });
@@ -3982,7 +3989,7 @@ const server = createSecureServer(
 ).listen(4443);
 
 function onRequest(req, res) {
-  // Detects if it is a HTTPS request or HTTP/2
+  // Detects if it is an HTTPS request or HTTP/2
   const { socket: { alpnProtocol } } = req.httpVersion === '2.0' ?
     req.stream.session : req;
   res.writeHead(200, { 'content-type': 'application/json' });
@@ -4281,10 +4288,8 @@ Accept: text/plain
 
 Then `request.url` will be:
 
-<!-- eslint-disable @stylistic/js/semi -->
-
-```js
-'/status?name=ryan'
+```json
+"/status?name=ryan"
 ```
 
 To parse the url into its parts, `new URL()` can be used:
@@ -4826,6 +4831,30 @@ response.writeEarlyHints({
 });
 ```
 
+#### `response.writeInformation(statusCode[, headers])`
+
+<!-- YAML
+added: v24.18.0
+-->
+
+* `statusCode` {number} An HTTP 1xx informational status code, between `100`
+  and `199` inclusive, excluding `101` (Switching Protocols) which is not
+  allowed in HTTP/2.
+* `headers` {Object} An optional object of headers to send with the
+  informational response.
+
+Sends an arbitrary HTTP 1xx informational response, equivalent in HTTP/2 to a
+`HEADERS` frame whose `:status` pseudo-header is a 1xx code. May be called
+multiple times before the final response. After the final response headers
+have been sent, this method is a no-op and returns `false`.
+
+This is the generic equivalent of [`response.writeContinue()`][] and
+[`response.writeEarlyHints()`][].
+
+```js
+response.writeInformation(110, { 'X-Progress': '50%' });
+```
+
 #### `response.writeHead(statusCode[, statusMessage][, headers])`
 
 <!-- YAML
@@ -5035,6 +5064,7 @@ you need to implement any fall-back behavior yourself.
 [`response.write()`]: #responsewritechunk-encoding-callback
 [`response.write(data, encoding)`]: http.md#responsewritechunk-encoding-callback
 [`response.writeContinue()`]: #responsewritecontinue
+[`response.writeEarlyHints()`]: #responsewriteearlyhintshints
 [`response.writeHead()`]: #responsewriteheadstatuscode-statusmessage-headers
 [`server.close()`]: #serverclosecallback
 [`server.maxHeadersCount`]: http.md#servermaxheaderscount

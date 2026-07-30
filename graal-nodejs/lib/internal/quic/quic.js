@@ -95,6 +95,8 @@ const {
 } = require('internal/blob');
 
 const {
+  getKeyObjectHandle,
+  getKeyObjectType,
   isKeyObject,
 } = require('internal/crypto/keys');
 
@@ -138,7 +140,6 @@ const {
   kTrailers,
   kVersionNegotiation,
   kInspect,
-  kKeyObjectHandle,
   kWantsHeaders,
   kWantsTrailers,
 } = require('internal/quic/symbols');
@@ -195,6 +196,7 @@ const onSessionHandshakeChannel = dc.channel('quic.session.handshake');
  * @property {string|SocketAddress} [address] The local address to bind to
  * @property {bigint|number} [addressLRUSize] The size of the address LRU cache
  * @property {boolean} [ipv6Only] Use IPv6 only
+ * @property {boolean} [reusePort] Enable SO_REUSEPORT for multi-process load balancing
  * @property {bigint|number} [maxConnectionsPerHost] The maximum number of connections per host
  * @property {bigint|number} [maxConnectionsTotal] The maximum number of total connections
  * @property {bigint|number} [maxRetries] The maximum number of retries
@@ -1559,6 +1561,7 @@ class QuicEndpoint {
       udpTTL,
       validateAddress,
       ipv6Only,
+      reusePort,
       cc,
       resetTokenSecret,
       tokenSecret,
@@ -1592,6 +1595,7 @@ class QuicEndpoint {
       udpTTL,
       validateAddress,
       ipv6Only,
+      reusePort,
       cc,
       resetTokenSecret,
       tokenSecret,
@@ -2044,11 +2048,11 @@ function processIdentityOptions(identity, label) {
     const keyInputs = ArrayIsArray(keys) ? keys : [keys];
     for (const key of keyInputs) {
       if (isKeyObject(key)) {
-        if (key.type !== 'private') {
+        if (getKeyObjectType(key) !== 'private') {
           throw new ERR_INVALID_ARG_VALUE(`${label}.keys`, key,
                                           'must be a private key');
         }
-        ArrayPrototypePush(keyHandles, key[kKeyObjectHandle]);
+        ArrayPrototypePush(keyHandles, getKeyObjectHandle(key));
       } else {
         throw new ERR_INVALID_ARG_TYPE(`${label}.keys`, 'KeyObject', key);
       }

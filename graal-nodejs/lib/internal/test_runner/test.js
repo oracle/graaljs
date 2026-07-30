@@ -9,10 +9,12 @@ const {
   ArrayPrototypeSplice,
   ArrayPrototypeUnshift,
   ArrayPrototypeUnshiftApply,
+  BigInt,
   Error,
   FunctionPrototype,
   MathFloor,
   MathMax,
+  MathRound,
   Number,
   NumberPrototypeToFixed,
   ObjectKeys,
@@ -757,26 +759,38 @@ class Test extends AsyncResource {
     }
 
     if (this.loc != null && this.root.harness.previousRuns != null) {
-      let testIdentifier = `${relative(this.config.cwd, this.loc.file)}:${this.loc.line}:${this.loc.column}`;
-      const disambiguator = this.root.testDisambiguator.get(testIdentifier);
+      const baseIdentifier = `${relative(this.config.cwd, this.loc.file)}:${this.loc.line}:${this.loc.column}`;
+      let testIdentifier = baseIdentifier;
+      const disambiguator = this.root.testDisambiguator.get(baseIdentifier);
       if (disambiguator !== undefined) {
         testIdentifier += `:(${disambiguator})`;
-        this.root.testDisambiguator.set(testIdentifier, disambiguator + 1);
+        this.root.testDisambiguator.set(baseIdentifier, disambiguator + 1);
       } else {
-        this.root.testDisambiguator.set(testIdentifier, 1);
+        this.root.testDisambiguator.set(baseIdentifier, 1);
       }
       this.attempt = this.root.harness.previousRuns.length;
       const previousAttempt = this.root.harness.previousRuns[this.attempt - 1]?.[testIdentifier];
       if (previousAttempt != null) {
         this.passedAttempt = previousAttempt.passed_on_attempt;
+        if (previousAttempt.duration_ms !== undefined) {
+          this.replayedDurationNs = BigInt(MathRound(previousAttempt.duration_ms * 1_000_000));
+        }
         this.fn = () => {
+          // Restore the original duration on the synthetic replay. Suites are
+          // skipped here because Suite.run() unconditionally reassigns
+          // startTime later; only non-suite tests benefit from setting it.
+          if (this.reportedType !== 'suite') {
+            this.startTime = hrtime();
+            this.endTime = this.startTime + (this.replayedDurationNs ?? 0n);
+          }
           for (let i = 0; i < (previousAttempt.children?.length ?? 0); i++) {
             const child = previousAttempt.children[i];
             const t = this.createSubtest(Test, child.name, { __proto__: null }, noop, {
               __proto__: null,
               loc: [child.line, child.column, child.file],
             }, noop);
-            t.endTime = t.startTime = hrtime();
+            t.startTime = hrtime();
+            t.endTime = t.startTime + (t.replayedDurationNs ?? 0n);
             // For suites, Suite.run() starts the subtests via SafePromiseAll.
             // Starting them here as well would run them twice, re-invoking the
             // synthetic children-creator against a now-incremented disambiguator
@@ -1259,6 +1273,9 @@ class Test extends AsyncResource {
 
     let stopPromise;
 
+    let publishEnd = () => testChannel.end.publish(channelContext);
+    let publishError = (err) => testChannel.error.publish({ __proto__: null, ...channelContext, error: err });
+
     try {
       if (this.parent?.hooks.before.length > 0) {
         // This hook usually runs immediately, we need to wait for it to finish
@@ -1277,9 +1294,11 @@ class Test extends AsyncResource {
       // not the runInAsyncScope call itself, to maintain AsyncLocalStorage bindings.
       let testFn = this.fn;
       if (channelContext !== null && testChannel.start.hasSubscribers) {
-        testFn = (...fnArgs) => testChannel.start.runStores(channelContext,
-                                                            () => ReflectApply(this.fn, this, fnArgs),
-        );
+        testFn = (...fnArgs) => testChannel.start.runStores(channelContext, () => {
+          publishEnd = AsyncResource.bind(publishEnd);
+          publishError = AsyncResource.bind(publishError);
+          return ReflectApply(this.fn, this, fnArgs);
+        });
       }
 
       ArrayPrototypeUnshift(runArgs, testFn, ctx);
@@ -1331,9 +1350,8 @@ class Test extends AsyncResource {
       await afterEach();
       await after();
     } catch (err) {
-      // Publish diagnostics_channel error event if the channel has subscribers
       if (channelContext !== null && testChannel.error.hasSubscribers) {
-        testChannel.error.publish({ __proto__: null, ...channelContext, error: err });
+        publishError(err);
       }
       if (isTestFailureError(err)) {
         if (err.failureType === kTestTimeoutFailure) {
@@ -1357,7 +1375,7 @@ class Test extends AsyncResource {
 
       // Publish diagnostics_channel end event if the channel has subscribers (in both success and error cases)
       if (channelContext !== null && testChannel.end.hasSubscribers) {
-        testChannel.end.publish(channelContext);
+        publishEnd();
       }
     }
 
@@ -1702,6 +1720,9 @@ class Suite extends Test {
       file: this.entryFile,
       type: this.reportedType,
     };
+    let publishEnd = () => testChannel.end.publish(channelContext);
+    let publishError = (err) => testChannel.error.publish({ __proto__: null, ...channelContext, error: err });
+
     try {
       const { ctx, args } = this.getRunArgs();
 
@@ -1713,9 +1734,11 @@ class Suite extends Test {
       let suiteFn = this.fn;
       if (testChannel.start.hasSubscribers) {
         const baseFn = this.fn;
-        suiteFn = (...fnArgs) => testChannel.start.runStores(channelContext,
-                                                             () => ReflectApply(baseFn, this, fnArgs),
-        );
+        suiteFn = (...fnArgs) => testChannel.start.runStores(channelContext, () => {
+          publishEnd = AsyncResource.bind(publishEnd);
+          publishError = AsyncResource.bind(publishError);
+          return ReflectApply(baseFn, this, fnArgs);
+        });
       }
 
       const runArgs = [suiteFn, ctx];
@@ -1724,12 +1747,12 @@ class Suite extends Test {
       await ReflectApply(this.runInAsyncScope, this, runArgs);
     } catch (err) {
       if (testChannel.error.hasSubscribers) {
-        testChannel.error.publish({ __proto__: null, ...channelContext, error: err });
+        publishError(err);
       }
       this.fail(new ERR_TEST_FAILURE(err, kTestCodeFailure));
     } finally {
       if (testChannel.end.hasSubscribers) {
-        testChannel.end.publish(channelContext);
+        publishEnd();
       }
     }
 

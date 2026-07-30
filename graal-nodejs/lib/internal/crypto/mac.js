@@ -7,49 +7,40 @@ const {
 
 const {
   HmacJob,
-  KeyObjectHandle,
   KmacJob,
-  kCryptoJobAsync,
+  kCryptoJobWebCrypto,
   kSignJobModeSign,
   kSignJobModeVerify,
+  SecretKeyGenJob,
 } = internalBinding('crypto');
 
 const {
   getBlockSize,
+  getUsagesMask,
   hasAnyNotIn,
   jobPromise,
   normalizeHashName,
-  validateKeyOps,
-  kHandle,
-  kKeyObject,
 } = require('internal/crypto/util');
 
 const {
   lazyDOMException,
-  promisify,
 } = require('internal/util');
 
 const {
-  generateKey: _generateKey,
-} = require('internal/crypto/keygen');
-
-
-const {
-  randomBytes: _randomBytes,
-} = require('internal/crypto/random');
-
-const randomBytes = promisify(_randomBytes);
-
-const {
   InternalCryptoKey,
-  SecretKeyObject,
-  createSecretKey,
-  kAlgorithm,
+  getCryptoKeyAlgorithm,
+  getCryptoKeyHandle,
+  getKeyObjectHandle,
+  getKeyObjectSymmetricKeySize,
 } = require('internal/crypto/keys');
 
-const generateKey = promisify(_generateKey);
+const {
+  importJwkSecretKey,
+  importSecretKey,
+  validateJwk,
+} = require('internal/crypto/webcrypto_util');
 
-async function hmacGenerateKey(algorithm, extractable, keyUsages) {
+function hmacGenerateKey(algorithm, extractable, keyUsages) {
   const {
     hash,
     name,
@@ -62,24 +53,21 @@ async function hmacGenerateKey(algorithm, extractable, keyUsages) {
       'Unsupported key usage for an HMAC key',
       'SyntaxError');
   }
-
-  let key;
-  try {
-    key = await generateKey('hmac', { length });
-  } catch (err) {
+  if (usageSet.size === 0) {
     throw lazyDOMException(
-      'The operation failed for an operation-specific reason',
-      { name: 'OperationError', cause: err });
+      'Usages cannot be empty when creating a key.',
+      'SyntaxError');
   }
 
-  return new InternalCryptoKey(
-    key,
+  return jobPromise(() => new SecretKeyGenJob(
+    kCryptoJobWebCrypto,
+    length,
     { name, length, hash },
-    usageSet,
-    extractable);
+    getUsagesMask(usageSet),
+    extractable));
 }
 
-async function kmacGenerateKey(algorithm, extractable, keyUsages) {
+function kmacGenerateKey(algorithm, extractable, keyUsages) {
   const {
     name,
     length = {
@@ -95,22 +83,18 @@ async function kmacGenerateKey(algorithm, extractable, keyUsages) {
       `Unsupported key usage for ${name} key`,
       'SyntaxError');
   }
-
-  let keyData;
-  try {
-    keyData = await randomBytes(length / 8);
-  } catch (err) {
+  if (usageSet.size === 0) {
     throw lazyDOMException(
-      'The operation failed for an operation-specific reason' +
-      `[${err.message}]`,
-      { name: 'OperationError', cause: err });
+      'Usages cannot be empty when creating a key.',
+      'SyntaxError');
   }
 
-  return new InternalCryptoKey(
-    createSecretKey(keyData),
+  return jobPromise(() => new SecretKeyGenJob(
+    kCryptoJobWebCrypto,
+    length,
     { name, length },
-    usageSet,
-    extractable);
+    getUsagesMask(usageSet),
+    extractable));
 }
 
 function macImportKey(
@@ -127,10 +111,12 @@ function macImportKey(
       `Unsupported key usage for ${algorithm.name} key`,
       'SyntaxError');
   }
-  let keyObject;
+  let handle;
+  let length;
   switch (format) {
     case 'KeyObject': {
-      keyObject = keyData;
+      length = getKeyObjectSymmetricKeySize(keyData) * 8;
+      handle = getKeyObjectHandle(keyData);
       break;
     }
     case 'raw-secret':
@@ -138,31 +124,12 @@ function macImportKey(
       if (format === 'raw' && !isHmac) {
         return undefined;
       }
-      keyObject = createSecretKey(keyData);
+      length = keyData.byteLength * 8;
+      handle = importSecretKey(keyData);
       break;
     }
     case 'jwk': {
-      if (!keyData.kty)
-        throw lazyDOMException('Invalid keyData', 'DataError');
-
-      if (keyData.kty !== 'oct')
-        throw lazyDOMException('Invalid JWK "kty" Parameter', 'DataError');
-
-      if (usagesSet.size > 0 &&
-          keyData.use !== undefined &&
-          keyData.use !== 'sig') {
-        throw lazyDOMException('Invalid JWK "use" Parameter', 'DataError');
-      }
-
-      validateKeyOps(keyData.key_ops, usagesSet);
-
-      if (keyData.ext !== undefined &&
-          keyData.ext === false &&
-          extractable === true) {
-        throw lazyDOMException(
-          'JWK "ext" Parameter and extractable mismatch',
-          'DataError');
-      }
+      validateJwk(keyData, 'oct', extractable, usagesSet, 'sig');
 
       if (keyData.alg !== undefined) {
         const expected = isHmac ?
@@ -174,21 +141,13 @@ function macImportKey(
             'DataError');
       }
 
-      const handle = new KeyObjectHandle();
-      try {
-        handle.initJwk(keyData);
-      } catch (err) {
-        throw lazyDOMException(
-          'Invalid keyData', { name: 'DataError', cause: err });
-      }
-      keyObject = new SecretKeyObject(handle);
+      handle = importJwkSecretKey(keyData);
+      length = handle.getSymmetricKeySize() * 8;
       break;
     }
     default:
       return undefined;
   }
-
-  const { length } = keyObject[kHandle].keyDetail({});
 
   if (length === 0)
     throw lazyDOMException('Zero-length key is not supported', 'DataError');
@@ -208,19 +167,19 @@ function macImportKey(
   }
 
   return new InternalCryptoKey(
-    keyObject,
+    handle,
     algorithmObject,
-    usagesSet,
+    getUsagesMask(usagesSet),
     extractable);
 }
 
 function hmacSignVerify(key, data, algorithm, signature) {
   const mode = signature === undefined ? kSignJobModeSign : kSignJobModeVerify;
   return jobPromise(() => new HmacJob(
-    kCryptoJobAsync,
+    kCryptoJobWebCrypto,
     mode,
-    normalizeHashName(key[kAlgorithm].hash.name),
-    key[kKeyObject][kHandle],
+    normalizeHashName(getCryptoKeyAlgorithm(key).hash.name),
+    getCryptoKeyHandle(key),
     data,
     signature));
 }
@@ -228,9 +187,9 @@ function hmacSignVerify(key, data, algorithm, signature) {
 function kmacSignVerify(key, data, algorithm, signature) {
   const mode = signature === undefined ? kSignJobModeSign : kSignJobModeVerify;
   return jobPromise(() => new KmacJob(
-    kCryptoJobAsync,
+    kCryptoJobWebCrypto,
     mode,
-    key[kKeyObject][kHandle],
+    getCryptoKeyHandle(key),
     algorithm.name,
     algorithm.customization,
     algorithm.outputLength / 8,

@@ -802,7 +802,7 @@ changes:
 Type: Revoked
 
 The [`events.listenerCount(emitter, eventName)`][] API was deprecated, as it
-provided identical fuctionality to [`emitter.listenerCount(eventName)`][]. The
+provided identical functionality to [`emitter.listenerCount(eventName)`][]. The
 deprecation was revoked because this function has been repurposed to also
 accept {EventTarget} arguments.
 
@@ -4439,6 +4439,22 @@ that have proven unresolveable. See [caveats of asynchronous customization hooks
 `module.registerHooks()` as soon as possible as `module.register()` will be
 removed in a future version of Node.js.
 
+### DEP0206: Calling `digest()` on an already-finalized `Hmac` instance
+
+<!-- YAML
+changes:
+  - version: v24.18.0
+    pr-url: https://github.com/nodejs/node/pull/63121
+    description: Documentation-only deprecation.
+-->
+
+Type: Documentation-only
+
+Calling `hmac.digest()` more than once returns an empty buffer instead of
+throwing an error. This behavior is inconsistent with `hash.digest()` and
+may lead to subtle bugs. Calling `hmac.digest()` on a finalized `Hmac` instance
+will throw an error in a future version.
+
 [DEP0142]: #dep0142-repl_builtinlibs
 [NIST SP 800-38D]: https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf
 [RFC 6066]: https://tools.ietf.org/html/rfc6066#section-3
@@ -4468,7 +4484,7 @@ removed in a future version of Node.js.
 [`Sign.prototype.sign()`]: crypto.md#signsignprivatekey-outputencoding
 [`SlowBuffer`]: buffer.md#class-slowbuffer
 [`String.prototype.toWellFormed`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/toWellFormed
-[`Verify.prototype.verify()`]: crypto.md#verifyverifyobject-signature-signatureencoding
+[`Verify.prototype.verify()`]: crypto.md#verifyverifykey-signature-signatureencoding
 [`WriteStream.open()`]: fs.md#class-fswritestream
 [`assert.CallTracker`]: assert.md#class-assertcalltracker
 [`assert`]: assert.md

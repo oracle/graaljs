@@ -3042,7 +3042,7 @@ The context must be a `SecureContext`.
 
 ### `ERR_TLS_INVALID_PROTOCOL_METHOD`
 
-The specified  `secureProtocol` method is invalid. It is  either unknown, or
+The specified `secureProtocol` method is invalid. It is either unknown, or
 disabled because it is insecure.
 
 <a id="ERR_TLS_INVALID_PROTOCOL_VERSION"></a>
@@ -3083,6 +3083,13 @@ Failed to set PSK identity hint. Hint may be too long.
 
 An attempt was made to renegotiate TLS on a socket instance with renegotiation
 disabled.
+
+<a id="ERR_TLS_RENEGOTIATION_UNSUPPORTED"></a>
+
+### `ERR_TLS_RENEGOTIATION_UNSUPPORTED`
+
+An attempt was made to renegotiate TLS, but the TLS implementation does not
+support caller-initiated renegotiation.
 
 <a id="ERR_TLS_REQUIRED_SERVER_NAME"></a>
 
