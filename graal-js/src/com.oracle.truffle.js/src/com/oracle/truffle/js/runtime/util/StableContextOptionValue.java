@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.runtime.util;
 
 import java.util.Objects;
-import java.util.function.Function;
 
 import org.graalvm.options.OptionKey;
 
@@ -70,13 +69,13 @@ public final class StableContextOptionValue<T> {
 
     private @CompilationFinal Assumption stableAssumption;
     private @CompilationFinal T stableValue;
-    private final Function<JSContextOptions, T> getter;
+    private final CompilableFunction<JSContextOptions, T> getter;
     private final OptionKey<T> optionKey;
     private final String optionName;
 
     private static final Assumption ASSUMPTION_UNINITIALIZED = Assumption.NEVER_VALID;
 
-    public StableContextOptionValue(Function<JSContextOptions, T> getter, OptionKey<T> optionKey, String optionName) {
+    public StableContextOptionValue(CompilableFunction<JSContextOptions, T> getter, OptionKey<T> optionKey, String optionName) {
         this.stableAssumption = ASSUMPTION_UNINITIALIZED;
         this.stableValue = optionKey.getDefaultValue();
         this.getter = getter;
