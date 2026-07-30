@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
-import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -213,6 +212,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         return result;
     }
 
+    @TruffleBoundary
     private static WasmFunctionTypeInfo parseWasmFunctionTypeInfo(JSContext context, TruffleString typeInfo) {
         int idxOpen = Strings.indexOf(typeInfo, '(');
         int idxClose = Strings.indexOf(typeInfo, ')');
@@ -220,11 +220,18 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         TruffleString returnTypes = Strings.lazySubstring(typeInfo, idxClose + 1);
         WebAssemblyType[] paramTypes = parseTypeSequence(context, argTypes);
         WebAssemblyType[] resultTypes = parseTypeSequence(context, returnTypes);
-        boolean anyReturnTypeIsI64 = Arrays.asList(resultTypes).contains(WebAssemblyType.i64);
-        boolean anyArgTypeIsI64 = Arrays.asList(paramTypes).contains(WebAssemblyType.i64);
-        boolean anyReturnTypeIsV128 = Arrays.asList(resultTypes).contains(WebAssemblyType.v128);
-        boolean anyArgTypeIsV128 = Arrays.asList(paramTypes).contains(WebAssemblyType.v128);
-        return new WasmFunctionTypeInfo(paramTypes, resultTypes, anyReturnTypeIsI64 || anyArgTypeIsI64, anyReturnTypeIsV128 || anyArgTypeIsV128);
+        boolean anyTypeIsI64 = containsType(resultTypes, WebAssemblyType.i64) || containsType(paramTypes, WebAssemblyType.i64);
+        boolean anyTypeIsV128 = containsType(resultTypes, WebAssemblyType.v128) || containsType(paramTypes, WebAssemblyType.v128);
+        return new WasmFunctionTypeInfo(paramTypes, resultTypes, anyTypeIsI64, anyTypeIsV128);
+    }
+
+    private static boolean containsType(WebAssemblyType[] types, WebAssemblyType test) {
+        for (WebAssemblyType type : types) {
+            if (type == test) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static WebAssemblyType[] parseTypeSequence(JSContext context, TruffleString typeString) {
