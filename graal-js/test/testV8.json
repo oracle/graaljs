@@ -296,6 +296,14 @@
     "status" : "FAIL",
     "comment" : "Different stack traces"
   }, {
+    "filePath" : "mjsunit/baseline/flush-baseline-code.js",
+    "status" : "FAIL",
+    "comment" : "Tests V8-specific Sparkplug and bytecode flushing"
+  }, {
+    "filePath" : "mjsunit/baseline/flush-only-baseline-code.js",
+    "status" : "FAIL",
+    "comment" : "Tests V8-specific Sparkplug and bytecode flushing"
+  }, {
     "filePath" : "mjsunit/baseline/verify-bytecode-offsets.js",
     "status" : "FAIL",
     "comment" : "test for fuzzer"
@@ -339,6 +347,10 @@
     "status" : "SKIP",
     "comment" : "code coverage support (GR-6539)"
   }, {
+    "filePath" : "mjsunit/code-coverage-block-async.js",
+    "status" : "FAIL",
+    "comment" : "code coverage support (GR-6539)"
+  }, {
     "filePath" : "mjsunit/code-coverage-block-noopt.js",
     "status" : "SKIP",
     "comment" : "code coverage support (GR-6539)"
@@ -349,6 +361,10 @@
   }, {
     "filePath" : "mjsunit/code-coverage-block.js",
     "status" : "SKIP",
+    "comment" : "code coverage support (GR-6539)"
+  }, {
+    "filePath" : "mjsunit/code-coverage-class-fields.js",
+    "status" : "FAIL",
     "comment" : "code coverage support (GR-6539)"
   }, {
     "filePath" : "mjsunit/code-coverage-precise.js",
@@ -478,10 +494,6 @@
     "filePath" : "mjsunit/d8/flush-denormals-worker.js",
     "status" : "FAIL",
     "comment" : "Test of V8-specific functionality (flushDenormals option of Worker)"
-  }, {
-    "filePath" : "mjsunit/d8/modules-data-url.mjs",
-    "status" : "FAIL",
-    "comment" : "Relaxed parsing of data URIs"
   }, {
     "filePath" : "mjsunit/d8/performance-mark.js",
     "status" : "FAIL",
@@ -1122,6 +1134,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
+    "filePath" : "mjsunit/regress/regress-13652.js",
+    "status" : "FAIL",
+    "comment" : "Tests promise behavior while the V8 debugger is enabled"
+  }, {
     "filePath" : "mjsunit/regress/regress-1394663.js",
     "status" : "FAIL",
     "comment" : "Uses console.profile(), console.profileEnd(), and d8.profiler.setOnProfileEndListener()"
@@ -1135,7 +1151,7 @@
     "comment" : "Uses performance.measureMemory()"
   }, {
     "filePath" : "mjsunit/regress/regress-1502014.js",
-    "status" : "SKIP",
+    "status" : "FAIL",
     "comment" : "Uses performance.measureMemory() in worker code"
   }, {
     "filePath" : "mjsunit/regress/regress-233.js",
@@ -1203,7 +1219,7 @@
     "comment" : "Uses d8.dom.Div"
   }, {
     "filePath" : "mjsunit/regress/regress-368467195.js",
-    "status" : "SKIP",
+    "status" : "FAIL",
     "comment" : "Uses performance.measureMemory()"
   }, {
     "filePath" : "mjsunit/regress/regress-371237560.js",
@@ -1225,6 +1241,10 @@
     "filePath" : "mjsunit/regress/regress-401111776.js",
     "status" : "FAIL",
     "comment" : "Test of externalizable strings"
+  }, {
+    "filePath" : "mjsunit/regress/regress-408820921.js",
+    "status" : "FAIL",
+    "comment" : "Uses performance.measureMemory() in worker code"
   }, {
     "filePath" : "mjsunit/regress/regress-411210.js",
     "runInIsolation" : true,
@@ -1265,6 +1285,10 @@
       "SHARED_ENGINE" : "FAIL"
     },
     "comment" : "new failures 2023-10-09"
+  }, {
+    "filePath" : "mjsunit/regress/regress-4578.js",
+    "status" : "SKIP",
+    "comment" : "Tests V8-specific optimization, inlining, deoptimization, and GC behavior"
   }, {
     "filePath" : "mjsunit/regress/regress-458987.js",
     "runInIsolation" : true,
@@ -1601,10 +1625,6 @@
     "comment" : "new failures 2023-10-09"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-1440685.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "mjsunit/regress/regress-crbug-1443133.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
@@ -1950,7 +1970,7 @@
     "comment" : "Uses return_call instruction (opcode 0x12) from the tail call proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1500804.js",
-    "status" : "SKIP",
+    "status" : "FAIL",
     "comment" : "Uses performance.measureMemory()."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1500812.js",
@@ -1958,7 +1978,7 @@
     "comment" : "Different error message for out-of-bounds memory access."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1517559.js",
-    "status" : "SKIP",
+    "status" : "FAIL",
     "comment" : "Uses performance.measureMemory()."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1523740.js",
@@ -2105,6 +2125,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
   }, {
+    "filePath" : "mjsunit/regress/wasm/regress-370191716.js",
+    "status" : "FAIL",
+    "comment" : "Uses performance.measureMemory() in worker code"
+  }, {
     "filePath" : "mjsunit/regress/wasm/regress-371565065.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
@@ -2112,6 +2136,10 @@
     "filePath" : "mjsunit/regress/wasm/regress-372261626.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-373907109.js",
+    "status" : "FAIL",
+    "comment" : "Uses performance.measureMemory() in worker code"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-375220562.js",
     "status" : "FAIL",
@@ -2160,6 +2188,10 @@
     "filePath" : "mjsunit/regress/wasm/regress-40258436.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-403308742.js",
+    "status" : "FAIL",
+    "comment" : "Relies on unimplemented WebAssembly compile options to be processed before the binary is validated"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-413633038.js",
     "status" : "FAIL",
@@ -3126,6 +3158,10 @@
     "status" : "FAIL",
     "comment" : "Uses Realm.detachGlobal()"
   }, {
+    "filePath" : "mjsunit/weakrefs/finalizationregistry-and-weakref.js",
+    "status" : "FAIL",
+    "comment" : "Relies on V8-specific deterministic GC and WeakRef/FinalizationRegistry scheduling"
+  }, {
     "filePath" : "mjsunit/weakrefs/finalizationregistry-independent-lifetime-multiple.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-02-12"
@@ -3134,24 +3170,56 @@
     "status" : "FAIL",
     "comment" : "Expects GC of a registry but the registry is kept alive by a closure (passes when rewritten slightly to avoid the problem with the closure)."
   }, {
+    "filePath" : "mjsunit/weakrefs/finalizationregistry-scheduled-for-cleanup-multiple-times.js",
+    "status" : "SKIP",
+    "comment" : "Unstable due to non-deterministic GC and FinalizationRegistry scheduling"
+  }, {
     "filePath" : "mjsunit/weakrefs/minor-gc-cleanup-on-detached-realm.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-02-12"
   }, {
+    "filePath" : "mjsunit/weakrefs/minor-gc-finalizationregistry-and-weakref.js",
+    "status" : "FAIL",
+    "comment" : "Relies on V8-specific minor GC and WeakRef/FinalizationRegistry scheduling"
+  }, {
     "filePath" : "mjsunit/weakrefs/minor-gc-finalizationregistry-independent-lifetime-multiple.js",
     "status" : "SKIP",
-    "comment" : "GC-based test"
+    "comment" : "Relies on deterministic V8 minor GC to collect one FinalizationRegistry before cleanup while retaining another for cleanup"
   }, {
     "filePath" : "mjsunit/weakrefs/minor-gc-finalizationregistry-independent-lifetime.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-02-12"
+    "status" : "SKIP",
+    "comment" : "Relies on deterministic V8 minor GC to collect the FinalizationRegistry before its scheduled cleanup"
+  }, {
+    "filePath" : "mjsunit/weakrefs/minor-gc-finalizationregistry-scheduled-for-cleanup-multiple-times.js",
+    "status" : "SKIP",
+    "comment" : "Unstable due to non-deterministic GC and FinalizationRegistry scheduling"
   }, {
     "filePath" : "mjsunit/weakrefs/minor-gc-reclaims-unreachable-weak-cell-target.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-02-12"
   }, {
+    "filePath" : "mjsunit/weakrefs/minor-gc-reclaims-unreachable-weakref-target.js",
+    "status" : "FAIL",
+    "comment" : "Relies on V8-specific minor GC and deterministic WeakRef clearing"
+  }, {
     "filePath" : "mjsunit/weakrefs/minor-gc-two-weakrefs.js",
     "status" : "SKIP",
     "comment" : "Unstable on native-image / when compiled (GR-23663)"
+  }, {
+    "filePath" : "mjsunit/weakrefs/minor-gc-weakref-deref-keeps-alive.js",
+    "status" : "FAIL",
+    "comment" : "Relies on V8-specific minor GC and deterministic WeakRef clearing"
+  }, {
+    "filePath" : "mjsunit/weakrefs/symbol-as-weakref-target-gc.js",
+    "status" : "FAIL",
+    "comment" : "Relies on V8-specific deterministic GC and WeakRef clearing"
+  }, {
+    "filePath" : "mjsunit/weakrefs/two-weakrefs.js",
+    "status" : "FAIL",
+    "comment" : "Relies on V8-specific deterministic GC and WeakRef clearing"
+  }, {
+    "filePath" : "mjsunit/weakrefs/weakref-deref-keeps-alive.js",
+    "status" : "FAIL",
+    "comment" : "Relies on V8-specific deterministic GC and WeakRef clearing"
   } ]
 }
