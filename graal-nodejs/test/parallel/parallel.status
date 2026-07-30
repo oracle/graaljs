@@ -256,7 +256,6 @@ test-http-server-keepalive-req-gc: SKIP
 test-http2-response-splitting: SKIP
 test-net-connect-memleak: FAIL
 test-process-env: FAIL
-test-process-finalization: FAIL
 test-repl: FAIL
 test-tls-connect-memleak: FAIL
 test-trace-env-stack: FAIL
