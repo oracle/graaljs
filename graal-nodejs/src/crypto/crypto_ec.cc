@@ -39,7 +39,6 @@ using v8::JustVoid;
 using v8::Local;
 using v8::LocalVector;
 using v8::Maybe;
-using v8::MaybeLocal;
 using v8::Nothing;
 using v8::Object;
 using v8::String;
@@ -68,7 +67,6 @@ void ECDH::Initialize(Environment* env, Local<Object> target) {
   SetMethodNoSideEffect(context, target, "ECDHConvertKey", ECDH::ConvertKey);
   SetMethodNoSideEffect(context, target, "getCurves", ECDH::GetCurves);
 
-  ECDHBitsJob::Initialize(env, target);
   ECKeyPairGenJob::Initialize(env, target);
   ECKeyExportJob::Initialize(env, target);
 
@@ -87,7 +85,6 @@ void ECDH::RegisterExternalReferences(ExternalReferenceRegistry* registry) {
   registry->Register(ECDH::ConvertKey);
   registry->Register(ECDH::GetCurves);
 
-  ECDHBitsJob::RegisterExternalReferences(registry);
   ECKeyPairGenJob::RegisterExternalReferences(registry);
   ECKeyExportJob::RegisterExternalReferences(registry);
 }
@@ -393,103 +390,6 @@ void ECDH::ConvertKey(const FunctionCallbackInfo<Value>& args) {
   }
 }
 
-void ECDHBitsConfig::MemoryInfo(MemoryTracker* tracker) const {
-  tracker->TrackField("public", public_);
-  tracker->TrackField("private", private_);
-}
-
-MaybeLocal<Value> ECDHBitsTraits::EncodeOutput(Environment* env,
-                                               const ECDHBitsConfig& params,
-                                               ByteSource* out) {
-  return out->ToArrayBuffer(env);
-}
-
-Maybe<void> ECDHBitsTraits::AdditionalConfig(
-    CryptoJobMode mode,
-    const FunctionCallbackInfo<Value>& args,
-    unsigned int offset,
-    ECDHBitsConfig* params) {
-  Environment* env = Environment::GetCurrent(args);
-
-  CHECK(args[offset]->IsObject());      // public key
-  CHECK(args[offset + 1]->IsObject());  // private key
-
-  KeyObjectHandle* private_key;
-  KeyObjectHandle* public_key;
-
-  ASSIGN_OR_RETURN_UNWRAP(&public_key, args[offset], Nothing<void>());
-  ASSIGN_OR_RETURN_UNWRAP(&private_key, args[offset + 1], Nothing<void>());
-
-  if (private_key->Data().GetKeyType() != kKeyTypePrivate ||
-      public_key->Data().GetKeyType() != kKeyTypePublic) {
-    THROW_ERR_CRYPTO_INVALID_KEYTYPE(env);
-    return Nothing<void>();
-  }
-
-  params->private_ = private_key->Data().addRef();
-  params->public_ = public_key->Data().addRef();
-
-  return JustVoid();
-}
-
-bool ECDHBitsTraits::DeriveBits(Environment* env,
-                                const ECDHBitsConfig& params,
-                                ByteSource* out,
-                                CryptoJobMode mode) {
-  size_t len = 0;
-  const auto& m_privkey = params.private_.GetAsymmetricKey();
-  const auto& m_pubkey = params.public_.GetAsymmetricKey();
-
-  switch (m_privkey.id()) {
-    case EVP_PKEY_X25519:
-      // Fall through
-    case EVP_PKEY_X448: {
-      Mutex::ScopedLock pub_lock(params.public_.mutex());
-      EVPKeyCtxPointer ctx = m_privkey.newCtx();
-      if (!ctx.initForDerive(m_pubkey)) return false;
-
-      auto data = ctx.derive();
-      if (!data) return false;
-      DCHECK(!data.isSecure());
-
-      *out = ByteSource::Allocated(data.release());
-      break;
-    }
-    default: {
-      const EC_KEY* private_key;
-      {
-        Mutex::ScopedLock priv_lock(params.private_.mutex());
-        private_key = m_privkey;
-      }
-
-      Mutex::ScopedLock pub_lock(params.public_.mutex());
-      const EC_KEY* public_key = m_pubkey;
-
-      const auto group = ECKeyPointer::GetGroup(private_key);
-      if (group == nullptr)
-        return false;
-
-      CHECK(ECKeyPointer::Check(private_key));
-      CHECK(ECKeyPointer::Check(public_key));
-      const auto pub = ECKeyPointer::GetPublicKey(public_key);
-      int field_size = EC_GROUP_get_degree(group);
-      len = (field_size + 7) / 8;
-      auto buf = DataPointer::Alloc(len);
-      CHECK_NOT_NULL(pub);
-      CHECK_NOT_NULL(private_key);
-      if (ECDH_compute_key(
-              static_cast<char*>(buf.get()), len, pub, private_key, nullptr) <=
-          0) {
-        return false;
-      }
-
-      *out = ByteSource::Allocated(buf.release());
-    }
-  }
-
-  return true;
-}
-
 EVPKeyCtxPointer EcKeyGenTraits::Setup(EcKeyPairGenConfig* params) {
   EVPKeyCtxPointer key_ctx;
   switch (params->params.curve_nid) {
@@ -538,7 +438,6 @@ Maybe<void> EcKeyGenTraits::AdditionalConfig(
     EcKeyPairGenConfig* params) {
   Environment* env = Environment::GetCurrent(args);
   CHECK(args[*offset]->IsString());  // curve name
-  CHECK(args[*offset + 1]->IsInt32());  // param encoding
 
   Utf8Value curve_name(env->isolate(), args[*offset]);
   params->params.curve_nid = Ec::GetCurveIdFromName(*curve_name);
@@ -547,11 +446,17 @@ Maybe<void> EcKeyGenTraits::AdditionalConfig(
     return Nothing<void>();
   }
 
-  params->params.param_encoding = args[*offset + 1].As<Int32>()->Value();
-  if (params->params.param_encoding != OPENSSL_EC_NAMED_CURVE &&
-      params->params.param_encoding != OPENSSL_EC_EXPLICIT_CURVE) {
-    THROW_ERR_OUT_OF_RANGE(env, "Invalid param_encoding specified");
-    return Nothing<void>();
+  // param encoding
+  if (args[*offset + 1]->IsNullOrUndefined()) {
+    params->params.param_encoding = OPENSSL_EC_NAMED_CURVE;
+  } else {
+    CHECK(args[*offset + 1]->IsInt32());
+    params->params.param_encoding = args[*offset + 1].As<Int32>()->Value();
+    if (params->params.param_encoding != OPENSSL_EC_NAMED_CURVE &&
+        params->params.param_encoding != OPENSSL_EC_EXPLICIT_CURVE) {
+      THROW_ERR_OUT_OF_RANGE(env, "Invalid param_encoding specified");
+      return Nothing<void>();
+    }
   }
 
   *offset += 2;
@@ -716,10 +621,10 @@ bool ExportJWKEcKey(Environment* env,
     return false;
   }
 
-  if (target->Set(
-          env->context(),
-          env->jwk_kty_string(),
-          env->jwk_ec_string()).IsNothing()) {
+  if (!target
+           ->DefineOwnProperty(
+               env->context(), env->jwk_kty_string(), env->jwk_ec_string())
+           .FromMaybe(false)) {
     return false;
   }
 
@@ -759,10 +664,9 @@ bool ExportJWKEcKey(Environment* env,
       return false;
     }
   }
-  if (target->Set(
-      env->context(),
-      env->jwk_crv_string(),
-      crv_name).IsNothing()) {
+  if (!target
+           ->DefineOwnProperty(env->context(), env->jwk_crv_string(), crv_name)
+           .FromMaybe(false)) {
     return false;
   }
 
@@ -805,29 +709,101 @@ bool ExportJWKEdKey(Environment* env,
     const ncrypto::Buffer<const char> out = data;
     return StringBytes::Encode(env->isolate(), out.data, out.len, BASE64URL)
                .ToLocal(&encoded) &&
-           target->Set(env->context(), key, encoded).IsJust();
+           target->DefineOwnProperty(env->context(), key, encoded)
+               .FromMaybe(false);
   };
 
   return !(
-      target
-          ->Set(env->context(),
-                env->jwk_crv_string(),
-                OneByteString(env->isolate(), curve))
-          .IsNothing() ||
+      !target
+           ->DefineOwnProperty(env->context(),
+                               env->jwk_crv_string(),
+                               OneByteString(env->isolate(), curve))
+           .FromMaybe(false) ||
       (key.GetKeyType() == kKeyTypePrivate &&
        !trySetKey(env, pkey.rawPrivateKey(), target, env->jwk_d_string())) ||
       !trySetKey(env, pkey.rawPublicKey(), target, env->jwk_x_string()) ||
-      target->Set(env->context(), env->jwk_kty_string(), env->jwk_okp_string())
-          .IsNothing());
+      !target
+           ->DefineOwnProperty(
+               env->context(), env->jwk_kty_string(), env->jwk_okp_string())
+           .FromMaybe(false));
 }
+KeyObjectData ImportJWKEdKey(Environment* env, Local<Object> jwk) {
+  Local<Value> crv_value;
+  Local<Value> x_value;
+  Local<Value> d_value;
 
-KeyObjectData ImportJWKEcKey(Environment* env,
-                             Local<Object> jwk,
-                             const FunctionCallbackInfo<Value>& args,
-                             unsigned int offset) {
-  CHECK(args[offset]->IsString());  // curve name
-  Utf8Value curve(env->isolate(), args[offset].As<String>());
+  if (!jwk->Get(env->context(), env->jwk_crv_string()).ToLocal(&crv_value) ||
+      !jwk->Get(env->context(), env->jwk_x_string()).ToLocal(&x_value) ||
+      !jwk->Get(env->context(), env->jwk_d_string()).ToLocal(&d_value)) {
+    return {};
+  }
 
+  if (!crv_value->IsString() || !x_value->IsString() ||
+      (!d_value->IsUndefined() && !d_value->IsString())) {
+    THROW_ERR_CRYPTO_INVALID_JWK(env, "Invalid JWK OKP key");
+    return {};
+  }
+
+  Utf8Value crv(env->isolate(), crv_value.As<String>());
+
+  static constexpr struct {
+    const char* name;
+    int nid;
+  } kCurveToNid[] = {
+      {"Ed25519", EVP_PKEY_ED25519},
+      {"Ed448", EVP_PKEY_ED448},
+      {"X25519", EVP_PKEY_X25519},
+      {"X448", EVP_PKEY_X448},
+  };
+
+  int id = NID_undef;
+  for (const auto& entry : kCurveToNid) {
+    if (strcmp(*crv, entry.name) == 0) {
+      id = entry.nid;
+      break;
+    }
+  }
+
+  if (id == NID_undef) {
+    THROW_ERR_CRYPTO_INVALID_JWK(env, "Invalid JWK OKP key");
+    return {};
+  }
+
+  KeyType type = d_value->IsString() ? kKeyTypePrivate : kKeyTypePublic;
+
+  ByteSource raw;
+  if (type == kKeyTypePrivate) {
+    raw = ByteSource::FromEncodedString(env, d_value.As<String>());
+  } else {
+    raw = ByteSource::FromEncodedString(env, x_value.As<String>());
+  }
+
+  typedef EVPKeyPointer (*new_key_fn)(
+      int, const ncrypto::Buffer<const unsigned char>&);
+  new_key_fn fn = type == kKeyTypePrivate ? EVPKeyPointer::NewRawPrivate
+                                          : EVPKeyPointer::NewRawPublic;
+
+  auto pkey = fn(id,
+                 ncrypto::Buffer<const unsigned char>{
+                     .data = raw.data<const unsigned char>(),
+                     .len = raw.size(),
+                 });
+  if (!pkey) {
+    THROW_ERR_CRYPTO_INVALID_JWK(env, "Invalid JWK OKP key");
+    return {};
+  }
+
+  return KeyObjectData::CreateAsymmetric(type, std::move(pkey));
+}
+KeyObjectData ImportJWKEcKey(Environment* env, Local<Object> jwk) {
+  Local<Value> crv_value;
+  if (!jwk->Get(env->context(), env->jwk_crv_string()).ToLocal(&crv_value) ||
+      !crv_value->IsString()) {
+    THROW_ERR_CRYPTO_INVALID_JWK(env, "Invalid JWK EC key");
+    return {};
+  }
+
+  Utf8Value curve(env->isolate(), crv_value.As<String>());
   int nid = Ec::GetCurveIdFromName(*curve);
   if (nid == NID_undef) {  // Unknown curve
     THROW_ERR_CRYPTO_INVALID_CURVE(env);
@@ -862,6 +838,8 @@ KeyObjectData ImportJWKEcKey(Environment* env,
   ByteSource x = ByteSource::FromEncodedString(env, x_value.As<String>());
   ByteSource y = ByteSource::FromEncodedString(env, y_value.As<String>());
 
+  // setPublicKeyRaw validates the point is on the curve. For h=1 curves
+  // (P-256/P-384/P-521), this skips EC_KEY_check_key for efficiency.
   if (!ec.setPublicKeyRaw(x.ToBN(), y.ToBN())) {
     THROW_ERR_CRYPTO_INVALID_JWK(env, "Invalid JWK EC key");
     return {};

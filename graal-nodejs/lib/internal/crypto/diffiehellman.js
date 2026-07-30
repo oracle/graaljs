@@ -17,10 +17,10 @@ const {
   DiffieHellman: _DiffieHellman,
   DiffieHellmanGroup: _DiffieHellmanGroup,
   ECDH: _ECDH,
-  ECDHBitsJob,
   ECDHConvertKey: _ECDHConvertKey,
   kCryptoJobAsync,
   kCryptoJobSync,
+  kCryptoJobWebCrypto,
 } = internalBinding('crypto');
 
 const {
@@ -28,7 +28,6 @@ const {
     ERR_CRYPTO_ECDH_INVALID_FORMAT,
     ERR_CRYPTO_ECDH_INVALID_PUBLIC_KEY,
     ERR_CRYPTO_INCOMPATIBLE_KEY,
-    ERR_CRYPTO_INVALID_KEY_OBJECT_TYPE,
     ERR_INVALID_ARG_TYPE,
     ERR_INVALID_ARG_VALUE,
   },
@@ -47,21 +46,27 @@ const {
 } = require('internal/util/types');
 
 const {
+  deprecate,
   lazyDOMException,
 } = require('internal/util');
 
 const {
-  KeyObject,
-  kAlgorithm,
-  kKeyType,
+  getCryptoKeyAlgorithm,
+  getCryptoKeyHandle,
+  getCryptoKeyType,
+  getKeyObjectAsymmetricKeyType,
+  getKeyObjectType,
+  isKeyObject,
+  preparePrivateKey,
+  preparePublicOrPrivateKey,
 } = require('internal/crypto/keys');
 
 const {
   getArrayBufferOrView,
   jobPromise,
+  jobPromiseThen,
   toBuf,
   kHandle,
-  kKeyObject,
 } = require('internal/crypto/util');
 
 const {
@@ -231,7 +236,9 @@ function ECDH(curve) {
 
 ECDH.prototype.computeSecret = DiffieHellman.prototype.computeSecret;
 ECDH.prototype.setPrivateKey = DiffieHellman.prototype.setPrivateKey;
-ECDH.prototype.setPublicKey = DiffieHellman.prototype.setPublicKey;
+ECDH.prototype.setPublicKey = deprecate(DiffieHellman.prototype.setPublicKey,
+                                        'ecdh.setPublicKey() is deprecated.',
+                                        'DEP0031');
 ECDH.prototype.getPrivateKey = DiffieHellman.prototype.getPrivateKey;
 
 ECDH.prototype.generateKeys = function generateKeys(encoding, format) {
@@ -274,6 +281,17 @@ function getFormat(format) {
 
 const dhEnabledKeyTypes = new SafeSet(['dh', 'ec', 'x448', 'x25519']);
 
+function getDirectKeyObjectInfo(key) {
+  if (!isKeyObject(key))
+    return undefined;
+
+  const type = getKeyObjectType(key);
+  if (type === 'secret')
+    return { type };
+
+  return { type, asymmetricKeyType: getKeyObjectAsymmetricKeyType(key) };
+}
+
 function diffieHellman(options, callback) {
   validateObject(options, 'options');
 
@@ -281,31 +299,53 @@ function diffieHellman(options, callback) {
     validateFunction(callback, 'callback');
 
   const { privateKey, publicKey } = options;
-  if (!(privateKey instanceof KeyObject))
+
+  if (privateKey === undefined)
     throw new ERR_INVALID_ARG_VALUE('options.privateKey', privateKey);
 
-  if (!(publicKey instanceof KeyObject))
+  if (publicKey === undefined)
     throw new ERR_INVALID_ARG_VALUE('options.publicKey', publicKey);
 
-  if (privateKey.type !== 'private')
-    throw new ERR_CRYPTO_INVALID_KEY_OBJECT_TYPE(privateKey.type, 'private');
-
-  if (publicKey.type !== 'public' && publicKey.type !== 'private') {
-    throw new ERR_CRYPTO_INVALID_KEY_OBJECT_TYPE(publicKey.type,
-                                                 'private or public');
+  const privateKeyInfo = getDirectKeyObjectInfo(privateKey);
+  const publicKeyInfo = getDirectKeyObjectInfo(publicKey);
+  if (privateKeyInfo?.type === 'private' &&
+      (publicKeyInfo?.type === 'public' || publicKeyInfo?.type === 'private')) {
+    const privateType = privateKeyInfo.asymmetricKeyType;
+    const publicType = publicKeyInfo.asymmetricKeyType;
+    if (privateType !== publicType || !dhEnabledKeyTypes.has(privateType)) {
+      throw new ERR_CRYPTO_INCOMPATIBLE_KEY('key types for Diffie-Hellman',
+                                            `${privateType} and ${publicType}`);
+    }
   }
 
-  const privateType = privateKey.asymmetricKeyType;
-  const publicType = publicKey.asymmetricKeyType;
-  if (privateType !== publicType || !dhEnabledKeyTypes.has(privateType)) {
-    throw new ERR_CRYPTO_INCOMPATIBLE_KEY('key types for Diffie-Hellman',
-                                          `${privateType} and ${publicType}`);
-  }
+  const {
+    data: pubData,
+    format: pubFormat,
+    type: pubType,
+    passphrase: pubPassphrase,
+    namedCurve: pubNamedCurve,
+  } = preparePublicOrPrivateKey(publicKey, 'options.publicKey');
+
+  const {
+    data: privData,
+    format: privFormat,
+    type: privType,
+    passphrase: privPassphrase,
+    namedCurve: privNamedCurve,
+  } = preparePrivateKey(privateKey, 'options.privateKey');
 
   const job = new DHBitsJob(
     callback ? kCryptoJobAsync : kCryptoJobSync,
-    publicKey[kHandle],
-    privateKey[kHandle]);
+    pubData,
+    pubFormat,
+    pubType,
+    pubPassphrase,
+    pubNamedCurve,
+    privData,
+    privFormat,
+    privType,
+    privPassphrase,
+    privNamedCurve);
 
   if (!callback) {
     const { 0: err, 1: secret } = job.run();
@@ -325,57 +365,69 @@ function diffieHellman(options, callback) {
 let masks;
 // The ecdhDeriveBits function is part of the Web Crypto API and serves both
 // deriveKeys and deriveBits functions.
-async function ecdhDeriveBits(algorithm, baseKey, length) {
+function ecdhDeriveBits(algorithm, baseKey, length) {
   const { 'public': key } = algorithm;
 
-  if (baseKey[kKeyType] !== 'private') {
+  if (getCryptoKeyType(baseKey) !== 'private') {
     throw lazyDOMException(
       'baseKey must be a private key', 'InvalidAccessError');
   }
 
-  if (key[kAlgorithm].name !== baseKey[kAlgorithm].name) {
+  const keyAlgorithm = getCryptoKeyAlgorithm(key);
+  const baseKeyAlgorithm = getCryptoKeyAlgorithm(baseKey);
+  if (keyAlgorithm.name !== baseKeyAlgorithm.name) {
     throw lazyDOMException(
       'The public and private keys must be of the same type',
       'InvalidAccessError');
   }
 
   if (
-    key[kAlgorithm].name === 'ECDH' &&
-    key[kAlgorithm].namedCurve !== baseKey[kAlgorithm].namedCurve
+    keyAlgorithm.name === 'ECDH' &&
+    keyAlgorithm.namedCurve !== baseKeyAlgorithm.namedCurve
   ) {
     throw lazyDOMException('Named curve mismatch', 'InvalidAccessError');
   }
 
-  const bits = await jobPromise(() => new ECDHBitsJob(
-    kCryptoJobAsync,
-    key[kKeyObject][kHandle],
-    baseKey[kKeyObject][kHandle]));
+  const bits = jobPromise(() => new DHBitsJob(
+    kCryptoJobWebCrypto,
+    getCryptoKeyHandle(key),
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    getCryptoKeyHandle(baseKey),
+    undefined,
+    undefined,
+    undefined,
+    undefined));
 
   // If a length is not specified, return the full derived secret
   if (length === null)
     return bits;
 
-  // If the length is not a multiple of 8 the nearest ceiled
-  // multiple of 8 is sliced.
-  const sliceLength = MathCeil(length / 8);
+  return jobPromiseThen(bits, (bits) => {
+    // If the length is not a multiple of 8 the nearest ceiled
+    // multiple of 8 is sliced.
+    const sliceLength = MathCeil(length / 8);
 
-  const { byteLength } = bits;
-  // If the length is larger than the derived secret, throw.
-  if (byteLength < sliceLength)
-    throw lazyDOMException('derived bit length is too small', 'OperationError');
+    const { byteLength } = bits;
+    // If the length is larger than the derived secret, throw.
+    if (byteLength < sliceLength)
+      throw lazyDOMException('derived bit length is too small', 'OperationError');
 
-  const slice = ArrayBufferPrototypeSlice(bits, 0, sliceLength);
+    const slice = ArrayBufferPrototypeSlice(bits, 0, sliceLength);
 
-  const mod = length % 8;
-  if (mod === 0)
-    return slice;
+    const mod = length % 8;
+    if (mod === 0)
+      return slice;
 
-  // eslint-disable-next-line no-sparse-arrays
-  masks ||= [, 0b10000000, 0b11000000, 0b11100000, 0b11110000, 0b11111000, 0b11111100, 0b11111110];
+    // eslint-disable-next-line no-sparse-arrays
+    masks ||= [, 0b10000000, 0b11000000, 0b11100000, 0b11110000, 0b11111000, 0b11111100, 0b11111110];
 
-  const masked = new Uint8Array(slice);
-  masked[sliceLength - 1] = masked[sliceLength - 1] & masks[mod];
-  return TypedArrayPrototypeGetBuffer(masked);
+    const masked = new Uint8Array(slice);
+    masked[sliceLength - 1] = masked[sliceLength - 1] & masks[mod];
+    return TypedArrayPrototypeGetBuffer(masked);
+  });
 }
 
 module.exports = {

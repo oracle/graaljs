@@ -12,8 +12,10 @@ const {
   Hash: _Hash,
   HashJob,
   Hmac: _Hmac,
-  kCryptoJobAsync,
+  kCryptoJobWebCrypto,
   oneShotDigest,
+  TurboShakeJob,
+  KangarooTwelveJob,
 } = internalBinding('crypto');
 
 const {
@@ -200,7 +202,7 @@ Hmac.prototype._transform = Hash.prototype._transform;
 
 // Implementation for WebCrypto subtle.digest()
 
-async function asyncDigest(algorithm, data) {
+function asyncDigest(algorithm, data) {
   validateMaxBufferLength(data, 'data');
 
   switch (algorithm.name) {
@@ -221,11 +223,29 @@ async function asyncDigest(algorithm, data) {
     case 'cSHAKE128':
       // Fall through
     case 'cSHAKE256':
-      return await jobPromise(() => new HashJob(
-        kCryptoJobAsync,
+      return jobPromise(() => new HashJob(
+        kCryptoJobWebCrypto,
         normalizeHashName(algorithm.name),
         data,
         algorithm.outputLength));
+    case 'TurboSHAKE128':
+      // Fall through
+    case 'TurboSHAKE256':
+      return jobPromise(() => new TurboShakeJob(
+        kCryptoJobWebCrypto,
+        algorithm.name,
+        algorithm.domainSeparation ?? 0x1f,
+        algorithm.outputLength / 8,
+        data));
+    case 'KT128':
+      // Fall through
+    case 'KT256':
+      return jobPromise(() => new KangarooTwelveJob(
+        kCryptoJobWebCrypto,
+        algorithm.name,
+        algorithm.customization,
+        algorithm.outputLength / 8,
+        data));
   }
 
   throw lazyDOMException('Unrecognized algorithm name', 'NotSupportedError');

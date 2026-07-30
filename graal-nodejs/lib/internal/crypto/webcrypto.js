@@ -1,16 +1,24 @@
 'use strict';
 
 const {
-  ArrayPrototypeIncludes,
+  ArrayIsArray,
+  ArrayPrototypeSlice,
   FunctionPrototypeCall,
   JSONParse,
   JSONStringify,
   ObjectDefineProperties,
+  ObjectKeys,
+  ObjectPrototypeHasOwnProperty,
+  ObjectSetPrototypeOf,
+  PromiseReject,
+  PromiseResolve,
   ReflectApply,
   ReflectConstruct,
+  SafeArrayIterator,
   StringPrototypeRepeat,
   StringPrototypeSlice,
   StringPrototypeStartsWith,
+  SymbolIterator,
   SymbolToStringTag,
   TypedArrayPrototypeGetBuffer,
 } = primordials;
@@ -23,7 +31,10 @@ const {
   kWebCryptoCipherDecrypt,
 } = internalBinding('crypto');
 
-const { TextDecoder, TextEncoder } = require('internal/encoding');
+const {
+  decodeUTF8,
+  encodeUtf8String,
+} = internalBinding('encoding_binding');
 
 const {
   codes: {
@@ -35,11 +46,15 @@ const {
 const {
   createPublicKey,
   CryptoKey,
+  getCryptoKeyAlgorithm,
+  getCryptoKeyExtractable,
+  getCryptoKeyHandle,
+  getCryptoKeyType,
+  getCryptoKeyUsages,
+  getCryptoKeyUsagesMask,
+  hasCryptoKeyUsage,
   importGenericSecretKey,
-  kAlgorithm,
-  kKeyUsages,
-  kExtractable,
-  kKeyType,
+  PrivateKeyObject,
 } = require('internal/crypto/keys');
 
 const {
@@ -47,18 +62,20 @@ const {
 } = require('internal/crypto/hash');
 
 const {
+  cleanupWebCryptoResult,
   getBlockSize,
+  jobPromiseThen,
   normalizeAlgorithm,
   normalizeHashName,
+  prepareWebCryptoResult,
   validateMaxBufferLength,
-  kHandle,
-  kKeyObject,
 } = require('internal/crypto/util');
 
 const {
   emitExperimentalWarning,
   kEnumerableProperty,
   lazyDOMException,
+  setOwnProperty,
 } = require('internal/util');
 
 const {
@@ -66,9 +83,38 @@ const {
   randomUUID: _randomUUID,
 } = require('internal/crypto/random');
 
+const {
+  isPromise,
+} = require('internal/util/types');
+
 let webidl;
 
-async function digest(algorithm, data) {
+// WebCrypto methods return promises, including for synchronous validation
+// failures. Keep that conversion in one place so method bodies stay readable.
+function callSubtleCryptoMethod(fn, receiver, args) {
+  try {
+    const result = ReflectApply(fn, receiver, args);
+    if (isPromise(result))
+      return result;
+    // PromiseResolve() performs thenable assimilation for object results.
+    // Shadow inherited then accessors while it resolves synchronous results.
+    const shouldCleanupResult = prepareWebCryptoResult(result);
+    try {
+      return PromiseResolve(result);
+    } finally {
+      if (shouldCleanupResult)
+        cleanupWebCryptoResult(result);
+    }
+  } catch (err) {
+    return PromiseReject(err);
+  }
+}
+
+function digest(algorithm, data) {
+  return callSubtleCryptoMethod(digestImpl, this, arguments);
+}
+
+function digestImpl(algorithm, data) {
   if (this !== subtle) throw new ERR_INVALID_THIS('SubtleCrypto');
 
   webidl ??= require('internal/crypto/webidl');
@@ -85,7 +131,7 @@ async function digest(algorithm, data) {
 
   algorithm = normalizeAlgorithm(algorithm, 'digest');
 
-  return await FunctionPrototypeCall(asyncDigest, this, algorithm, data);
+  return FunctionPrototypeCall(asyncDigest, this, algorithm, data);
 }
 
 function randomUUID() {
@@ -93,7 +139,14 @@ function randomUUID() {
   return _randomUUID();
 }
 
-async function generateKey(
+function generateKey(
+  algorithm,
+  extractable,
+  keyUsages) {
+  return callSubtleCryptoMethod(generateKeyImpl, this, arguments);
+}
+
+function generateKeyImpl(
   algorithm,
   extractable,
   keyUsages) {
@@ -116,18 +169,14 @@ async function generateKey(
   });
 
   algorithm = normalizeAlgorithm(algorithm, 'generateKey');
-  let result;
-  let resultType;
   switch (algorithm.name) {
     case 'RSASSA-PKCS1-v1_5':
       // Fall through
     case 'RSA-PSS':
       // Fall through
     case 'RSA-OAEP':
-      resultType = 'CryptoKeyPair';
-      result = await require('internal/crypto/rsa')
+      return require('internal/crypto/rsa')
         .rsaKeyGenerate(algorithm, extractable, keyUsages);
-      break;
     case 'Ed25519':
       // Fall through
     case 'Ed448':
@@ -135,22 +184,16 @@ async function generateKey(
     case 'X25519':
       // Fall through
     case 'X448':
-      resultType = 'CryptoKeyPair';
-      result = await require('internal/crypto/cfrg')
+      return require('internal/crypto/cfrg')
         .cfrgGenerateKey(algorithm, extractable, keyUsages);
-      break;
     case 'ECDSA':
       // Fall through
     case 'ECDH':
-      resultType = 'CryptoKeyPair';
-      result = await require('internal/crypto/ec')
+      return require('internal/crypto/ec')
         .ecGenerateKey(algorithm, extractable, keyUsages);
-      break;
     case 'HMAC':
-      resultType = 'CryptoKey';
-      result = await require('internal/crypto/mac')
+      return require('internal/crypto/mac')
         .hmacGenerateKey(algorithm, extractable, keyUsages);
-      break;
     case 'AES-CTR':
       // Fall through
     case 'AES-CBC':
@@ -160,59 +203,40 @@ async function generateKey(
     case 'AES-OCB':
       // Fall through
     case 'AES-KW':
-      resultType = 'CryptoKey';
-      result = await require('internal/crypto/aes')
+      return require('internal/crypto/aes')
         .aesGenerateKey(algorithm, extractable, keyUsages);
-      break;
     case 'ChaCha20-Poly1305':
-      resultType = 'CryptoKey';
-      result = await require('internal/crypto/chacha20_poly1305')
+      return require('internal/crypto/chacha20_poly1305')
         .c20pGenerateKey(algorithm, extractable, keyUsages);
-      break;
     case 'ML-DSA-44':
       // Fall through
     case 'ML-DSA-65':
       // Fall through
     case 'ML-DSA-87':
-      resultType = 'CryptoKeyPair';
-      result = await require('internal/crypto/ml_dsa')
+      return require('internal/crypto/ml_dsa')
         .mlDsaGenerateKey(algorithm, extractable, keyUsages);
-      break;
     case 'ML-KEM-512':
       // Fall through
     case 'ML-KEM-768':
       // Fall through
     case 'ML-KEM-1024':
-      resultType = 'CryptoKeyPair';
-      result = await require('internal/crypto/ml_kem')
+      return require('internal/crypto/ml_kem')
         .mlKemGenerateKey(algorithm, extractable, keyUsages);
-      break;
     case 'KMAC128':
       // Fall through
     case 'KMAC256':
-      resultType = 'CryptoKey';
-      result = await require('internal/crypto/mac')
+      return require('internal/crypto/mac')
         .kmacGenerateKey(algorithm, extractable, keyUsages);
-      break;
     default:
       throw lazyDOMException('Unrecognized algorithm name', 'NotSupportedError');
   }
-
-  if (
-    (resultType === 'CryptoKey' &&
-      (result[kKeyType] === 'secret' || result[kKeyType] === 'private') &&
-      result[kKeyUsages].length === 0) ||
-    (resultType === 'CryptoKeyPair' && result.privateKey[kKeyUsages].length === 0)
-  ) {
-    throw lazyDOMException(
-      'Usages cannot be empty when creating a key.',
-      'SyntaxError');
-  }
-
-  return result;
 }
 
-async function deriveBits(algorithm, baseKey, length = null) {
+function deriveBits(algorithm, baseKey, length = null) {
+  return callSubtleCryptoMethod(deriveBitsImpl, this, arguments);
+}
+
+function deriveBitsImpl(algorithm, baseKey, length = null) {
   if (this !== subtle) throw new ERR_INVALID_THIS('SubtleCrypto');
 
   webidl ??= require('internal/crypto/webidl');
@@ -234,12 +258,12 @@ async function deriveBits(algorithm, baseKey, length = null) {
   }
 
   algorithm = normalizeAlgorithm(algorithm, 'deriveBits');
-  if (!ArrayPrototypeIncludes(baseKey[kKeyUsages], 'deriveBits')) {
+  if (!hasCryptoKeyUsage(baseKey, 'deriveBits')) {
     throw lazyDOMException(
       'baseKey does not have deriveBits usage',
       'InvalidAccessError');
   }
-  if (baseKey[kAlgorithm].name !== algorithm.name)
+  if (getCryptoKeyAlgorithm(baseKey).name !== algorithm.name)
     throw lazyDOMException('Key algorithm mismatch', 'InvalidAccessError');
   switch (algorithm.name) {
     case 'X25519':
@@ -247,20 +271,20 @@ async function deriveBits(algorithm, baseKey, length = null) {
     case 'X448':
       // Fall through
     case 'ECDH':
-      return await require('internal/crypto/diffiehellman')
+      return require('internal/crypto/diffiehellman')
         .ecdhDeriveBits(algorithm, baseKey, length);
     case 'HKDF':
-      return await require('internal/crypto/hkdf')
+      return require('internal/crypto/hkdf')
         .hkdfDeriveBits(algorithm, baseKey, length);
     case 'PBKDF2':
-      return await require('internal/crypto/pbkdf2')
+      return require('internal/crypto/pbkdf2')
         .pbkdf2DeriveBits(algorithm, baseKey, length);
     case 'Argon2d':
       // Fall through
     case 'Argon2i':
       // Fall through
     case 'Argon2id':
-      return await require('internal/crypto/argon2')
+      return require('internal/crypto/argon2')
         .argon2DeriveBits(algorithm, baseKey, length);
   }
   throw lazyDOMException('Unrecognized algorithm name', 'NotSupportedError');
@@ -305,7 +329,16 @@ function getKeyLength({ name, length, hash }) {
   }
 }
 
-async function deriveKey(
+function deriveKey(
+  algorithm,
+  baseKey,
+  derivedKeyAlgorithm,
+  extractable,
+  keyUsages) {
+  return callSubtleCryptoMethod(deriveKeyImpl, this, arguments);
+}
+
+function deriveKeyImpl(
   algorithm,
   baseKey,
   derivedKeyAlgorithm,
@@ -339,12 +372,12 @@ async function deriveKey(
 
   algorithm = normalizeAlgorithm(algorithm, 'deriveBits');
   derivedKeyAlgorithm = normalizeAlgorithm(derivedKeyAlgorithm, 'importKey');
-  if (!ArrayPrototypeIncludes(baseKey[kKeyUsages], 'deriveKey')) {
+  if (!hasCryptoKeyUsage(baseKey, 'deriveKey')) {
     throw lazyDOMException(
       'baseKey does not have deriveKey usage',
       'InvalidAccessError');
   }
-  if (baseKey[kAlgorithm].name !== algorithm.name)
+  if (getCryptoKeyAlgorithm(baseKey).name !== algorithm.name)
     throw lazyDOMException('Key algorithm mismatch', 'InvalidAccessError');
 
   const length = getKeyLength(normalizeAlgorithm(arguments[2], 'get key length'));
@@ -355,15 +388,15 @@ async function deriveKey(
     case 'X448':
       // Fall through
     case 'ECDH':
-      bits = await require('internal/crypto/diffiehellman')
+      bits = require('internal/crypto/diffiehellman')
         .ecdhDeriveBits(algorithm, baseKey, length);
       break;
     case 'HKDF':
-      bits = await require('internal/crypto/hkdf')
+      bits = require('internal/crypto/hkdf')
         .hkdfDeriveBits(algorithm, baseKey, length);
       break;
     case 'PBKDF2':
-      bits = await require('internal/crypto/pbkdf2')
+      bits = require('internal/crypto/pbkdf2')
         .pbkdf2DeriveBits(algorithm, baseKey, length);
       break;
     case 'Argon2d':
@@ -371,33 +404,33 @@ async function deriveKey(
     case 'Argon2i':
       // Fall through
     case 'Argon2id':
-      bits = await require('internal/crypto/argon2')
+      bits = require('internal/crypto/argon2')
         .argon2DeriveBits(algorithm, baseKey, length);
       break;
     default:
       throw lazyDOMException('Unrecognized algorithm name', 'NotSupportedError');
   }
 
-  return FunctionPrototypeCall(
+  return jobPromiseThen(bits, (bits) => FunctionPrototypeCall(
     importKeySync,
     this,
     'raw-secret', bits, derivedKeyAlgorithm, extractable, keyUsages,
-  );
+  ));
 }
 
-async function exportKeySpki(key) {
-  switch (key[kAlgorithm].name) {
+function exportKeySpki(key) {
+  switch (getCryptoKeyAlgorithm(key).name) {
     case 'RSASSA-PKCS1-v1_5':
       // Fall through
     case 'RSA-PSS':
       // Fall through
     case 'RSA-OAEP':
-      return await require('internal/crypto/rsa')
+      return require('internal/crypto/rsa')
         .rsaExportKey(key, kWebCryptoKeyFormatSPKI);
     case 'ECDSA':
       // Fall through
     case 'ECDH':
-      return await require('internal/crypto/ec')
+      return require('internal/crypto/ec')
         .ecExportKey(key, kWebCryptoKeyFormatSPKI);
     case 'Ed25519':
       // Fall through
@@ -406,14 +439,13 @@ async function exportKeySpki(key) {
     case 'X25519':
       // Fall through
     case 'X448':
-      return await require('internal/crypto/cfrg')
+      return require('internal/crypto/cfrg')
         .cfrgExportKey(key, kWebCryptoKeyFormatSPKI);
     case 'ML-DSA-44':
       // Fall through
     case 'ML-DSA-65':
       // Fall through
     case 'ML-DSA-87':
-      // Note: mlDsaExportKey does not return a Promise.
       return require('internal/crypto/ml_dsa')
         .mlDsaExportKey(key, kWebCryptoKeyFormatSPKI);
     case 'ML-KEM-512':
@@ -421,7 +453,6 @@ async function exportKeySpki(key) {
     case 'ML-KEM-768':
       // Fall through
     case 'ML-KEM-1024':
-      // Note: mlKemExportKey does not return a Promise.
       return require('internal/crypto/ml_kem')
         .mlKemExportKey(key, kWebCryptoKeyFormatSPKI);
     default:
@@ -429,19 +460,19 @@ async function exportKeySpki(key) {
   }
 }
 
-async function exportKeyPkcs8(key) {
-  switch (key[kAlgorithm].name) {
+function exportKeyPkcs8(key) {
+  switch (getCryptoKeyAlgorithm(key).name) {
     case 'RSASSA-PKCS1-v1_5':
       // Fall through
     case 'RSA-PSS':
       // Fall through
     case 'RSA-OAEP':
-      return await require('internal/crypto/rsa')
+      return require('internal/crypto/rsa')
         .rsaExportKey(key, kWebCryptoKeyFormatPKCS8);
     case 'ECDSA':
       // Fall through
     case 'ECDH':
-      return await require('internal/crypto/ec')
+      return require('internal/crypto/ec')
         .ecExportKey(key, kWebCryptoKeyFormatPKCS8);
     case 'Ed25519':
       // Fall through
@@ -450,14 +481,13 @@ async function exportKeyPkcs8(key) {
     case 'X25519':
       // Fall through
     case 'X448':
-      return await require('internal/crypto/cfrg')
+      return require('internal/crypto/cfrg')
         .cfrgExportKey(key, kWebCryptoKeyFormatPKCS8);
     case 'ML-DSA-44':
       // Fall through
     case 'ML-DSA-65':
       // Fall through
     case 'ML-DSA-87':
-      // Note: mlDsaExportKey does not return a Promise.
       return require('internal/crypto/ml_dsa')
         .mlDsaExportKey(key, kWebCryptoKeyFormatPKCS8);
     case 'ML-KEM-512':
@@ -465,7 +495,6 @@ async function exportKeyPkcs8(key) {
     case 'ML-KEM-768':
       // Fall through
     case 'ML-KEM-1024':
-      // Note: mlKemExportKey does not return a Promise.
       return require('internal/crypto/ml_kem')
         .mlKemExportKey(key, kWebCryptoKeyFormatPKCS8);
     default:
@@ -473,12 +502,12 @@ async function exportKeyPkcs8(key) {
   }
 }
 
-async function exportKeyRawPublic(key, format) {
-  switch (key[kAlgorithm].name) {
+function exportKeyRawPublic(key, format) {
+  switch (getCryptoKeyAlgorithm(key).name) {
     case 'ECDSA':
       // Fall through
     case 'ECDH':
-      return await require('internal/crypto/ec')
+      return require('internal/crypto/ec')
         .ecExportKey(key, kWebCryptoKeyFormatRaw);
     case 'Ed25519':
       // Fall through
@@ -487,7 +516,7 @@ async function exportKeyRawPublic(key, format) {
     case 'X25519':
       // Fall through
     case 'X448':
-      return await require('internal/crypto/cfrg')
+      return require('internal/crypto/cfrg')
         .cfrgExportKey(key, kWebCryptoKeyFormatRaw);
     case 'ML-DSA-44':
       // Fall through
@@ -498,7 +527,6 @@ async function exportKeyRawPublic(key, format) {
       if (format !== 'raw-public') {
         return undefined;
       }
-      // Note: mlDsaExportKey does not return a Promise.
       return require('internal/crypto/ml_dsa')
         .mlDsaExportKey(key, kWebCryptoKeyFormatRaw);
     }
@@ -511,7 +539,6 @@ async function exportKeyRawPublic(key, format) {
       if (format !== 'raw-public') {
         return undefined;
       }
-      // Note: mlKemExportKey does not return a Promise.
       return require('internal/crypto/ml_kem')
         .mlKemExportKey(key, kWebCryptoKeyFormatRaw);
     }
@@ -520,14 +547,13 @@ async function exportKeyRawPublic(key, format) {
   }
 }
 
-async function exportKeyRawSeed(key) {
-  switch (key[kAlgorithm].name) {
+function exportKeyRawSeed(key) {
+  switch (getCryptoKeyAlgorithm(key).name) {
     case 'ML-DSA-44':
       // Fall through
     case 'ML-DSA-65':
       // Fall through
     case 'ML-DSA-87':
-      // Note: mlDsaExportKey does not return a Promise.
       return require('internal/crypto/ml_dsa')
         .mlDsaExportKey(key, kWebCryptoKeyFormatRaw);
     case 'ML-KEM-512':
@@ -535,7 +561,6 @@ async function exportKeyRawSeed(key) {
     case 'ML-KEM-768':
       // Fall through
     case 'ML-KEM-1024':
-      // Note: mlKemExportKey does not return a Promise.
       return require('internal/crypto/ml_kem')
         .mlKemExportKey(key, kWebCryptoKeyFormatRaw);
     default:
@@ -543,8 +568,8 @@ async function exportKeyRawSeed(key) {
   }
 }
 
-async function exportKeyRawSecret(key, format) {
-  switch (key[kAlgorithm].name) {
+function exportKeyRawSecret(key, format) {
+  switch (getCryptoKeyAlgorithm(key).name) {
     case 'AES-CTR':
       // Fall through
     case 'AES-CBC':
@@ -554,7 +579,7 @@ async function exportKeyRawSecret(key, format) {
     case 'AES-KW':
       // Fall through
     case 'HMAC':
-      return TypedArrayPrototypeGetBuffer(key[kKeyObject][kHandle].export());
+      return TypedArrayPrototypeGetBuffer(getCryptoKeyHandle(key).export());
     case 'AES-OCB':
       // Fall through
     case 'KMAC128':
@@ -563,7 +588,7 @@ async function exportKeyRawSecret(key, format) {
       // Fall through
     case 'ChaCha20-Poly1305':
       if (format === 'raw-secret') {
-        return TypedArrayPrototypeGetBuffer(key[kKeyObject][kHandle].export());
+        return TypedArrayPrototypeGetBuffer(getCryptoKeyHandle(key).export());
       }
       return undefined;
     default:
@@ -571,31 +596,26 @@ async function exportKeyRawSecret(key, format) {
   }
 }
 
-async function exportKeyJWK(key) {
-  const parameters = {
-    key_ops: key[kKeyUsages],
-    ext: key[kExtractable],
-  };
-  switch (key[kAlgorithm].name) {
+function exportKeyJWK(key) {
+  const algorithm = getCryptoKeyAlgorithm(key);
+  let alg;
+  switch (algorithm.name) {
     case 'RSASSA-PKCS1-v1_5': {
-      const alg = normalizeHashName(
-        key[kAlgorithm].hash.name,
+      alg = normalizeHashName(
+        algorithm.hash.name,
         normalizeHashName.kContextJwkRsa);
-      if (alg) parameters.alg = alg;
       break;
     }
     case 'RSA-PSS': {
-      const alg = normalizeHashName(
-        key[kAlgorithm].hash.name,
+      alg = normalizeHashName(
+        algorithm.hash.name,
         normalizeHashName.kContextJwkRsaPss);
-      if (alg) parameters.alg = alg;
       break;
     }
     case 'RSA-OAEP': {
-      const alg = normalizeHashName(
-        key[kAlgorithm].hash.name,
+      alg = normalizeHashName(
+        algorithm.hash.name,
         normalizeHashName.kContextJwkRsaOaep);
-      if (alg) parameters.alg = alg;
       break;
     }
     case 'ECDSA':
@@ -611,11 +631,17 @@ async function exportKeyJWK(key) {
     case 'ML-DSA-65':
       // Fall through
     case 'ML-DSA-87':
+      // Fall through
+    case 'ML-KEM-512':
+      // Fall through
+    case 'ML-KEM-768':
+      // Fall through
+    case 'ML-KEM-1024':
       break;
     case 'Ed25519':
       // Fall through
     case 'Ed448':
-      parameters.alg = key[kAlgorithm].name;
+      alg = algorithm.name;
       break;
     case 'AES-CTR':
       // Fall through
@@ -626,34 +652,115 @@ async function exportKeyJWK(key) {
     case 'AES-OCB':
       // Fall through
     case 'AES-KW':
-      parameters.alg = require('internal/crypto/aes')
-        .getAlgorithmName(key[kAlgorithm].name, key[kAlgorithm].length);
+      alg = require('internal/crypto/aes')
+        .getAlgorithmName(algorithm.name, algorithm.length);
       break;
     case 'ChaCha20-Poly1305':
-      parameters.alg = 'C20P';
+      alg = 'C20P';
       break;
     case 'HMAC': {
-      const alg = normalizeHashName(
-        key[kAlgorithm].hash.name,
+      alg = normalizeHashName(
+        algorithm.hash.name,
         normalizeHashName.kContextJwkHmac);
-      if (alg) parameters.alg = alg;
       break;
     }
     case 'KMAC128':
-      parameters.alg = 'K128';
+      alg = 'K128';
       break;
     case 'KMAC256': {
-      parameters.alg = 'K256';
+      alg = 'K256';
       break;
     }
     default:
       return undefined;
   }
 
-  return key[kKeyObject][kHandle].exportJwk(parameters, true);
+  // Keep `alg` in the object literal so an inherited setter cannot capture
+  // `parameters` before native export populates key material. Delete it for
+  // algorithms without a JWK alg value to keep the expected shape.
+  const parameters = {
+    key_ops: ArrayPrototypeSlice(getCryptoKeyUsages(key), 0),
+    ext: getCryptoKeyExtractable(key),
+    alg,
+  };
+  if (alg === undefined) delete parameters.alg;
+
+  return getCryptoKeyHandle(key).exportJwk(parameters, true);
 }
 
-async function exportKey(format, key) {
+function exportKeySync(format, key) {
+  const algorithm = getCryptoKeyAlgorithm(key);
+  try {
+    normalizeAlgorithm(algorithm, 'exportKey');
+  } catch {
+    throw lazyDOMException(
+      `${algorithm.name} key export is not supported`, 'NotSupportedError');
+  }
+
+  if (!getCryptoKeyExtractable(key))
+    throw lazyDOMException('key is not extractable', 'InvalidAccessError');
+
+  const type = getCryptoKeyType(key);
+  let result;
+  switch (format) {
+    case 'spki': {
+      if (type === 'public') {
+        result = exportKeySpki(key);
+      }
+      break;
+    }
+    case 'pkcs8': {
+      if (type === 'private') {
+        result = exportKeyPkcs8(key);
+      }
+      break;
+    }
+    case 'jwk': {
+      result = exportKeyJWK(key);
+      break;
+    }
+    case 'raw-secret': {
+      if (type === 'secret') {
+        result = exportKeyRawSecret(key, format);
+      }
+      break;
+    }
+    case 'raw-public': {
+      if (type === 'public') {
+        result = exportKeyRawPublic(key, format);
+      }
+      break;
+    }
+    case 'raw-seed': {
+      if (type === 'private') {
+        result = exportKeyRawSeed(key);
+      }
+      break;
+    }
+    case 'raw': {
+      if (type === 'secret') {
+        result = exportKeyRawSecret(key, format);
+      } else if (type === 'public') {
+        result = exportKeyRawPublic(key, format);
+      }
+      break;
+    }
+  }
+
+  if (!result) {
+    throw lazyDOMException(
+      `Unable to export ${algorithm.name} ${type} key using ${format} format`,
+      'NotSupportedError');
+  }
+
+  return result;
+}
+
+function exportKey(format, key) {
+  return callSubtleCryptoMethod(exportKeyImpl, this, arguments);
+}
+
+function exportKeyImpl(format, key) {
   if (this !== subtle) throw new ERR_INVALID_THIS('SubtleCrypto');
 
   webidl ??= require('internal/crypto/webidl');
@@ -668,69 +775,61 @@ async function exportKey(format, key) {
     context: '2nd argument',
   });
 
+  return exportKeySync(format, key);
+}
+
+// Parsed JWK arrays are detached from Array.prototype but still need to pass
+// WebIDL sequence conversion, which reads @@iterator from the value.
+function safeArrayIterator() {
+  return new SafeArrayIterator(this);
+}
+
+// The WebCrypto spec parses and stringifies JWKs in a fresh global object.
+// Detach internal JSON values from the current global's mutable prototypes to
+// approximate those fresh-realm semantics without creating a new realm.
+function detachFromUserPrototypes(value) {
+  if (value === null || typeof value !== 'object')
+    return;
+
+  ObjectSetPrototypeOf(value, null);
+
+  if (ArrayIsArray(value)) {
+    setOwnProperty(value, SymbolIterator, safeArrayIterator);
+    for (let n = 0; n < value.length; n++)
+      detachFromUserPrototypes(value[n]);
+    return;
+  }
+
+  const keys = ObjectKeys(value);
+  for (let n = 0; n < keys.length; n++)
+    detachFromUserPrototypes(value[keys[n]]);
+}
+
+// Parse wrapped JWK bytes according to WebCrypto's "parse a JWK" procedure.
+function parseJwk(keyData) {
+  let key;
   try {
-    normalizeAlgorithm(key[kAlgorithm], 'exportKey');
-  } catch {
+    // WebCrypto parses JWKs in a fresh global. Detach parsed JSON values
+    // from user-mutated prototypes before WebIDL dictionary conversion.
+    // Wrapped JWKs may be produced outside WebCrypto, so parse using the
+    // spec-required UTF-8.
+    const json = decodeUTF8(keyData, false, true);
+    const result = JSONParse(json);
+    detachFromUserPrototypes(result);
+    key = webidl.converters.JsonWebKey(result);
+  } catch (err) {
     throw lazyDOMException(
-      `${key[kAlgorithm].name} key export is not supported`, 'NotSupportedError');
+      'Invalid wrapped JWK key',
+      { name: 'DataError', cause: err });
   }
 
-  if (!key[kExtractable])
-    throw lazyDOMException('key is not extractable', 'InvalidAccessException');
-
-  let result;
-  switch (format) {
-    case 'spki': {
-      if (key[kKeyType] === 'public') {
-        result = await exportKeySpki(key);
-      }
-      break;
-    }
-    case 'pkcs8': {
-      if (key[kKeyType] === 'private') {
-        result = await exportKeyPkcs8(key);
-      }
-      break;
-    }
-    case 'jwk': {
-      result = await exportKeyJWK(key);
-      break;
-    }
-    case 'raw-secret': {
-      if (key[kKeyType] === 'secret') {
-        result = await exportKeyRawSecret(key, format);
-      }
-      break;
-    }
-    case 'raw-public': {
-      if (key[kKeyType] === 'public') {
-        result = await exportKeyRawPublic(key, format);
-      }
-      break;
-    }
-    case 'raw-seed': {
-      if (key[kKeyType] === 'private') {
-        result = await exportKeyRawSeed(key);
-      }
-      break;
-    }
-    case 'raw': {
-      if (key[kKeyType] === 'secret') {
-        result = await exportKeyRawSecret(key, format);
-      } else if (key[kKeyType] === 'public') {
-        result = await exportKeyRawPublic(key, format);
-      }
-      break;
-    }
-  }
-
-  if (!result) {
+  if (!ObjectPrototypeHasOwnProperty(key, 'kty')) {
     throw lazyDOMException(
-      `Unable to export ${key[kAlgorithm].name} ${key[kKeyType]} key using ${format} format`,
-      'NotSupportedError');
+      'Invalid wrapped JWK key',
+      'DataError');
   }
 
-  return result;
+  return key;
 }
 
 function aliasKeyFormat(format) {
@@ -846,16 +945,26 @@ function importKeySync(format, keyData, algorithm, extractable, keyUsages) {
       'NotSupportedError');
   }
 
-  if ((result.type === 'secret' || result.type === 'private') && result[kKeyUsages].length === 0) {
+  const type = getCryptoKeyType(result);
+  if ((type === 'secret' || type === 'private') && getCryptoKeyUsagesMask(result) === 0) {
     throw lazyDOMException(
-      `Usages cannot be empty when importing a ${result.type} key.`,
+      `Usages cannot be empty when importing a ${type} key.`,
       'SyntaxError');
   }
 
   return result;
 }
 
-async function importKey(
+function importKey(
+  format,
+  keyData,
+  algorithm,
+  extractable,
+  keyUsages) {
+  return callSubtleCryptoMethod(importKeyImpl, this, arguments);
+}
+
+function importKeyImpl(
   format,
   keyData,
   algorithm,
@@ -899,7 +1008,11 @@ async function importKey(
 
 // subtle.wrapKey() is essentially a subtle.exportKey() followed
 // by a subtle.encrypt().
-async function wrapKey(format, key, wrappingKey, algorithm) {
+function wrapKey(format, key, wrappingKey, algorithm) {
+  return callSubtleCryptoMethod(wrapKeyImpl, this, arguments);
+}
+
+function wrapKeyImpl(format, key, wrappingKey, algorithm) {
   if (this !== subtle) throw new ERR_INVALID_THIS('SubtleCrypto');
 
   webidl ??= require('internal/crypto/webidl');
@@ -928,29 +1041,35 @@ async function wrapKey(format, key, wrappingKey, algorithm) {
     algorithm = normalizeAlgorithm(algorithm, 'encrypt');
   }
 
-  if (algorithm.name !== wrappingKey[kAlgorithm].name)
+  if (algorithm.name !== getCryptoKeyAlgorithm(wrappingKey).name)
     throw lazyDOMException('Key algorithm mismatch', 'InvalidAccessError');
 
-  if (!ArrayPrototypeIncludes(wrappingKey[kKeyUsages], 'wrapKey'))
+  if (!hasCryptoKeyUsage(wrappingKey, 'wrapKey'))
     throw lazyDOMException(
       'Unable to use this key to wrapKey', 'InvalidAccessError');
 
-  let keyData = await FunctionPrototypeCall(exportKey, this, format, key);
+  let keyData = exportKeySync(format, key);
 
   if (format === 'jwk') {
-    const ec = new TextEncoder();
-    const raw = JSONStringify(keyData);
+    // The WebCrypto spec stringifies JWKs in a new global object. Rather
+    // than create a new realm here, detach this internally generated JWK from
+    // user-mutated prototypes so JSON.stringify cannot read inherited toJSON
+    // hooks from the current global.
+    detachFromUserPrototypes(keyData);
+    const json = JSONStringify(keyData);
     // As per the NOTE in step 13 https://w3c.github.io/webcrypto/#SubtleCrypto-method-wrapKey
     // we're padding AES-KW wrapped JWK to make sure it is always a multiple of 8 bytes
     // in length
-    if (algorithm.name === 'AES-KW' && raw.length % 8 !== 0) {
-      keyData = ec.encode(raw + StringPrototypeRepeat(' ', 8 - (raw.length % 8)));
+    // The spec then UTF-8 encodes json.
+    if (algorithm.name === 'AES-KW' && json.length % 8 !== 0) {
+      keyData = encodeUtf8String(
+        json + StringPrototypeRepeat(' ', 8 - (json.length % 8)));
     } else {
-      keyData = ec.encode(raw);
+      keyData = encodeUtf8String(json);
     }
   }
 
-  return await cipherOrWrap(
+  return cipherOrWrap(
     kWebCryptoCipherEncrypt,
     algorithm,
     wrappingKey,
@@ -960,7 +1079,18 @@ async function wrapKey(format, key, wrappingKey, algorithm) {
 
 // subtle.unwrapKey() is essentially a subtle.decrypt() followed
 // by a subtle.importKey().
-async function unwrapKey(
+function unwrapKey(
+  format,
+  wrappedKey,
+  unwrappingKey,
+  unwrapAlgo,
+  unwrappedKeyAlgo,
+  extractable,
+  keyUsages) {
+  return callSubtleCryptoMethod(unwrapKeyImpl, this, arguments);
+}
+
+function unwrapKeyImpl(
   format,
   wrappedKey,
   unwrappingKey,
@@ -1013,88 +1143,83 @@ async function unwrapKey(
 
   unwrappedKeyAlgo = normalizeAlgorithm(unwrappedKeyAlgo, 'importKey');
 
-  if (unwrapAlgo.name !== unwrappingKey[kAlgorithm].name)
+  if (unwrapAlgo.name !== getCryptoKeyAlgorithm(unwrappingKey).name)
     throw lazyDOMException('Key algorithm mismatch', 'InvalidAccessError');
 
-  if (!ArrayPrototypeIncludes(unwrappingKey[kKeyUsages], 'unwrapKey'))
+  if (!hasCryptoKeyUsage(unwrappingKey, 'unwrapKey'))
     throw lazyDOMException(
       'Unable to use this key to unwrapKey', 'InvalidAccessError');
 
-  let keyData = await cipherOrWrap(
+  const keyData = cipherOrWrap(
     kWebCryptoCipherDecrypt,
     unwrapAlgo,
     unwrappingKey,
     wrappedKey,
     'unwrapKey');
 
-  if (format === 'jwk') {
-    // The fatal: true option is only supported in builds that have ICU.
-    const options = process.versions.icu !== undefined ?
-      { fatal: true } : undefined;
-    const dec = new TextDecoder('utf-8', options);
-    try {
-      keyData = JSONParse(dec.decode(keyData));
-    } catch {
-      throw lazyDOMException('Invalid wrapped JWK key', 'DataError');
+  return jobPromiseThen(keyData, (keyData) => {
+    if (format === 'jwk') {
+      keyData = parseJwk(keyData);
     }
-  }
 
-  return FunctionPrototypeCall(
-    importKeySync,
-    this,
-    format, keyData, unwrappedKeyAlgo, extractable, keyUsages,
-  );
+    return FunctionPrototypeCall(
+      importKeySync,
+      this,
+      format, keyData, unwrappedKeyAlgo, extractable, keyUsages,
+    );
+  });
 }
 
-async function signVerify(algorithm, key, data, signature) {
-  let usage = 'sign';
-  if (signature !== undefined) {
-    usage = 'verify';
-  }
-  algorithm = normalizeAlgorithm(algorithm, usage);
+function signVerify(algorithm, key, data, signature) {
+  const op = signature !== undefined ? 'verify' : 'sign'; // This is also usage
+  algorithm = normalizeAlgorithm(algorithm, op);
 
-  if (algorithm.name !== key[kAlgorithm].name)
+  if (algorithm.name !== getCryptoKeyAlgorithm(key).name)
     throw lazyDOMException('Key algorithm mismatch', 'InvalidAccessError');
 
-  if (!ArrayPrototypeIncludes(key[kKeyUsages], usage))
+  if (!hasCryptoKeyUsage(key, op))
     throw lazyDOMException(
-      `Unable to use this key to ${usage}`, 'InvalidAccessError');
+      `Unable to use this key to ${op}`, 'InvalidAccessError');
 
   switch (algorithm.name) {
     case 'RSA-PSS':
       // Fall through
     case 'RSASSA-PKCS1-v1_5':
-      return await require('internal/crypto/rsa')
+      return require('internal/crypto/rsa')
         .rsaSignVerify(key, data, algorithm, signature);
     case 'ECDSA':
-      return await require('internal/crypto/ec')
+      return require('internal/crypto/ec')
         .ecdsaSignVerify(key, data, algorithm, signature);
     case 'Ed25519':
       // Fall through
     case 'Ed448':
       // Fall through
-      return await require('internal/crypto/cfrg')
+      return require('internal/crypto/cfrg')
         .eddsaSignVerify(key, data, algorithm, signature);
     case 'HMAC':
-      return await require('internal/crypto/mac')
+      return require('internal/crypto/mac')
         .hmacSignVerify(key, data, algorithm, signature);
     case 'ML-DSA-44':
       // Fall through
     case 'ML-DSA-65':
       // Fall through
     case 'ML-DSA-87':
-      return await require('internal/crypto/ml_dsa')
+      return require('internal/crypto/ml_dsa')
         .mlDsaSignVerify(key, data, algorithm, signature);
     case 'KMAC128':
       // Fall through
     case 'KMAC256':
-      return await require('internal/crypto/mac')
+      return require('internal/crypto/mac')
         .kmacSignVerify(key, data, algorithm, signature);
   }
   throw lazyDOMException('Unrecognized algorithm name', 'NotSupportedError');
 }
 
-async function sign(algorithm, key, data) {
+function sign(algorithm, key, data) {
+  return callSubtleCryptoMethod(signImpl, this, arguments);
+}
+
+function signImpl(algorithm, key, data) {
   if (this !== subtle) throw new ERR_INVALID_THIS('SubtleCrypto');
 
   webidl ??= require('internal/crypto/webidl');
@@ -1113,10 +1238,14 @@ async function sign(algorithm, key, data) {
     context: '3rd argument',
   });
 
-  return await signVerify(algorithm, key, data);
+  return signVerify(algorithm, key, data);
 }
 
-async function verify(algorithm, key, signature, data) {
+function verify(algorithm, key, signature, data) {
+  return callSubtleCryptoMethod(verifyImpl, this, arguments);
+}
+
+function verifyImpl(algorithm, key, signature, data) {
   if (this !== subtle) throw new ERR_INVALID_THIS('SubtleCrypto');
 
   webidl ??= require('internal/crypto/webidl');
@@ -1139,10 +1268,10 @@ async function verify(algorithm, key, signature, data) {
     context: '4th argument',
   });
 
-  return await signVerify(algorithm, key, data, signature);
+  return signVerify(algorithm, key, data, signature);
 }
 
-async function cipherOrWrap(mode, algorithm, key, data, op) {
+function cipherOrWrap(mode, algorithm, key, data, op) {
   // While WebCrypto allows for larger input buffer sizes, we limit
   // those to sizes that can fit within uint32_t because of limitations
   // in the OpenSSL API.
@@ -1150,7 +1279,7 @@ async function cipherOrWrap(mode, algorithm, key, data, op) {
 
   switch (algorithm.name) {
     case 'RSA-OAEP':
-      return await require('internal/crypto/rsa')
+      return require('internal/crypto/rsa')
         .rsaCipher(mode, key, data, algorithm);
     case 'AES-CTR':
       // Fall through
@@ -1159,21 +1288,25 @@ async function cipherOrWrap(mode, algorithm, key, data, op) {
     case 'AES-GCM':
       // Fall through
     case 'AES-OCB':
-      return await require('internal/crypto/aes')
+      return require('internal/crypto/aes')
         .aesCipher(mode, key, data, algorithm);
     case 'ChaCha20-Poly1305':
-      return await require('internal/crypto/chacha20_poly1305')
+      return require('internal/crypto/chacha20_poly1305')
         .c20pCipher(mode, key, data, algorithm);
     case 'AES-KW':
       if (op === 'wrapKey' || op === 'unwrapKey') {
-        return await require('internal/crypto/aes')
+        return require('internal/crypto/aes')
           .aesCipher(mode, key, data, algorithm);
       }
   }
   throw lazyDOMException('Unrecognized algorithm name', 'NotSupportedError');
 }
 
-async function encrypt(algorithm, key, data) {
+function encrypt(algorithm, key, data) {
+  return callSubtleCryptoMethod(encryptImpl, this, arguments);
+}
+
+function encryptImpl(algorithm, key, data) {
   if (this !== subtle) throw new ERR_INVALID_THIS('SubtleCrypto');
 
   webidl ??= require('internal/crypto/webidl');
@@ -1194,14 +1327,14 @@ async function encrypt(algorithm, key, data) {
 
   algorithm = normalizeAlgorithm(algorithm, 'encrypt');
 
-  if (algorithm.name !== key[kAlgorithm].name)
+  if (algorithm.name !== getCryptoKeyAlgorithm(key).name)
     throw lazyDOMException('Key algorithm mismatch', 'InvalidAccessError');
 
-  if (!ArrayPrototypeIncludes(key[kKeyUsages], 'encrypt'))
+  if (!hasCryptoKeyUsage(key, 'encrypt'))
     throw lazyDOMException(
       'Unable to use this key to encrypt', 'InvalidAccessError');
 
-  return await cipherOrWrap(
+  return cipherOrWrap(
     kWebCryptoCipherEncrypt,
     algorithm,
     key,
@@ -1210,7 +1343,11 @@ async function encrypt(algorithm, key, data) {
   );
 }
 
-async function decrypt(algorithm, key, data) {
+function decrypt(algorithm, key, data) {
+  return callSubtleCryptoMethod(decryptImpl, this, arguments);
+}
+
+function decryptImpl(algorithm, key, data) {
   if (this !== subtle) throw new ERR_INVALID_THIS('SubtleCrypto');
 
   webidl ??= require('internal/crypto/webidl');
@@ -1231,14 +1368,14 @@ async function decrypt(algorithm, key, data) {
 
   algorithm = normalizeAlgorithm(algorithm, 'decrypt');
 
-  if (algorithm.name !== key[kAlgorithm].name)
+  if (algorithm.name !== getCryptoKeyAlgorithm(key).name)
     throw lazyDOMException('Key algorithm mismatch', 'InvalidAccessError');
 
-  if (!ArrayPrototypeIncludes(key[kKeyUsages], 'decrypt'))
+  if (!hasCryptoKeyUsage(key, 'decrypt'))
     throw lazyDOMException(
       'Unable to use this key to decrypt', 'InvalidAccessError');
 
-  return await cipherOrWrap(
+  return cipherOrWrap(
     kWebCryptoCipherDecrypt,
     algorithm,
     key,
@@ -1248,7 +1385,11 @@ async function decrypt(algorithm, key, data) {
 }
 
 // Implements https://wicg.github.io/webcrypto-modern-algos/#SubtleCrypto-method-getPublicKey
-async function getPublicKey(key, keyUsages) {
+function getPublicKey(key, keyUsages) {
+  return callSubtleCryptoMethod(getPublicKeyImpl, this, arguments);
+}
+
+function getPublicKeyImpl(key, keyUsages) {
   emitExperimentalWarning('The getPublicKey Web Crypto API method');
   if (this !== subtle) throw new ERR_INVALID_THIS('SubtleCrypto');
 
@@ -1264,16 +1405,22 @@ async function getPublicKey(key, keyUsages) {
     context: '2nd argument',
   });
 
-  if (key[kKeyType] !== 'private')
+  const type = getCryptoKeyType(key);
+  if (type !== 'private')
     throw lazyDOMException('key must be a private key',
-                           key[kKeyType] === 'secret' ? 'NotSupportedError' : 'InvalidAccessError');
+                           type === 'secret' ? 'NotSupportedError' : 'InvalidAccessError');
 
-  const keyObject = createPublicKey(key[kKeyObject]);
-
-  return keyObject.toCryptoKey(key[kAlgorithm], true, keyUsages);
+  // TODO(panva): this is by no means a hot path, but let's still follow up to get
+  //              rid of this awkwardness
+  const keyObject = createPublicKey(new PrivateKeyObject(getCryptoKeyHandle(key)));
+  return keyObject.toCryptoKey(getCryptoKeyAlgorithm(key), true, keyUsages);
 }
 
-async function encapsulateBits(encapsulationAlgorithm, encapsulationKey) {
+function encapsulateBits(encapsulationAlgorithm, encapsulationKey) {
+  return callSubtleCryptoMethod(encapsulateBitsImpl, this, arguments);
+}
+
+function encapsulateBitsImpl(encapsulationAlgorithm, encapsulationKey) {
   emitExperimentalWarning('The encapsulateBits Web Crypto API method');
   if (this !== subtle) throw new ERR_INVALID_THIS('SubtleCrypto');
 
@@ -1289,32 +1436,48 @@ async function encapsulateBits(encapsulationAlgorithm, encapsulationKey) {
     context: '2nd argument',
   });
 
-  const normalizedEncapsulationAlgorithm = normalizeAlgorithm(encapsulationAlgorithm, 'encapsulate');
+  const normalizedEncapsulationAlgorithm =
+    normalizeAlgorithm(encapsulationAlgorithm, 'encapsulate');
+  const keyAlgorithm = getCryptoKeyAlgorithm(encapsulationKey);
 
-  if (normalizedEncapsulationAlgorithm.name !== encapsulationKey[kAlgorithm].name) {
+  if (normalizedEncapsulationAlgorithm.name !== keyAlgorithm.name) {
     throw lazyDOMException(
       'key algorithm mismatch',
       'InvalidAccessError');
   }
 
-  if (!ArrayPrototypeIncludes(encapsulationKey[kKeyUsages], 'encapsulateBits')) {
+  if (!hasCryptoKeyUsage(encapsulationKey, 'encapsulateBits')) {
     throw lazyDOMException(
       'encapsulationKey does not have encapsulateBits usage',
       'InvalidAccessError');
   }
 
-  switch (encapsulationKey[kAlgorithm].name) {
+  switch (keyAlgorithm.name) {
     case 'ML-KEM-512':
     case 'ML-KEM-768':
     case 'ML-KEM-1024':
-      return await require('internal/crypto/ml_kem')
+      return require('internal/crypto/ml_kem')
         .mlKemEncapsulate(encapsulationKey);
   }
 
   throw lazyDOMException('Unrecognized algorithm name', 'NotSupportedError');
 }
 
-async function encapsulateKey(encapsulationAlgorithm, encapsulationKey, sharedKeyAlgorithm, extractable, usages) {
+function encapsulateKey(
+  encapsulationAlgorithm,
+  encapsulationKey,
+  sharedKeyAlgorithm,
+  extractable,
+  usages) {
+  return callSubtleCryptoMethod(encapsulateKeyImpl, this, arguments);
+}
+
+function encapsulateKeyImpl(
+  encapsulationAlgorithm,
+  encapsulationKey,
+  sharedKeyAlgorithm,
+  extractable,
+  usages) {
   emitExperimentalWarning('The encapsulateKey Web Crypto API method');
   if (this !== subtle) throw new ERR_INVALID_THIS('SubtleCrypto');
 
@@ -1342,48 +1505,56 @@ async function encapsulateKey(encapsulationAlgorithm, encapsulationKey, sharedKe
     context: '5th argument',
   });
 
-  const normalizedEncapsulationAlgorithm = normalizeAlgorithm(encapsulationAlgorithm, 'encapsulate');
-  const normalizedSharedKeyAlgorithm = normalizeAlgorithm(sharedKeyAlgorithm, 'importKey');
+  const normalizedEncapsulationAlgorithm =
+    normalizeAlgorithm(encapsulationAlgorithm, 'encapsulate');
+  const normalizedSharedKeyAlgorithm =
+    normalizeAlgorithm(sharedKeyAlgorithm, 'importKey');
+  const keyAlgorithm = getCryptoKeyAlgorithm(encapsulationKey);
 
-  if (normalizedEncapsulationAlgorithm.name !== encapsulationKey[kAlgorithm].name) {
+  if (normalizedEncapsulationAlgorithm.name !== keyAlgorithm.name) {
     throw lazyDOMException(
       'key algorithm mismatch',
       'InvalidAccessError');
   }
 
-  if (!ArrayPrototypeIncludes(encapsulationKey[kKeyUsages], 'encapsulateKey')) {
+  if (!hasCryptoKeyUsage(encapsulationKey, 'encapsulateKey')) {
     throw lazyDOMException(
       'encapsulationKey does not have encapsulateKey usage',
       'InvalidAccessError');
   }
 
   let encapsulateBits;
-  switch (encapsulationKey[kAlgorithm].name) {
+  switch (keyAlgorithm.name) {
     case 'ML-KEM-512':
     case 'ML-KEM-768':
     case 'ML-KEM-1024':
-      encapsulateBits = await require('internal/crypto/ml_kem')
+      encapsulateBits = require('internal/crypto/ml_kem')
         .mlKemEncapsulate(encapsulationKey);
       break;
     default:
       throw lazyDOMException('Unrecognized algorithm name', 'NotSupportedError');
   }
 
-  const sharedKey = FunctionPrototypeCall(
-    importKeySync,
-    this,
-    'raw-secret', encapsulateBits.sharedKey, normalizedSharedKeyAlgorithm, extractable, usages,
-  );
+  return jobPromiseThen(encapsulateBits, (encapsulateBits) => {
+    const sharedKey = FunctionPrototypeCall(
+      importKeySync,
+      this,
+      'raw-secret', encapsulateBits.sharedKey, normalizedSharedKeyAlgorithm,
+      extractable, usages,
+    );
 
-  const encapsulatedKey = {
-    ciphertext: encapsulateBits.ciphertext,
-    sharedKey,
-  };
-
-  return encapsulatedKey;
+    return {
+      ciphertext: encapsulateBits.ciphertext,
+      sharedKey,
+    };
+  });
 }
 
-async function decapsulateBits(decapsulationAlgorithm, decapsulationKey, ciphertext) {
+function decapsulateBits(decapsulationAlgorithm, decapsulationKey, ciphertext) {
+  return callSubtleCryptoMethod(decapsulateBitsImpl, this, arguments);
+}
+
+function decapsulateBitsImpl(decapsulationAlgorithm, decapsulationKey, ciphertext) {
   emitExperimentalWarning('The decapsulateBits Web Crypto API method');
   if (this !== subtle) throw new ERR_INVALID_THIS('SubtleCrypto');
 
@@ -1403,34 +1574,46 @@ async function decapsulateBits(decapsulationAlgorithm, decapsulationKey, ciphert
     context: '3rd argument',
   });
 
-  const normalizedDecapsulationAlgorithm = normalizeAlgorithm(decapsulationAlgorithm, 'decapsulate');
+  const normalizedDecapsulationAlgorithm =
+    normalizeAlgorithm(decapsulationAlgorithm, 'decapsulate');
+  const keyAlgorithm = getCryptoKeyAlgorithm(decapsulationKey);
 
-  if (normalizedDecapsulationAlgorithm.name !== decapsulationKey[kAlgorithm].name) {
+  if (normalizedDecapsulationAlgorithm.name !== keyAlgorithm.name) {
     throw lazyDOMException(
       'key algorithm mismatch',
       'InvalidAccessError');
   }
 
-  if (!ArrayPrototypeIncludes(decapsulationKey[kKeyUsages], 'decapsulateBits')) {
+  if (!hasCryptoKeyUsage(decapsulationKey, 'decapsulateBits')) {
     throw lazyDOMException(
       'decapsulationKey does not have decapsulateBits usage',
       'InvalidAccessError');
   }
 
-  switch (decapsulationKey[kAlgorithm].name) {
+  switch (keyAlgorithm.name) {
     case 'ML-KEM-512':
     case 'ML-KEM-768':
     case 'ML-KEM-1024':
-      return await require('internal/crypto/ml_kem')
+      return require('internal/crypto/ml_kem')
         .mlKemDecapsulate(decapsulationKey, ciphertext);
   }
 
   throw lazyDOMException('Unrecognized algorithm name', 'NotSupportedError');
 }
 
-async function decapsulateKey(
+function decapsulateKey(
   decapsulationAlgorithm, decapsulationKey, ciphertext, sharedKeyAlgorithm, extractable, usages,
 ) {
+  return callSubtleCryptoMethod(decapsulateKeyImpl, this, arguments);
+}
+
+function decapsulateKeyImpl(
+  decapsulationAlgorithm,
+  decapsulationKey,
+  ciphertext,
+  sharedKeyAlgorithm,
+  extractable,
+  usages) {
   emitExperimentalWarning('The decapsulateKey Web Crypto API method');
   if (this !== subtle) throw new ERR_INVALID_THIS('SubtleCrypto');
 
@@ -1462,38 +1645,42 @@ async function decapsulateKey(
     context: '6th argument',
   });
 
-  const normalizedDecapsulationAlgorithm = normalizeAlgorithm(decapsulationAlgorithm, 'decapsulate');
-  const normalizedSharedKeyAlgorithm = normalizeAlgorithm(sharedKeyAlgorithm, 'importKey');
+  const normalizedDecapsulationAlgorithm =
+    normalizeAlgorithm(decapsulationAlgorithm, 'decapsulate');
+  const normalizedSharedKeyAlgorithm =
+    normalizeAlgorithm(sharedKeyAlgorithm, 'importKey');
+  const keyAlgorithm = getCryptoKeyAlgorithm(decapsulationKey);
 
-  if (normalizedDecapsulationAlgorithm.name !== decapsulationKey[kAlgorithm].name) {
+  if (normalizedDecapsulationAlgorithm.name !== keyAlgorithm.name) {
     throw lazyDOMException(
       'key algorithm mismatch',
       'InvalidAccessError');
   }
 
-  if (!ArrayPrototypeIncludes(decapsulationKey[kKeyUsages], 'decapsulateKey')) {
+  if (!hasCryptoKeyUsage(decapsulationKey, 'decapsulateKey')) {
     throw lazyDOMException(
       'decapsulationKey does not have decapsulateKey usage',
       'InvalidAccessError');
   }
 
   let decapsulatedBits;
-  switch (decapsulationKey[kAlgorithm].name) {
+  switch (keyAlgorithm.name) {
     case 'ML-KEM-512':
     case 'ML-KEM-768':
     case 'ML-KEM-1024':
-      decapsulatedBits = await require('internal/crypto/ml_kem')
+      decapsulatedBits = require('internal/crypto/ml_kem')
         .mlKemDecapsulate(decapsulationKey, ciphertext);
       break;
     default:
       throw lazyDOMException('Unrecognized algorithm name', 'NotSupportedError');
   }
 
-  return FunctionPrototypeCall(
+  return jobPromiseThen(decapsulatedBits, (decapsulatedBits) => FunctionPrototypeCall(
     importKeySync,
     this,
-    'raw-secret', decapsulatedBits, normalizedSharedKeyAlgorithm, extractable, usages,
-  );
+    'raw-secret', decapsulatedBits, normalizedSharedKeyAlgorithm, extractable,
+    usages,
+  ));
 }
 
 // The SubtleCrypto and Crypto classes are defined as part of the

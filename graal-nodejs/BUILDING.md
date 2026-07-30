@@ -97,7 +97,7 @@ and libc version. The table below lists the support tier for each supported
 combination. A list of [supported compile toolchains](#supported-toolchains) is
 also supplied for tier 1 platforms.
 
-**For production applications, run Node.js on supported platforms only.**
+**For production applications, run Node.js on supported platforms only (Tier 1 or 2).**
 
 Node.js does not support a platform version if a vendor has expired support
 for it. In other words, Node.js does not support running on End-of-Life (EoL)
@@ -214,12 +214,11 @@ If compiling without one of the above, use `configure` with the
 ### Previous versions of this document
 
 Supported platforms and toolchains change with each major version of Node.js.
-This document is only valid for the current major version of Node.js.
-Consult previous versions of this document for older versions of Node.js:
+This document is only valid for the current version of Node.js, and is expected
+to be valid for the entire lifetime of this release line.
 
-* [Node.js 24](https://github.com/nodejs/node/blob/v24.x/BUILDING.md)
-* [Node.js 22](https://github.com/nodejs/node/blob/v22.x/BUILDING.md)
-* [Node.js 20](https://github.com/nodejs/node/blob/v20.x/BUILDING.md)
+To consult the version of this document for another version, download its source
+tarball and/or browse the git repository checked out at the relevant tag.
 
 ## Building Node.js on supported platforms
 
@@ -666,7 +665,7 @@ Refs:
   To install it, select the following two optional components:
   * C++ Clang Compiler for Windows (Microsoft.VisualStudio.Component.VC.Llvm.Clang)
   * MSBuild support for LLVM (clang-cl) toolset (Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset)
-* As an alternative to Visual Studio 2026, download Visual Studio 2022 Current channel Version 17.4 from the
+* As an alternative to Visual Studio 2026, download Visual Studio 2022 Current channel Version 17.14 from the
   [Evergreen bootstrappers](https://learn.microsoft.com/en-us/visualstudio/releases/2022/release-history#evergreen-bootstrappers)
   table and install using the same workload and optional component selection as described above.
 * Basic Unix tools required for some tests,

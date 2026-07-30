@@ -3,55 +3,53 @@
 const {
   SafeSet,
   StringPrototypeToLowerCase,
+  TypedArrayPrototypeGetBuffer,
 } = primordials;
 
 const { Buffer } = require('buffer');
 
 const {
-  ECKeyExportJob,
-  KeyObjectHandle,
   SignJob,
-  kCryptoJobAsync,
-  kKeyTypePrivate,
-  kKeyTypePublic,
+  kCryptoJobWebCrypto,
+  kKeyFormatDER,
+  kKeyFormatRawPublic,
   kSignJobModeSign,
   kSignJobModeVerify,
+  kWebCryptoKeyFormatPKCS8,
+  kWebCryptoKeyFormatRaw,
+  kWebCryptoKeyFormatSPKI,
+  NidKeyPairGenJob,
+  EVP_PKEY_ED25519,
+  EVP_PKEY_ED448,
+  EVP_PKEY_X25519,
+  EVP_PKEY_X448,
 } = internalBinding('crypto');
 
 const {
-  codes: {
-    ERR_CRYPTO_INVALID_JWK,
-  },
-} = require('internal/errors');
-
-const {
+  getUsagesMask,
   getUsagesUnion,
   hasAnyNotIn,
   jobPromise,
-  validateKeyOps,
-  kHandle,
-  kKeyObject,
 } = require('internal/crypto/util');
 
 const {
   lazyDOMException,
-  promisify,
 } = require('internal/util');
 
 const {
-  generateKeyPair: _generateKeyPair,
-} = require('internal/crypto/keygen');
-
-const {
+  getCryptoKeyHandle,
+  getCryptoKeyType,
+  getKeyObjectHandle,
+  getKeyObjectType,
   InternalCryptoKey,
-  PrivateKeyObject,
-  PublicKeyObject,
-  createPrivateKey,
-  createPublicKey,
-  kKeyType,
 } = require('internal/crypto/keys');
 
-const generateKeyPair = promisify(_generateKeyPair);
+const {
+  importDerKey,
+  importJwkKey,
+  importRawKey,
+  validateJwk,
+} = require('internal/crypto/webcrypto_util');
 
 function verifyAcceptableCfrgKeyUse(name, isPublic, usages) {
   let checkSet;
@@ -77,40 +75,7 @@ function verifyAcceptableCfrgKeyUse(name, isPublic, usages) {
   }
 }
 
-function createCFRGRawKey(name, keyData, isPublic) {
-  const handle = new KeyObjectHandle();
-
-  switch (name) {
-    case 'Ed25519':
-    case 'X25519':
-      if (keyData.byteLength !== 32) {
-        throw lazyDOMException(
-          `${name} raw keys must be exactly 32-bytes`, 'DataError');
-      }
-      break;
-    case 'Ed448':
-      if (keyData.byteLength !== 57) {
-        throw lazyDOMException(
-          `${name} raw keys must be exactly 57-bytes`, 'DataError');
-      }
-      break;
-    case 'X448':
-      if (keyData.byteLength !== 56) {
-        throw lazyDOMException(
-          `${name} raw keys must be exactly 56-bytes`, 'DataError');
-      }
-      break;
-  }
-
-  const keyType = isPublic ? kKeyTypePublic : kKeyTypePrivate;
-  if (!handle.initEDRaw(name, keyData, keyType)) {
-    throw lazyDOMException('Invalid keyData', 'DataError');
-  }
-
-  return isPublic ? new PublicKeyObject(handle) : new PrivateKeyObject(handle);
-}
-
-async function cfrgGenerateKey(algorithm, extractable, keyUsages) {
+function cfrgGenerateKey(algorithm, extractable, keyUsages) {
   const { name } = algorithm;
 
   const usageSet = new SafeSet(keyUsages);
@@ -134,30 +99,13 @@ async function cfrgGenerateKey(algorithm, extractable, keyUsages) {
       }
       break;
   }
-  let genKeyType;
-  switch (name) {
-    case 'Ed25519':
-      genKeyType = 'ed25519';
-      break;
-    case 'Ed448':
-      genKeyType = 'ed448';
-      break;
-    case 'X25519':
-      genKeyType = 'x25519';
-      break;
-    case 'X448':
-      genKeyType = 'x448';
-      break;
-  }
-
-  let keyPair;
-  try {
-    keyPair = await generateKeyPair(genKeyType);
-  } catch (err) {
-    throw lazyDOMException(
-      'The operation failed for an operation-specific reason',
-      { name: 'OperationError', cause: err });
-  }
+  const nid = {
+    '__proto__': null,
+    'Ed25519': EVP_PKEY_ED25519,
+    'Ed448': EVP_PKEY_ED448,
+    'X25519': EVP_PKEY_X25519,
+    'X448': EVP_PKEY_X448,
+  }[name];
 
   let publicUsages;
   let privateUsages;
@@ -178,28 +126,45 @@ async function cfrgGenerateKey(algorithm, extractable, keyUsages) {
 
   const keyAlgorithm = { name };
 
-  const publicKey =
-    new InternalCryptoKey(
-      keyPair.publicKey,
-      keyAlgorithm,
-      publicUsages,
-      true);
+  if (privateUsages.size === 0) {
+    throw lazyDOMException(
+      'Usages cannot be empty when creating a key.',
+      'SyntaxError');
+  }
 
-  const privateKey =
-    new InternalCryptoKey(
-      keyPair.privateKey,
-      keyAlgorithm,
-      privateUsages,
-      extractable);
-
-  return { __proto__: null, privateKey, publicKey };
+  return jobPromise(() => new NidKeyPairGenJob(
+    kCryptoJobWebCrypto,
+    nid,
+    keyAlgorithm,
+    getUsagesMask(publicUsages),
+    getUsagesMask(privateUsages),
+    extractable));
 }
 
 function cfrgExportKey(key, format) {
-  return jobPromise(() => new ECKeyExportJob(
-    kCryptoJobAsync,
-    format,
-    key[kKeyObject][kHandle]));
+  try {
+    switch (format) {
+      case kWebCryptoKeyFormatRaw: {
+        const handle = getCryptoKeyHandle(key);
+        return TypedArrayPrototypeGetBuffer(
+          getCryptoKeyType(key) === 'private' ? handle.rawPrivateKey() : handle.rawPublicKey());
+      }
+      case kWebCryptoKeyFormatSPKI: {
+        return TypedArrayPrototypeGetBuffer(
+          getCryptoKeyHandle(key).export(kKeyFormatDER, kWebCryptoKeyFormatSPKI));
+      }
+      case kWebCryptoKeyFormatPKCS8: {
+        return TypedArrayPrototypeGetBuffer(
+          getCryptoKeyHandle(key).export(kKeyFormatDER, kWebCryptoKeyFormatPKCS8, null, null));
+      }
+      default:
+        return undefined;
+    }
+  } catch (err) {
+    throw lazyDOMException(
+      'The operation failed for an operation-specific reason',
+      { name: 'OperationError', cause: err });
+  }
 }
 
 function cfrgImportKey(
@@ -210,151 +175,82 @@ function cfrgImportKey(
   keyUsages) {
 
   const { name } = algorithm;
-  let keyObject;
+  let handle;
   const usagesSet = new SafeSet(keyUsages);
   switch (format) {
     case 'KeyObject': {
-      verifyAcceptableCfrgKeyUse(name, keyData.type === 'public', usagesSet);
-      keyObject = keyData;
+      verifyAcceptableCfrgKeyUse(
+        name, getKeyObjectType(keyData) === 'public', usagesSet);
+      handle = getKeyObjectHandle(keyData);
       break;
     }
     case 'spki': {
       verifyAcceptableCfrgKeyUse(name, true, usagesSet);
-      try {
-        keyObject = createPublicKey({
-          key: keyData,
-          format: 'der',
-          type: 'spki',
-        });
-      } catch (err) {
-        throw lazyDOMException(
-          'Invalid keyData', { name: 'DataError', cause: err });
-      }
+      handle = importDerKey(keyData, true);
       break;
     }
     case 'pkcs8': {
       verifyAcceptableCfrgKeyUse(name, false, usagesSet);
-      try {
-        keyObject = createPrivateKey({
-          key: keyData,
-          format: 'der',
-          type: 'pkcs8',
-        });
-      } catch (err) {
-        throw lazyDOMException(
-          'Invalid keyData', { name: 'DataError', cause: err });
-      }
+      handle = importDerKey(keyData, false);
       break;
     }
     case 'jwk': {
-      if (!keyData.kty)
-        throw lazyDOMException('Invalid keyData', 'DataError');
-      if (keyData.kty !== 'OKP')
-        throw lazyDOMException('Invalid JWK "kty" Parameter', 'DataError');
+      const expectedUse = (name === 'X25519' || name === 'X448') ? 'enc' : 'sig';
+      validateJwk(keyData, 'OKP', extractable, usagesSet, expectedUse);
+
       if (keyData.crv !== name)
         throw lazyDOMException(
           'JWK "crv" Parameter and algorithm name mismatch', 'DataError');
-      const isPublic = keyData.d === undefined;
-
-      if (usagesSet.size > 0 && keyData.use !== undefined) {
-        let checkUse;
-        switch (name) {
-          case 'Ed25519':
-            // Fall through
-          case 'Ed448':
-            checkUse = 'sig';
-            break;
-          case 'X25519':
-            // Fall through
-          case 'X448':
-            checkUse = 'enc';
-            break;
-        }
-        if (keyData.use !== checkUse)
-          throw lazyDOMException('Invalid JWK "use" Parameter', 'DataError');
-      }
-
-      validateKeyOps(keyData.key_ops, usagesSet);
-
-      if (keyData.ext !== undefined &&
-          keyData.ext === false &&
-          extractable === true) {
-        throw lazyDOMException(
-          'JWK "ext" Parameter and extractable mismatch',
-          'DataError');
-      }
 
       if (keyData.alg !== undefined && (name === 'Ed25519' || name === 'Ed448')) {
-        if (keyData.alg !== name && keyData.alg !== 'EdDSA') {
+        if (keyData.alg !== name && keyData.alg !== 'EdDSA')
           throw lazyDOMException(
-            'JWK "alg" does not match the requested algorithm',
-            'DataError');
-        }
+            'JWK "alg" does not match the requested algorithm', 'DataError');
       }
 
-      if (!isPublic && typeof keyData.x !== 'string') {
-        throw lazyDOMException('Invalid JWK', 'DataError');
-      }
+      const isPublic = keyData.d === undefined;
+      verifyAcceptableCfrgKeyUse(name, isPublic, usagesSet);
+      handle = importJwkKey(isPublic, keyData);
 
-      verifyAcceptableCfrgKeyUse(
-        name,
-        isPublic,
-        usagesSet);
-
-      try {
-        const publicKeyObject = createCFRGRawKey(
-          name,
-          Buffer.from(keyData.x, 'base64'),
-          true);
-
-        if (isPublic) {
-          keyObject = publicKeyObject;
-        } else {
-          keyObject = createCFRGRawKey(
-            name,
-            Buffer.from(keyData.d, 'base64'),
-            false);
-
-          if (!createPublicKey(keyObject).equals(publicKeyObject)) {
-            throw new ERR_CRYPTO_INVALID_JWK();
-          }
-        }
-      } catch (err) {
-        throw lazyDOMException('Invalid keyData', { name: 'DataError', cause: err });
+      if (!isPublic) {
+        const publicKey = Buffer.from(keyData.x, 'base64url');
+        if (!Buffer.from(handle.rawPublicKey()).equals(publicKey))
+          throw lazyDOMException('Invalid keyData', 'DataError');
       }
       break;
     }
     case 'raw': {
       verifyAcceptableCfrgKeyUse(name, true, usagesSet);
-      keyObject = createCFRGRawKey(name, keyData, true);
+      handle = importRawKey(true, keyData, kKeyFormatRawPublic, name);
       break;
     }
     default:
       return undefined;
   }
 
-  if (keyObject.asymmetricKeyType !== StringPrototypeToLowerCase(name)) {
+  if (handle.getAsymmetricKeyType() !== StringPrototypeToLowerCase(name)) {
     throw lazyDOMException('Invalid key type', 'DataError');
   }
 
   return new InternalCryptoKey(
-    keyObject,
+    handle,
     { name },
-    usagesSet,
+    getUsagesMask(usagesSet),
     extractable);
 }
 
-async function eddsaSignVerify(key, data, algorithm, signature) {
+function eddsaSignVerify(key, data, algorithm, signature) {
   const mode = signature === undefined ? kSignJobModeSign : kSignJobModeVerify;
   const type = mode === kSignJobModeSign ? 'private' : 'public';
 
-  if (key[kKeyType] !== type)
+  if (getCryptoKeyType(key) !== type)
     throw lazyDOMException(`Key must be a ${type} key`, 'InvalidAccessError');
 
-  return await jobPromise(() => new SignJob(
-    kCryptoJobAsync,
+  return jobPromise(() => new SignJob(
+    kCryptoJobWebCrypto,
     mode,
-    key[kKeyObject][kHandle],
+    getCryptoKeyHandle(key),
+    undefined,
     undefined,
     undefined,
     undefined,

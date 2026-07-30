@@ -902,6 +902,14 @@ BaseObjectPtr<Http2Stream> Http2Session::RemoveStream(int32_t id) {
   stream = FindStream(id);
   if (stream) {
     streams_.erase(id);
+    if (stream->current_headers_length_ > 0) {
+      DecrementCurrentSessionMemory(stream->current_headers_length_);
+      stream->current_headers_length_ = 0;
+    }
+    if (stream->retained_headers_length_ > 0) {
+      DecrementCurrentSessionMemory(stream->retained_headers_length_);
+      stream->retained_headers_length_ = 0;
+    }
     DecrementCurrentSessionMemory(sizeof(*stream));
   }
   return stream;
@@ -1548,7 +1556,10 @@ void Http2Session::HandleHeadersFrame(const nghttp2_frame* frame) {
   });
   CHECK_EQ(stream->headers_count(), 0);
 
-  DecrementCurrentSessionMemory(stream->current_headers_length_);
+  // Keep the header block charged against maxSessionMemory while the
+  // corresponding JS objects can still keep it alive for the lifetime of
+  // the stream.
+  stream->retained_headers_length_ += stream->current_headers_length_;
   stream->current_headers_length_ = 0;
 
   Local<Value> args[] = {
@@ -2519,10 +2530,18 @@ void Http2Stream::SubmitRstStream(const uint32_t code) {
   // if RST_STREAM received is not in scope and added to the list
   // causing endpoint to hang.
   if (session_->is_in_scope() && is_stream_cancel(code)) {
-      session_->AddPendingRstStream(id_);
-      return;
+    session_->AddPendingRstStream(id_);
+    return;
   }
 
+  // If RST_STREAM is submitted while nghttp2 is processing callbacks for
+  // a refused stream, don't force purge pending data. Sending pending data
+  // here can re-enter nghttp2 and close streams that are still being used
+  // by the active receive operation.
+  if (session_->is_in_scope() && code == NGHTTP2_REFUSED_STREAM) {
+    FlushRstStream();
+    return;
+  }
 
   // If possible, force a purge of any currently pending data here to make sure
   // it is sent before closing the stream. If it returns non-zero then we need

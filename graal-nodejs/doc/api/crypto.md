@@ -53,8 +53,6 @@ try {
 }
 ```
 
-<!-- eslint-enable no-global-assign -->
-
 When using the lexical ESM `import` keyword, the error can only be
 caught if a handler for `process.on('uncaughtException')` is registered
 _before_ any attempt to load the module is made (using, for instance,
@@ -88,23 +86,23 @@ The following table lists the asymmetric key types recognized by the
 | `'ml-dsa-44'`[^openssl35]          | ML-DSA-44          | 2.16.840.1.101.3.4.3.17 | ✔       | ✔       | ✔       | ✔              |                 | ✔            |
 | `'ml-dsa-65'`[^openssl35]          | ML-DSA-65          | 2.16.840.1.101.3.4.3.18 | ✔       | ✔       | ✔       | ✔              |                 | ✔            |
 | `'ml-dsa-87'`[^openssl35]          | ML-DSA-87          | 2.16.840.1.101.3.4.3.19 | ✔       | ✔       | ✔       | ✔              |                 | ✔            |
-| `'ml-kem-512'`[^openssl35]         | ML-KEM-512         | 2.16.840.1.101.3.4.4.1  | ✔       | ✔       |         | ✔              |                 | ✔            |
-| `'ml-kem-768'`[^openssl35]         | ML-KEM-768         | 2.16.840.1.101.3.4.4.2  | ✔       | ✔       |         | ✔              |                 | ✔            |
-| `'ml-kem-1024'`[^openssl35]        | ML-KEM-1024        | 2.16.840.1.101.3.4.4.3  | ✔       | ✔       |         | ✔              |                 | ✔            |
+| `'ml-kem-512'`[^openssl35]         | ML-KEM-512         | 2.16.840.1.101.3.4.4.1  | ✔       | ✔       | ✔       | ✔              |                 | ✔            |
+| `'ml-kem-768'`[^openssl35]         | ML-KEM-768         | 2.16.840.1.101.3.4.4.2  | ✔       | ✔       | ✔       | ✔              |                 | ✔            |
+| `'ml-kem-1024'`[^openssl35]        | ML-KEM-1024        | 2.16.840.1.101.3.4.4.3  | ✔       | ✔       | ✔       | ✔              |                 | ✔            |
 | `'rsa-pss'`                        | RSA PSS            | 1.2.840.113549.1.1.10   | ✔       | ✔       |         |                |                 |              |
 | `'rsa'`                            | RSA                | 1.2.840.113549.1.1.1    | ✔       | ✔       | ✔       |                |                 |              |
-| `'slh-dsa-sha2-128f'`[^openssl35]  | SLH-DSA-SHA2-128f  | 2.16.840.1.101.3.4.3.21 | ✔       | ✔       |         | ✔              | ✔               |              |
-| `'slh-dsa-sha2-128s'`[^openssl35]  | SLH-DSA-SHA2-128s  | 2.16.840.1.101.3.4.3.20 | ✔       | ✔       |         | ✔              | ✔               |              |
-| `'slh-dsa-sha2-192f'`[^openssl35]  | SLH-DSA-SHA2-192f  | 2.16.840.1.101.3.4.3.23 | ✔       | ✔       |         | ✔              | ✔               |              |
-| `'slh-dsa-sha2-192s'`[^openssl35]  | SLH-DSA-SHA2-192s  | 2.16.840.1.101.3.4.3.22 | ✔       | ✔       |         | ✔              | ✔               |              |
-| `'slh-dsa-sha2-256f'`[^openssl35]  | SLH-DSA-SHA2-256f  | 2.16.840.1.101.3.4.3.25 | ✔       | ✔       |         | ✔              | ✔               |              |
-| `'slh-dsa-sha2-256s'`[^openssl35]  | SLH-DSA-SHA2-256s  | 2.16.840.1.101.3.4.3.24 | ✔       | ✔       |         | ✔              | ✔               |              |
-| `'slh-dsa-shake-128f'`[^openssl35] | SLH-DSA-SHAKE-128f | 2.16.840.1.101.3.4.3.27 | ✔       | ✔       |         | ✔              | ✔               |              |
-| `'slh-dsa-shake-128s'`[^openssl35] | SLH-DSA-SHAKE-128s | 2.16.840.1.101.3.4.3.26 | ✔       | ✔       |         | ✔              | ✔               |              |
-| `'slh-dsa-shake-192f'`[^openssl35] | SLH-DSA-SHAKE-192f | 2.16.840.1.101.3.4.3.29 | ✔       | ✔       |         | ✔              | ✔               |              |
-| `'slh-dsa-shake-192s'`[^openssl35] | SLH-DSA-SHAKE-192s | 2.16.840.1.101.3.4.3.28 | ✔       | ✔       |         | ✔              | ✔               |              |
-| `'slh-dsa-shake-256f'`[^openssl35] | SLH-DSA-SHAKE-256f | 2.16.840.1.101.3.4.3.31 | ✔       | ✔       |         | ✔              | ✔               |              |
-| `'slh-dsa-shake-256s'`[^openssl35] | SLH-DSA-SHAKE-256s | 2.16.840.1.101.3.4.3.30 | ✔       | ✔       |         | ✔              | ✔               |              |
+| `'slh-dsa-sha2-128f'`[^openssl35]  | SLH-DSA-SHA2-128f  | 2.16.840.1.101.3.4.3.21 | ✔       | ✔       | ✔       | ✔              | ✔               |              |
+| `'slh-dsa-sha2-128s'`[^openssl35]  | SLH-DSA-SHA2-128s  | 2.16.840.1.101.3.4.3.20 | ✔       | ✔       | ✔       | ✔              | ✔               |              |
+| `'slh-dsa-sha2-192f'`[^openssl35]  | SLH-DSA-SHA2-192f  | 2.16.840.1.101.3.4.3.23 | ✔       | ✔       | ✔       | ✔              | ✔               |              |
+| `'slh-dsa-sha2-192s'`[^openssl35]  | SLH-DSA-SHA2-192s  | 2.16.840.1.101.3.4.3.22 | ✔       | ✔       | ✔       | ✔              | ✔               |              |
+| `'slh-dsa-sha2-256f'`[^openssl35]  | SLH-DSA-SHA2-256f  | 2.16.840.1.101.3.4.3.25 | ✔       | ✔       | ✔       | ✔              | ✔               |              |
+| `'slh-dsa-sha2-256s'`[^openssl35]  | SLH-DSA-SHA2-256s  | 2.16.840.1.101.3.4.3.24 | ✔       | ✔       | ✔       | ✔              | ✔               |              |
+| `'slh-dsa-shake-128f'`[^openssl35] | SLH-DSA-SHAKE-128f | 2.16.840.1.101.3.4.3.27 | ✔       | ✔       | ✔       | ✔              | ✔               |              |
+| `'slh-dsa-shake-128s'`[^openssl35] | SLH-DSA-SHAKE-128s | 2.16.840.1.101.3.4.3.26 | ✔       | ✔       | ✔       | ✔              | ✔               |              |
+| `'slh-dsa-shake-192f'`[^openssl35] | SLH-DSA-SHAKE-192f | 2.16.840.1.101.3.4.3.29 | ✔       | ✔       | ✔       | ✔              | ✔               |              |
+| `'slh-dsa-shake-192s'`[^openssl35] | SLH-DSA-SHAKE-192s | 2.16.840.1.101.3.4.3.28 | ✔       | ✔       | ✔       | ✔              | ✔               |              |
+| `'slh-dsa-shake-256f'`[^openssl35] | SLH-DSA-SHAKE-256f | 2.16.840.1.101.3.4.3.31 | ✔       | ✔       | ✔       | ✔              | ✔               |              |
+| `'slh-dsa-shake-256s'`[^openssl35] | SLH-DSA-SHAKE-256s | 2.16.840.1.101.3.4.3.30 | ✔       | ✔       | ✔       | ✔              | ✔               |              |
 | `'x25519'`                         | X25519             | 1.3.101.110             | ✔       | ✔       | ✔       | ✔              | ✔               |              |
 | `'x448'`                           | X448               | 1.3.101.111             | ✔       | ✔       | ✔       | ✔              | ✔               |              |
 
@@ -2395,6 +2393,10 @@ type, value, and parameters. This method is not
 <!-- YAML
 added: v11.6.0
 changes:
+  - version: v24.18.0
+    pr-url: https://github.com/nodejs/node/pull/62706
+    description: Added JWK format support for ML-KEM and SLH-DSA
+                 key types.
   - version: v24.15.0
     pr-url: https://github.com/nodejs/node/pull/62240
     description: Added support for `'raw-public'`, `'raw-private'`,
@@ -2736,14 +2738,14 @@ encoding of `'utf8'` is enforced. If `data` is a [`Buffer`][], `TypedArray`, or
 
 This can be called many times with new data as it is streamed.
 
-### `verify.verify(object, signature[, signatureEncoding])`
+### `verify.verify(key, signature[, signatureEncoding])`
 
 <!-- YAML
 added: v0.1.92
 changes:
   - version: v15.0.0
     pr-url: https://github.com/nodejs/node/pull/35093
-    description: The object can also be an ArrayBuffer and CryptoKey.
+    description: The key can also be an ArrayBuffer and CryptoKey.
   - version:
      - v13.2.0
      - v12.16.0
@@ -2762,7 +2764,7 @@ changes:
 
 <!--lint disable maximum-line-length remark-lint-->
 
-* `object` {Object|string|ArrayBuffer|Buffer|TypedArray|DataView|KeyObject|CryptoKey}
+* `key` {Object|string|ArrayBuffer|Buffer|TypedArray|DataView|KeyObject|CryptoKey}
   * `dsaEncoding` {string}
   * `padding` {integer}
   * `saltLength` {integer}
@@ -2773,10 +2775,10 @@ changes:
 
 <!--lint enable maximum-line-length remark-lint-->
 
-Verifies the provided data using the given `object` and `signature`.
+Verifies the provided data using the given `key` and `signature`.
 
-If `object` is not a [`KeyObject`][], this function behaves as if
-`object` had been passed to [`crypto.createPublicKey()`][]. If it is an
+If `key` is not a [`KeyObject`][], this function behaves as if
+`key` had been passed to [`crypto.createPublicKey()`][]. If it is an
 object, the following additional properties can be passed:
 
 * `dsaEncoding` {string} For DSA and ECDSA, this option specifies the
@@ -3915,6 +3917,10 @@ input.on('readable', () => {
 <!-- YAML
 added: v11.6.0
 changes:
+  - version: v24.18.0
+    pr-url: https://github.com/nodejs/node/pull/62706
+    description: Added JWK format support for ML-KEM and SLH-DSA
+                 key types.
   - version: v24.15.0
     pr-url: https://github.com/nodejs/node/pull/62240
     description: Added support for `'raw-private'` and `'raw-seed'`
@@ -3963,6 +3969,10 @@ of the passphrase is limited to 1024 bytes.
 <!-- YAML
 added: v11.6.0
 changes:
+  - version: v24.18.0
+    pr-url: https://github.com/nodejs/node/pull/62706
+    description: Added JWK format support for ML-KEM and SLH-DSA
+                 key types.
   - version: v24.15.0
     pr-url: https://github.com/nodejs/node/pull/62240
     description: Added support for `'raw-public'` format.
@@ -4125,22 +4135,31 @@ added:
  - v13.9.0
  - v12.17.0
 changes:
+  - version: v24.18.0
+    pr-url: https://github.com/nodejs/node/pull/62527
+    description: Accept key data in addition to KeyObject instances.
   - version: v23.11.0
     pr-url: https://github.com/nodejs/node/pull/57274
     description: Optional callback argument added.
 -->
 
 * `options` {Object}
-  * `privateKey` {KeyObject}
-  * `publicKey` {KeyObject}
+  * `privateKey` {Object|string|ArrayBuffer|Buffer|TypedArray|DataView|KeyObject}
+  * `publicKey` {Object|string|ArrayBuffer|Buffer|TypedArray|DataView|KeyObject}
 * `callback` {Function}
   * `err` {Error}
   * `secret` {Buffer}
 * Returns: {Buffer} if the `callback` function is not provided.
 
 Computes the Diffie-Hellman shared secret based on a `privateKey` and a `publicKey`.
-Both keys must have the same `asymmetricKeyType` and must support either the DH or
+Both keys must represent the same asymmetric key type and must support either the DH or
 ECDH operation.
+
+If `options.privateKey` is not a [`KeyObject`][], this function behaves as if
+`options.privateKey` had been passed to [`crypto.createPrivateKey()`][].
+
+If `options.publicKey` is not a [`KeyObject`][], this function behaves as if
+`options.publicKey` had been passed to [`crypto.createPublicKey()`][].
 
 If the `callback` function is provided this function uses libuv's threadpool.
 
@@ -6092,7 +6111,7 @@ changes:
 <!--lint disable maximum-line-length remark-lint-->
 
 * `algorithm` {string | null | undefined}
-* `data` {ArrayBuffer|Buffer|TypedArray|DataView}
+* `data` {ArrayBuffer|Buffer|SharedArrayBuffer|TypedArray|DataView|string}
 * `key` {Object|string|ArrayBuffer|Buffer|TypedArray|DataView|KeyObject|CryptoKey}
 * `callback` {Function}
   * `err` {Error}
@@ -6224,9 +6243,9 @@ changes:
 <!--lint disable maximum-line-length remark-lint-->
 
 * `algorithm` {string|null|undefined}
-* `data` {ArrayBuffer| Buffer|TypedArray|DataView}
+* `data` {ArrayBuffer|Buffer|SharedArrayBuffer|TypedArray|DataView|string}
 * `key` {Object|string|ArrayBuffer|Buffer|TypedArray|DataView|KeyObject|CryptoKey}
-* `signature` {ArrayBuffer|Buffer|TypedArray|DataView}
+* `signature` {ArrayBuffer|Buffer|SharedArrayBuffer|TypedArray|DataView}
 * `callback` {Function}
   * `err` {Error}
   * `result` {boolean}
@@ -6617,7 +6636,7 @@ See the [list of SSL OP Flags][] for details.
   </tr>
   <tr>
     <td><code>SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS</code></td>
-    <td>Instructs OpenSSL to disable a SSL 3.0/TLS 1.0 vulnerability
+    <td>Instructs OpenSSL to disable an SSL 3.0/TLS 1.0 vulnerability
     workaround added in OpenSSL 0.9.6d.</td>
   </tr>
   <tr>
@@ -6926,7 +6945,7 @@ See the [list of SSL OP Flags][] for details.
 [`stream.transform` options]: stream.md#new-streamtransformoptions
 [`util.promisify()`]: util.md#utilpromisifyoriginal
 [`verify.update()`]: #verifyupdatedata-inputencoding
-[`verify.verify()`]: #verifyverifyobject-signature-signatureencoding
+[`verify.verify()`]: #verifyverifykey-signature-signatureencoding
 [`x509.fingerprint256`]: #x509fingerprint256
 [`x509.verify(publicKey)`]: #x509verifypublickey
 [argon2]: https://www.rfc-editor.org/rfc/rfc9106.html

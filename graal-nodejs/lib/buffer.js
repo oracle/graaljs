@@ -172,7 +172,7 @@ const constants = ObjectDefineProperties({}, {
   },
 });
 
-Buffer.poolSize = 8 * 1024;
+Buffer.poolSize = 64 * 1024;
 let poolSize, poolOffset, allocPool, allocBuffer;
 
 graalBuffer.install(Buffer.prototype);

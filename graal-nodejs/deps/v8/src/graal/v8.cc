@@ -683,6 +683,10 @@ namespace v8 {
         return reinterpret_cast<GraalIsolate*> (this)->ThrowException(exception);
     }
 
+    bool Isolate::HasPendingException() {
+        return reinterpret_cast<GraalIsolate*> (this)->GetJNIEnv()->ExceptionCheck();
+    }
+
     void Locker::Initialize(Isolate* isolate) {
         GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
 #ifdef __POSIX__

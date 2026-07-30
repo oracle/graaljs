@@ -26,7 +26,6 @@ namespace node {
 
 using v8::Array;
 using v8::ArrayBufferView;
-using v8::BackingStore;
 using v8::HandleScope;
 using v8::Integer;
 using v8::Just;
@@ -192,7 +191,7 @@ Maybe<Endpoint::Options> Endpoint::Options::From(Environment* env,
       !SET(max_connections_per_host) || !SET(max_connections_total) ||
       !SET(max_stateless_resets) || !SET(address_lru_size) ||
       !SET(max_retries) || !SET(validate_address) ||
-      !SET(disable_stateless_reset) || !SET(ipv6_only) ||
+      !SET(disable_stateless_reset) || !SET(ipv6_only) || !SET(reuse_port) ||
 #ifdef DEBUG
       !SET(rx_loss) || !SET(tx_loss) ||
 #endif
@@ -263,6 +262,7 @@ std::string Endpoint::Options::ToString() const {
   res += prefix + "reset token secret: " + reset_token_secret.ToString();
   res += prefix + "token secret: " + token_secret.ToString();
   res += prefix + "ipv6 only: " + boolToString(ipv6_only);
+  res += prefix + "reuse port: " + boolToString(reuse_port);
   res += prefix +
          "udp receive buffer size: " + std::to_string(udp_receive_buffer_size);
   res +=
@@ -377,6 +377,7 @@ int Endpoint::UDP::Bind(const Options& options) {
   int flags = 0;
   if (options.local_address->family() == AF_INET6 && options.ipv6_only)
     flags |= UV_UDP_IPV6ONLY;
+  if (options.reuse_port) flags |= UV_UDP_REUSEPORT;
   int err = uv_udp_bind(&impl_->handle_, options.local_address->data(), flags);
   int size;
 
@@ -791,22 +792,30 @@ void Endpoint::SendRetry(const PathDescriptor& options) {
 
 void Endpoint::SendVersionNegotiation(const PathDescriptor& options) {
   Debug(this, "Sending version negotiation on path %s", options);
-  // While creating and sending a version negotiation packet does consume a
-  // small amount of system resources, and while it is fairly trivial for a
-  // malicious peer to force a version negotiation to be sent, these are more
-  // trivial to create than the cryptographically generated retry and stateless
-  // reset packets. If the packet is sent, then we'll at least increment the
-  // version_negotiation_count statistic so that application code can keep an
-  // eye on it.
+  // A malicious peer can trivially force version negotiation packets by
+  // sending packets with unsupported QUIC versions, potentially from
+  // spoofed source addresses. Rate-limit per remote host to prevent
+  // amplification attacks.
+  const auto exceeds_limits = [&] {
+    SocketAddressInfoTraits::Type* counts =
+        addr_validation_lru_.Peek(options.remote_address);
+    auto count = counts != nullptr ? counts->version_negotiation_count : 0;
+    return count >= kMaxVersionNegotiations;
+  };
+
+  if (exceeds_limits()) {
+    Debug(this, "Version negotiation rate limit exceeded for %s",
+          options.remote_address);
+    return;
+  }
+
   auto packet = Packet::CreateVersionNegotiationPacket(*this, options);
   if (packet) {
+    addr_validation_lru_.Upsert(options.remote_address)
+        ->version_negotiation_count++;
     STAT_INCREMENT(Stats, version_negotiation_count);
     Send(std::move(packet));
   }
-
-  // If creating the packet is unsuccessful, we just drop things on the floor.
-  // It's not worth committing any further resources to this one packet. We
-  // might want to log the failure at some point tho.
 }
 
 bool Endpoint::SendStatelessReset(const PathDescriptor& options,
@@ -848,11 +857,27 @@ void Endpoint::SendImmediateConnectionClose(const PathDescriptor& options,
         "Sending immediate connection close on path %s with reason %s",
         options,
         reason);
-  // While it is possible for a malicious peer to cause us to create a large
-  // number of these, generating them is fairly trivial.
+  // A malicious peer can trigger immediate connection close packets by
+  // sending Initial packets with invalid tokens or when the server is
+  // busy. Rate-limit per remote host to prevent amplification attacks.
+  const auto exceeds_limits = [&] {
+    SocketAddressInfoTraits::Type* counts =
+        addr_validation_lru_.Peek(options.remote_address);
+    auto count = counts != nullptr ? counts->immediate_close_count : 0;
+    return count >= kMaxImmediateCloses;
+  };
+
+  if (exceeds_limits()) {
+    Debug(this, "Immediate connection close rate limit exceeded for %s",
+          options.remote_address);
+    return;
+  }
+
   auto packet =
       Packet::CreateImmediateConnectionClosePacket(*this, options, reason);
   if (packet) {
+    addr_validation_lru_.Upsert(options.remote_address)
+        ->immediate_close_count++;
     STAT_INCREMENT(Stats, immediate_close_count);
     Send(std::move(packet));
   }

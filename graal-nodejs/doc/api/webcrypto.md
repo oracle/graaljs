@@ -2,6 +2,10 @@
 
 <!-- YAML
 changes:
+  - version: v24.18.0
+    pr-url: https://github.com/nodejs/node/pull/62183
+    description: TurboSHAKE and KangarooTwelve algorithms
+      are now supported.
   - version: v24.8.0
     pr-url: https://github.com/nodejs/node/pull/59647
     description: KMAC algorithms are now supported.
@@ -121,6 +125,8 @@ Algorithms:
 * `'cSHAKE256'`
 * `'KMAC128'`[^openssl30]
 * `'KMAC256'`[^openssl30]
+* `'KT128'`
+* `'KT256'`
 * `'ML-DSA-44'`[^openssl35]
 * `'ML-DSA-65'`[^openssl35]
 * `'ML-DSA-87'`[^openssl35]
@@ -130,6 +136,8 @@ Algorithms:
 * `'SHA3-256'`
 * `'SHA3-384'`
 * `'SHA3-512'`
+* `'TurboSHAKE128'`
+* `'TurboSHAKE256'`
 
 Key Formats:
 
@@ -574,6 +582,8 @@ Crypto API implementation and the APIs supported for each:
 | `'HMAC'`                             |            | ✔                  |                        |              |                   |        |
 | `'KMAC128'`[^modern-algos]           |            | ✔                  |                        |              |                   |        |
 | `'KMAC256'`[^modern-algos]           |            | ✔                  |                        |              |                   |        |
+| `'KT128'`[^modern-algos]             |            |                    |                        |              |                   | ✔      |
+| `'KT256'`[^modern-algos]             |            |                    |                        |              |                   | ✔      |
 | `'ML-DSA-44'`[^modern-algos]         |            | ✔                  |                        |              |                   |        |
 | `'ML-DSA-65'`[^modern-algos]         |            | ✔                  |                        |              |                   |        |
 | `'ML-DSA-87'`[^modern-algos]         |            | ✔                  |                        |              |                   |        |
@@ -591,6 +601,8 @@ Crypto API implementation and the APIs supported for each:
 | `'SHA3-256'`[^modern-algos]          |            |                    |                        |              |                   | ✔      |
 | `'SHA3-384'`[^modern-algos]          |            |                    |                        |              |                   | ✔      |
 | `'SHA3-512'`[^modern-algos]          |            |                    |                        |              |                   | ✔      |
+| `'TurboSHAKE128'`[^modern-algos]     |            |                    |                        |              |                   | ✔      |
+| `'TurboSHAKE256'`[^modern-algos]     |            |                    |                        |              |                   | ✔      |
 | `'X25519'`                           |            |                    | ✔                      |              |                   |        |
 | `'X448'`[^secure-curves]             |            |                    | ✔                      |              |                   |        |
 
@@ -998,6 +1010,10 @@ The algorithms currently supported include:
 <!-- YAML
 added: v15.0.0
 changes:
+  - version: v24.18.0
+    pr-url: https://github.com/nodejs/node/pull/62183
+    description: TurboSHAKE and KangarooTwelve algorithms
+      are now supported.
   - version: v24.7.0
     pr-url: https://github.com/nodejs/node/pull/59365
     description: SHA-3 algorithms are now supported.
@@ -1006,7 +1022,7 @@ changes:
     description: SHAKE algorithms are now supported.
 -->
 
-* `algorithm` {string|Algorithm|CShakeParams}
+* `algorithm` {string|Algorithm|CShakeParams|TurboShakeParams|KangarooTwelveParams}
 * `data` {ArrayBuffer|TypedArray|DataView|Buffer}
 * Returns: {Promise} Fulfills with an {ArrayBuffer} upon success.
 
@@ -1018,6 +1034,8 @@ If `algorithm` is provided as a {string}, it must be one of:
 
 * `'cSHAKE128'`[^modern-algos]
 * `'cSHAKE256'`[^modern-algos]
+* `'KT128'`[^modern-algos]
+* `'KT256'`[^modern-algos]
 * `'SHA-1'`
 * `'SHA-256'`
 * `'SHA-384'`
@@ -1025,6 +1043,8 @@ If `algorithm` is provided as a {string}, it must be one of:
 * `'SHA3-256'`[^modern-algos]
 * `'SHA3-384'`[^modern-algos]
 * `'SHA3-512'`[^modern-algos]
+* `'TurboSHAKE128'`[^modern-algos]
+* `'TurboSHAKE256'`[^modern-algos]
 
 If `algorithm` is provided as an {Object}, it must have a `name` property
 whose value is one of the above.
@@ -1111,6 +1131,9 @@ The algorithms currently supported include:
 <!-- YAML
 added: v15.0.0
 changes:
+  - version: v24.18.0
+    pr-url: https://github.com/nodejs/node/pull/62706
+    description: Added JWK format support for ML-KEM key types.
   - version: v24.8.0
     pr-url: https://github.com/nodejs/node/pull/59647
     description: KMAC algorithms are now supported.
@@ -1169,9 +1192,9 @@ specification.
 | `'ML-DSA-44'`[^modern-algos]         | ✔        | ✔         | ✔       |         |                | ✔              | ✔            |
 | `'ML-DSA-65'`[^modern-algos]         | ✔        | ✔         | ✔       |         |                | ✔              | ✔            |
 | `'ML-DSA-87'`[^modern-algos]         | ✔        | ✔         | ✔       |         |                | ✔              | ✔            |
-| `'ML-KEM-512'`[^modern-algos]        | ✔        | ✔         |         |         |                | ✔              | ✔            |
-| `'ML-KEM-768'`[^modern-algos]        | ✔        | ✔         |         |         |                | ✔              | ✔            |
-| `'ML-KEM-1024'`[^modern-algos]       | ✔        | ✔         |         |         |                | ✔              | ✔            |
+| `'ML-KEM-512'`[^modern-algos]        | ✔        | ✔         | ✔       |         |                | ✔              | ✔            |
+| `'ML-KEM-768'`[^modern-algos]        | ✔        | ✔         | ✔       |         |                | ✔              | ✔            |
+| `'ML-KEM-1024'`[^modern-algos]       | ✔        | ✔         | ✔       |         |                | ✔              | ✔            |
 | `'RSA-OAEP'`                         | ✔        | ✔         | ✔       |         |                |                |              |
 | `'RSA-PSS'`                          | ✔        | ✔         | ✔       |         |                |                |              |
 | `'RSASSA-PKCS1-v1_5'`                | ✔        | ✔         | ✔       |         |                |                |              |
@@ -1259,6 +1282,9 @@ The {CryptoKey} (secret key) generating algorithms supported include:
 <!-- YAML
 added: v15.0.0
 changes:
+  - version: v24.18.0
+    pr-url: https://github.com/nodejs/node/pull/62706
+    description: Added JWK format support for ML-KEM key types.
   - version: v24.15.0
     pr-url: https://github.com/nodejs/node/pull/62218
     description: Importing ML-DSA and ML-KEM PKCS#8 keys
@@ -1332,9 +1358,9 @@ The algorithms currently supported include:
 | `'ML-DSA-44'`[^modern-algos]         | ✔        | ✔         | ✔       |         |                | ✔              | ✔            |
 | `'ML-DSA-65'`[^modern-algos]         | ✔        | ✔         | ✔       |         |                | ✔              | ✔            |
 | `'ML-DSA-87'`[^modern-algos]         | ✔        | ✔         | ✔       |         |                | ✔              | ✔            |
-| `'ML-KEM-512'`[^modern-algos]        | ✔        | ✔         |         |         |                | ✔              | ✔            |
-| `'ML-KEM-768'`[^modern-algos]        | ✔        | ✔         |         |         |                | ✔              | ✔            |
-| `'ML-KEM-1024'`[^modern-algos]       | ✔        | ✔         |         |         |                | ✔              | ✔            |
+| `'ML-KEM-512'`[^modern-algos]        | ✔        | ✔         | ✔       |         |                | ✔              | ✔            |
+| `'ML-KEM-768'`[^modern-algos]        | ✔        | ✔         | ✔       |         |                | ✔              | ✔            |
+| `'ML-KEM-1024'`[^modern-algos]       | ✔        | ✔         | ✔       |         |                | ✔              | ✔            |
 | `'PBKDF2'`                           |          |           |         | ✔       | ✔              |                |              |
 | `'RSA-OAEP'`                         | ✔        | ✔         | ✔       |         |                |                |              |
 | `'RSA-PSS'`                          | ✔        | ✔         | ✔       |         |                |                |              |
@@ -2315,6 +2341,38 @@ added: v15.0.0
 
 * Type: {string}
 
+### Class: `KangarooTwelveParams`
+
+<!-- YAML
+added: v24.18.0
+-->
+
+#### `kangarooTwelveParams.customization`
+
+<!-- YAML
+added: v24.18.0
+-->
+
+* Type: {ArrayBuffer|TypedArray|DataView|Buffer|undefined}
+
+The optional customization string for KangarooTwelve.
+
+#### `kangarooTwelveParams.name`
+
+<!-- YAML
+added: v24.18.0
+-->
+
+* Type: {string} Must be `'KT128'`[^modern-algos] or `'KT256'`[^modern-algos]
+
+#### `kangarooTwelveParams.outputLength`
+
+<!-- YAML
+added: v24.18.0
+-->
+
+* Type: {number} represents the requested output length in bits.
+
 ### Class: `KmacImportParams`
 
 <!-- YAML
@@ -2684,6 +2742,38 @@ added: v15.0.0
 * Type: {number}
 
 The length (in bytes) of the random salt to use.
+
+### Class: `TurboShakeParams`
+
+<!-- YAML
+added: v24.18.0
+-->
+
+#### `turboShakeParams.domainSeparation`
+
+<!-- YAML
+added: v24.18.0
+-->
+
+* Type: {number|undefined}
+
+The optional domain separation byte (0x01-0x7f). Defaults to `0x1f`.
+
+#### `turboShakeParams.name`
+
+<!-- YAML
+added: v24.18.0
+-->
+
+* Type: {string} Must be `'TurboSHAKE128'`[^modern-algos] or `'TurboSHAKE256'`[^modern-algos]
+
+#### `turboShakeParams.outputLength`
+
+<!-- YAML
+added: v24.18.0
+-->
+
+* Type: {number} represents the requested output length in bits.
 
 [^secure-curves]: See [Secure Curves in the Web Cryptography API][]
 
