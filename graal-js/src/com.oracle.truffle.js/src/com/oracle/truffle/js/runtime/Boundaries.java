@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -228,6 +229,11 @@ public final class Boundaries {
     @TruffleBoundary(allowInlining = true)
     public static ByteBuffer byteBufferWrap(byte[] array) {
         return ByteBuffer.wrap(array);
+    }
+
+    @TruffleBoundary(allowInlining = true)
+    public static boolean enumSetContains(EnumSet<?> set, Object element) {
+        return set.contains(element);
     }
 
     @TruffleBoundary
