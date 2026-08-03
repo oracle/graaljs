@@ -319,7 +319,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
             if (isStrict) {
                 throw Errors.createTypeErrorNotExtensible(thisObj, Strings.fromLong(index));
             }
-            return true;
+            return false;
         }
         return setElement(thisObj, index, value, isStrict);
     }
