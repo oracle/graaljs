@@ -311,8 +311,11 @@ public abstract class JSAbstractArray extends JSNonProxy {
 
     @TruffleBoundary
     private static boolean setPropertySlow(JSDynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
-        if (!JSObject.getJSContext(thisObj).getArrayPrototypeNoElementsAssumption().isValid() && setPropertyPrototypes(thisObj, index, value, receiver, isStrict, encapsulatingNode)) {
-            return true;
+        if (!JSObject.getJSContext(thisObj).getArrayPrototypeNoElementsAssumption().isValid()) {
+            Boolean prototypeSetResult = setPropertyPrototypes(thisObj, index, value, receiver, isStrict, encapsulatingNode);
+            if (prototypeSetResult != null) {
+                return prototypeSetResult;
+            }
         }
 
         if (!JSObject.isExtensible(thisObj)) {
@@ -324,7 +327,11 @@ public abstract class JSAbstractArray extends JSNonProxy {
         return setElement(thisObj, index, value, isStrict);
     }
 
-    private static boolean setPropertyPrototypes(JSDynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
+    /**
+     * @return the result of the prototype's [[Set]] operation, or {@code null} if no prototype
+     *         property handles the write
+     */
+    private static Boolean setPropertyPrototypes(JSDynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
         // check prototype chain for accessors
         JSDynamicObject current = JSObject.getPrototype(thisObj);
         Object propertyName = null;
@@ -339,8 +346,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
                 PropertyDescriptor desc = JSObject.getOwnProperty(current, propertyName);
                 if (desc != null) {
                     if (desc.isAccessorDescriptor()) {
-                        invokeAccessorPropertySetter(desc, thisObj, propertyName, value, receiver, isStrict, encapsulatingNode);
-                        return true;
+                        return invokeAccessorPropertySetter(desc, thisObj, propertyName, value, receiver, isStrict, encapsulatingNode);
                     } else if (!desc.getWritable()) {
                         if (isStrict) {
                             if (JavaScriptLanguage.get(encapsulatingNode).getJSContext().isOptionV8CompatibilityMode()) {
@@ -348,7 +354,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
                             }
                             throw Errors.createTypeError("Cannot assign to read only property '" + index + "' of " + JSObject.defaultToString(thisObj));
                         }
-                        return true;
+                        return false;
                     } else {
                         break;
                     }
@@ -356,7 +362,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
             }
             current = JSObject.getPrototype(current);
         }
-        return false;
+        return null;
     }
 
     private static boolean setElement(JSDynamicObject thisObj, long index, Object value, boolean isStrict) {
