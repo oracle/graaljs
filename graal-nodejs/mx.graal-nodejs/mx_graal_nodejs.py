@@ -221,6 +221,10 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
     def needsBuild(self, newestInput):
         return (True, None)  # Always try to build
 
+    def supportsRebuildCheck(self):
+        # We always try to build
+        return False
+
     def clean(self, forBuild=False):
         if not forBuild:
             if _is_windows:
