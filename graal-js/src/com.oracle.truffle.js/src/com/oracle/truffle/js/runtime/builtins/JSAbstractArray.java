@@ -59,6 +59,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.SuppressFBWarnings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -331,6 +332,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
      * @return the result of the prototype's [[Set]] operation, or {@code null} if no prototype
      *         property handles the write
      */
+    @SuppressFBWarnings(value = "NP_BOOLEAN_RETURN_NULL", justification = "intentional low-risk/private-method usage of Boolean")
     private static Boolean setPropertyPrototypes(JSDynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
         // check prototype chain for accessors
         JSDynamicObject current = JSObject.getPrototype(thisObj);
