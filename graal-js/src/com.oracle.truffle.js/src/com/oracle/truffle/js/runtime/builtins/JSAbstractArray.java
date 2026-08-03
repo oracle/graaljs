@@ -330,7 +330,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
         Object propertyName = null;
         while (current != Null.instance) {
             if (JSProxy.isJSProxy(current) || JSArrayBufferView.isJSArrayBufferView(current)) {
-                return JSObject.getJSClass(current).set(current, index, value, receiver, false, encapsulatingNode);
+                return JSObject.getJSClass(current).set(current, index, value, receiver, isStrict, encapsulatingNode);
             }
             if (JSObject.hasOwnProperty(current, index)) {
                 if (propertyName == null) {
