@@ -41,7 +41,9 @@
 package com.oracle.truffle.js.runtime.util;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSRuntime;
 
 /**
  * ES6-compliant hash map implementation. A single node links each entry into both a hash bucket and
@@ -386,7 +388,15 @@ public final class JSHashMap {
     }
 
     private static boolean compareKeys(Object key, Object entryKey) {
-        return key == entryKey || key.equals(entryKey);
+        if (key == entryKey) {
+            return true;
+        }
+        if (JSRuntime.isForeignObject(key) || JSRuntime.isForeignObject(entryKey)) {
+            InteropLibrary keyInterop = InteropLibrary.getUncached(key);
+            InteropLibrary entryKeyInterop = InteropLibrary.getUncached(entryKey);
+            return keyInterop.isIdentical(key, entryKey, entryKeyInterop);
+        }
+        return key.equals(entryKey);
     }
 
     private static int mixHash(int hashCode) {

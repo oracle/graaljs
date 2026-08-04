@@ -56,13 +56,24 @@ import java.util.Random;
 import org.graalvm.polyglot.Context;
 import org.junit.Test;
 
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsHashCodeNode;
+import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.SuppressFBWarnings;
+import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 import com.oracle.truffle.js.test.JSTest;
+import com.oracle.truffle.js.test.polyglot.ForeignBoxedObject;
+import com.oracle.truffle.js.test.polyglot.ForeignNull;
 
 public class JSHashMapTest {
 
@@ -95,13 +106,67 @@ public class JSHashMapTest {
         assertEquals("{}", map.toString());
     }
 
+    private static Object normalizeKey(Object key) {
+        return JSCollectionsNormalizeNode.getUncached().execute(key);
+    }
+
+    private static int hashKey(Object key) {
+        return JSCollectionsHashCodeNode.getUncached().execute(key);
+    }
+
     @Test
     public void testCollectionHashCodeNode() {
-        JSCollectionsHashCodeNode hashCodeNode = JSCollectionsHashCodeNode.getUncached();
-        Object[] keys = {42, 1.5, Double.NaN, true, Strings.fromJavaString("string"), new Object()};
+        Object[] keys = {42, 1.5, Double.NaN, true, Strings.fromJavaString("string"), Null.instance, BigInt.ONE, Symbol.SYMBOL_SPECIES, new Object()};
         for (Object key : keys) {
-            assertEquals(key.hashCode(), hashCodeNode.execute(key));
+            assertEquals(key.hashCode(), hashKey(key));
         }
+    }
+
+    @Test
+    public void testForeignCollectionKey() {
+        var map = newJSHashMap();
+
+        // foreign object with identity
+        Object primaryKey = normalizeKey(new ForeignIdentityKey(42));
+        Object identicalKey = normalizeKey(new ForeignIdentityKey(42));
+        Object otherKey = normalizeKey(new ForeignIdentityKey(43));
+        assertEquals(42, hashKey(primaryKey));
+        map.put(primaryKey, hashKey(primaryKey), "value");
+        assertTrue(map.has(identicalKey, hashKey(identicalKey)));
+        assertEquals("value", map.get(identicalKey, hashKey(identicalKey)));
+        assertFalse(map.has(otherKey, hashKey(otherKey)));
+
+        // foreign number
+        Object foreignNumber = normalizeKey(ForeignBoxedObject.createNew(42));
+        Object jsNumber = normalizeKey(42);
+        map.put(foreignNumber, hashKey(foreignNumber), "fortyTwo");
+        assertEquals("fortyTwo", map.get(foreignNumber, hashKey(foreignNumber)));
+        assertEquals("fortyTwo", map.get(jsNumber, hashKey(jsNumber)));
+
+        foreignNumber = normalizeKey(ForeignBoxedObject.createNew(42.0));
+        assertEquals("fortyTwo", map.get(foreignNumber, hashKey(foreignNumber)));
+        assertEquals("fortyTwo", map.get(jsNumber, hashKey(jsNumber)));
+
+        foreignNumber = normalizeKey(ForeignBoxedObject.createNew(Math.PI));
+        jsNumber = normalizeKey(Math.PI);
+        assertEquals(Math.PI, foreignNumber);
+        map.put(foreignNumber, hashKey(foreignNumber), "pi");
+        assertEquals("pi", map.get(foreignNumber, hashKey(foreignNumber)));
+        assertEquals("pi", map.get(jsNumber, hashKey(jsNumber)));
+
+        // foreign string
+        Object foreignString = normalizeKey(ForeignBoxedObject.createNew("key"));
+        Object jsString = normalizeKey(Strings.fromJavaString("key"));
+        map.put(foreignString, hashKey(foreignString), "val");
+        assertEquals("val", map.get(foreignString, hashKey(foreignString)));
+        assertEquals("val", map.get(jsString, hashKey(jsString)));
+
+        // foreign null
+        Object foreignNull = normalizeKey(new ForeignNull());
+        Object jsNull = normalizeKey(Null.instance);
+        map.put(foreignNull, hashKey(foreignNull), "nil");
+        assertEquals("nil", map.get(foreignNull, hashKey(foreignNull)));
+        assertEquals("nil", map.get(jsNull, hashKey(jsNull)));
     }
 
     @Test
@@ -1001,6 +1066,30 @@ public class JSHashMapTest {
 
         ModelCursor copy() {
             return new ModelCursor(map, current, done);
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class ForeignIdentityKey implements TruffleObject {
+        private final int identityHashCode;
+
+        ForeignIdentityKey(int identityHashCode) {
+            this.identityHashCode = identityHashCode;
+        }
+
+        @ExportMessage
+        TriState isIdenticalOrUndefined(Object other) {
+            return TriState.valueOf(other instanceof ForeignIdentityKey otherKey && identityHashCode == otherKey.identityHashCode);
+        }
+
+        @ExportMessage
+        int identityHashCode() {
+            return identityHashCode;
+        }
+
+        @Override
+        public int hashCode() {
+            return 0;
         }
     }
 
