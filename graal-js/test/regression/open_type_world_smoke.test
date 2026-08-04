@@ -44,8 +44,9 @@
 <         -cp "$classes:$polyglot_cp" \
 <         -o open-type-world-smoke \
 <         -H:+UnlockExperimentalVMOptions \
-<         -H:-ClosedTypeWorld \
 <         -H:+TruffleCheckBlockListMethods \
+<         -H:-ClosedTypeWorld \
+<         -H:-PrintRestrictHeapAccessWarnings \
 <         OpenTypeWorldSmokeTest >"${TMP_DIR}/native-image.log" 2>&1
 < ) || { cat "${TMP_DIR}/native-image.log"; exit 1; }
 < 
