@@ -51,6 +51,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
@@ -79,10 +80,10 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.ThrowTypeErrorRootNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
+import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.promise.BuiltinPromiseRejectionTracker;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
-import com.oracle.truffle.js.runtime.builtins.Builtin;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
@@ -370,6 +371,7 @@ public class JSContext {
         AsyncContextSnapshotWrap,
         Crypto,
         Empty,
+        CallSite,
         IteratorConcat,
         IteratorMap,
         IteratorFilter,
@@ -437,6 +439,7 @@ public class JSContext {
     }
 
     @CompilationFinal(dimensions = 1) private final JSFunctionData[] builtinFunctionData;
+    @CompilationFinal(dimensions = 1) private final JSFunctionData[] builtinFunctionDataTable;
 
     final JSFunctionData throwTypeErrorFunctionData;
     final JSFunctionData throwTypeErrorRestrictedPropertyFunctionData;
@@ -462,9 +465,6 @@ public class JSContext {
     private final StableContextOptionValue<Boolean> optionV8CompatibilityMode;
     private final StableContextOptionValue<Boolean> optionDirectByteBuffer;
     private final StableContextOptionValue<Long> optionTimerResolution;
-
-    private final Map<Builtin, JSFunctionData> builtinFunctionDataMap = new ConcurrentHashMap<>();
-    private final Map<TruffleString, JSFunctionData> namedEmptyFunctionsDataMap = new ConcurrentHashMap<>();
 
     private final JSPrototypeData nullPrototypeData = new JSPrototypeData();
     private final JSPrototypeData inObjectPrototypeData = new JSPrototypeData();
@@ -600,11 +600,16 @@ public class JSContext {
 
     private final JSWebAssemblyInstance.Cache webAssemblyCache;
 
+    @SuppressFBWarnings(value = "UWF_UNWRITTEN_FIELD", justification = "written via VarHandle compareAndSet") //
+    private volatile Map<JSBuiltin, JSFunctionData> builtinFunctionDataFallback;
+    private static final VarHandle builtinFunctionDataFallbackVarHandle;
+
     static {
         MethodHandles.Lookup lookup = MethodHandles.lookup();
         try {
             notConstructibleCallTargetVarHandle = lookup.findVarHandle(JSContext.class, "notConstructibleCallTargetCache", CallTarget.class);
             generatorNotConstructibleCallTargetVarHandle = lookup.findVarHandle(JSContext.class, "generatorNotConstructibleCallTargetCache", CallTarget.class);
+            builtinFunctionDataFallbackVarHandle = lookup.findVarHandle(JSContext.class, "builtinFunctionDataFallback", Map.class);
         } catch (NoSuchFieldException | IllegalAccessException e) {
             throw Errors.shouldNotReachHere(e);
         }
@@ -659,6 +664,7 @@ public class JSContext {
         this.symbolIteratorThisGetterFunctionData = JSFunctionData.createCallOnly(this, createReadFrameThisCallTarget(lang, SYMBOL_ITERATOR_NAME), 0, SYMBOL_ITERATOR_NAME);
 
         this.builtinFunctionData = new JSFunctionData[BuiltinFunctionKey.values().length];
+        this.builtinFunctionDataTable = new JSFunctionData[JSBuiltin.BUILTIN_FUNCTION_DATA_TABLE_SIZE];
 
         this.timeProfiler = languageOptions.profileTime() ? new TimeProfiler() : null;
 
@@ -1468,10 +1474,6 @@ public class JSContext {
         return emptyFunctionCallTarget;
     }
 
-    public JSFunctionData getNamedEmptyFunctionData(TruffleString name) {
-        return namedEmptyFunctionsDataMap.computeIfAbsent(name, k -> JSFunctionData.createCallOnly(this, emptyFunctionCallTarget, 0, name));
-    }
-
     /** CallTarget for an empty function that returns undefined. */
     private static CallTarget createEmptyFunctionCallTarget(JavaScriptLanguage lang) {
         return new JavaScriptRootNode(lang) {
@@ -1836,14 +1838,43 @@ public class JSContext {
         return Objects.requireNonNull(functionData);
     }
 
-    public final JSFunctionData getBuiltinFunctionData(Builtin key) {
+    public final JSFunctionData getBuiltinFunctionData(JSBuiltin builtin) {
         CompilerAsserts.neverPartOfCompilation();
-        return builtinFunctionDataMap.get(key);
+        int index = builtin.getIndex();
+        if (index < builtinFunctionDataTable.length) {
+            return builtinFunctionDataTable[index];
+        }
+        return getBuiltinFunctionDataFallback(builtin);
     }
 
-    public final void putBuiltinFunctionData(Builtin key, JSFunctionData functionData) {
+    private JSFunctionData getBuiltinFunctionDataFallback(JSBuiltin builtin) {
+        var fallbackMap = builtinFunctionDataFallback;
+        return fallbackMap == null ? null : fallbackMap.get(builtin);
+    }
+
+    public final JSFunctionData getOrInsertBuiltinFunctionData(JSBuiltin builtin, JSFunctionData newFunctionData) {
         CompilerAsserts.neverPartOfCompilation();
-        builtinFunctionDataMap.putIfAbsent(key, functionData);
+        int index = builtin.getIndex();
+        if (index < builtinFunctionDataTable.length) {
+            JSFunctionData functionData = newFunctionData;
+            if (!FUNCTION_DATA_ARRAY_VAR_HANDLE.compareAndSet(builtinFunctionDataTable, index, (JSFunctionData) null, functionData)) {
+                functionData = (JSFunctionData) FUNCTION_DATA_ARRAY_VAR_HANDLE.getVolatile(builtinFunctionDataTable, index);
+            }
+            return Objects.requireNonNull(functionData);
+        }
+        return getOrInsertBuiltinFunctionDataFallback(builtin, newFunctionData);
+    }
+
+    private JSFunctionData getOrInsertBuiltinFunctionDataFallback(JSBuiltin builtin, JSFunctionData newFunctionData) {
+        var fallbackMap = builtinFunctionDataFallback;
+        if (fallbackMap == null) {
+            fallbackMap = new ConcurrentHashMap<>();
+            if (!builtinFunctionDataFallbackVarHandle.compareAndSet(this, (ConcurrentMap<JSBuiltin, JSFunctionData>) null, fallbackMap)) {
+                fallbackMap = builtinFunctionDataFallback;
+            }
+        }
+        JSFunctionData functionData = fallbackMap.putIfAbsent(builtin, newFunctionData);
+        return functionData == null ? newFunctionData : functionData;
     }
 
     public final boolean neverCreatedChildRealms() {
