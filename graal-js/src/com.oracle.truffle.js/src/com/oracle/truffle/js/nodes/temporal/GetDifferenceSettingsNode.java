@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.temporal.JSTemporalBuiltinOperation;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
@@ -94,7 +95,7 @@ public abstract class GetDifferenceSettingsNode extends JavaScriptBaseNode {
         if (largestUnit == Unit.UNSET) {
             largestUnit = Unit.AUTO;
         }
-        if (disallowedUnits != null && disallowedUnits.contains(largestUnit)) {
+        if (disallowedUnits != null && Boundaries.enumSetContains(disallowedUnits, largestUnit)) {
             errorBranch.enter(this);
             throw TemporalErrors.createRangeErrorDisallowedUnit(this, largestUnit);
         }
@@ -105,7 +106,7 @@ public abstract class GetDifferenceSettingsNode extends JavaScriptBaseNode {
         if (smallestUnit == Unit.UNSET) {
             smallestUnit = fallbackSmallestUnit;
         }
-        if (disallowedUnits != null && disallowedUnits.contains(smallestUnit)) {
+        if (disallowedUnits != null && Boundaries.enumSetContains(disallowedUnits, smallestUnit)) {
             errorBranch.enter(this);
             throw TemporalErrors.createRangeErrorDisallowedUnit(this, smallestUnit);
         }

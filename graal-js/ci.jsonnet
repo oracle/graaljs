@@ -120,10 +120,11 @@ local ci = import '../ci.jsonnet';
 
   local auxEngineCache = {
     suiteimports+:: ['substratevm', 'tools'],
-    nativeimages+:: ['lib:jsvm'],
+    nativeimages+:: ['lib:jsvm', 'native-image'],
     graalvmtests:: '../../graalvm-tests',
     run+: [
-      ['mx', 'build', '--dependencies=GRAALJS_JVM_STANDALONE,GRAALJS_NATIVE_STANDALONE'],
+      ['mx', 'build', '--dependencies=GRAALVM,GRAALJS_JVM_STANDALONE,GRAALJS_NATIVE_STANDALONE'],
+      ['set-export', 'NATIVE_IMAGE_HOME', ['mx', '--quiet', '--no-warning', 'graalvm-home']],
       ['python', self.graalvmtests + '/test.py', '-g', ['mx', '--quiet', '--no-warning', 'paths', '--output', 'GRAALJS_NATIVE_STANDALONE'], '--type=js-native', '--print-revisions', '--keep-on-error', 'test/aux-engine-cache', 'test/repl', 'test/regression', 'test/smoketest'],
       ['python', self.graalvmtests + '/test.py', '-g', ['mx', '--quiet', '--no-warning', 'paths', '--output', 'GRAALJS_JVM_STANDALONE'], '--type=js-jvm', '--print-revisions', '--keep-on-error', 'test/repl', 'test/regression', 'test/smoketest'],
     ],

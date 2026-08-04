@@ -1,0 +1,56 @@
+#/*
+# * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
+# * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+# *
+# * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
+# */
+#
+# Open type world smoke test for building a JavaScript embedding native image.
+#
+> if [ "$OS" = "linux" -a "$MODE" = "native" ]
+> cat > ${TMP_DIR}/open_type_world_smoke.sh
+< #!/bin/sh
+< set -eu
+< 
+< native_image_home=${NATIVE_IMAGE_HOME:-$GRAALVM_HOME}
+< 
+< if [ ! -x "$native_image_home/bin/native-image" ]; then
+<     echo "Missing native-image in $native_image_home/bin" >&2
+<     exit 1
+< fi
+< if [ ! -x "$native_image_home/bin/javac" ]; then
+<     echo "Missing javac in $native_image_home/bin" >&2
+<     exit 1
+< fi
+< if ! command -v mx >/dev/null 2>&1; then
+<     echo "Missing mx on PATH" >&2
+<     exit 1
+< fi
+< 
+< suite_dir=$(cd "$TEST_DIR/../.." && pwd)
+< polyglot_cp=$(mx -p "$suite_dir" classpath GRAALJS truffle:TRUFFLE_RUNTIME)
+< if [ -z "$polyglot_cp" ]; then
+<     echo "mx classpath returned an empty classpath" >&2
+<     exit 1
+< fi
+< 
+< classes="${TMP_DIR}/classes"
+< mkdir -p "$classes"
+< 
+< "$native_image_home/bin/javac" -cp "$polyglot_cp" -d "$classes" "$TEST_DIR/OpenTypeWorldSmokeTest.java"
+< (
+<     cd "${TMP_DIR}"
+<     "$native_image_home/bin/native-image" \
+<         -cp "$classes:$polyglot_cp" \
+<         -o open-type-world-smoke \
+<         -H:+UnlockExperimentalVMOptions \
+<         -H:+TruffleCheckBlockListMethods \
+<         -H:-ClosedTypeWorld \
+<         -H:-PrintRestrictHeapAccessWarnings \
+<         OpenTypeWorldSmokeTest >"${TMP_DIR}/native-image.log" 2>&1
+< ) || { cat "${TMP_DIR}/native-image.log"; exit 1; }
+< 
+< "${TMP_DIR}/open-type-world-smoke"
+>[0r] /bin/sh ${TMP_DIR}/open_type_world_smoke.sh
+(?s).*done.*
+> fi

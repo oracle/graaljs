@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,8 +42,9 @@ package com.oracle.truffle.js.runtime.builtins.wasm;
 
 import org.graalvm.collections.EconomicMap;
 
-import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyMemoryPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.Boundaries;
@@ -149,6 +150,7 @@ public class JSWebAssemblyMemory extends JSNonProxy implements JSConstructorFact
     }
 
     // Invoked when the memory is resized
+    @TruffleBoundary
     public static void resetBuffers(JSRealm realm, Object wasmMemory) {
         Object embedderData = JSWebAssembly.getEmbedderData(realm, wasmMemory);
         if (embedderData instanceof JSWebAssemblyMemoryObject webAssemblyMemory) {
