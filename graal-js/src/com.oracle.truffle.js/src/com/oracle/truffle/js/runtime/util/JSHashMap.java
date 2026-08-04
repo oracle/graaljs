@@ -156,13 +156,13 @@ public final class JSHashMap {
         Node node = new Node(hash, key, value, tail);
         if (table != null) {
             int bucketIndex = hash & (table.length - 1);
-            node.nextBucket = table[bucketIndex];
+            node.nextInBucket = table[bucketIndex];
             table[bucketIndex] = node;
         }
         if (tail == null) {
             head = node;
         } else {
-            tail.nextOrder = node;
+            tail.nextInOrder = node;
         }
         tail = node;
         size++;
@@ -197,9 +197,9 @@ public final class JSHashMap {
 
     private void rebuildTable(Node[] newTable) {
         int mask = newTable.length - 1;
-        for (Node node = head; node != null; node = node.nextOrder) {
+        for (Node node = head; node != null; node = node.nextInOrder) {
             int bucketIndex = node.hash & mask;
-            node.nextBucket = newTable[bucketIndex];
+            node.nextInBucket = newTable[bucketIndex];
             newTable[bucketIndex] = node;
         }
         table = newTable;
@@ -247,13 +247,15 @@ public final class JSHashMap {
         unlinkOrder(node);
         node.key = null;
         node.value = null;
-        node.nextBucket = null;
-        node.nextOrder = null;
+        node.nextInBucket = null;
+        node.nextInOrder = null;
+        // Intentionally retain prevInOrder so cursors can recover from a removed current entry.
+
         size = newSize;
         if (table != null && size <= LINEAR_LOOKUP_THRESHOLD) {
             table = null;
-            for (Node current = head; current != null; current = current.nextOrder) {
-                current.nextBucket = null;
+            for (Node current = head; current != null; current = current.nextInOrder) {
+                current.nextInBucket = null;
             }
         } else if (smallerTable != null) {
             rebuildTable(smallerTable);
@@ -268,27 +270,27 @@ public final class JSHashMap {
         while (node != removed) {
             assert node != null;
             previous = node;
-            node = node.nextBucket;
+            node = node.nextInBucket;
         }
         if (previous == null) {
-            table[bucketIndex] = removed.nextBucket;
+            table[bucketIndex] = removed.nextInBucket;
         } else {
-            previous.nextBucket = removed.nextBucket;
+            previous.nextInBucket = removed.nextInBucket;
         }
     }
 
     private void unlinkOrder(Node removed) {
-        Node previous = removed.prevOrder;
-        Node next = removed.nextOrder;
+        Node previous = removed.prevInOrder;
+        Node next = removed.nextInOrder;
         if (previous == null) {
             head = next;
         } else {
-            previous.nextOrder = next;
+            previous.nextInOrder = next;
         }
         if (next == null) {
             tail = previous;
         } else {
-            next.prevOrder = previous;
+            next.prevInOrder = previous;
         }
     }
 
@@ -303,11 +305,11 @@ public final class JSHashMap {
         tail = null;
         size = 0;
         for (Node node = oldHead; node != null;) {
-            Node next = node.nextOrder;
+            Node next = node.nextInOrder;
             node.key = null;
             node.value = null;
-            node.nextBucket = null;
-            node.nextOrder = null;
+            node.nextInBucket = null;
+            node.nextInOrder = null;
             node = next;
         }
     }
@@ -320,7 +322,7 @@ public final class JSHashMap {
         }
         StringBuilder sb = new StringBuilder("{");
         String separator = "";
-        for (Node node = head; node != null; node = node.nextOrder) {
+        for (Node node = head; node != null; node = node.nextInOrder) {
             sb.append(separator).append(node.key).append('=').append(node.value);
             separator = ", ";
         }
@@ -338,16 +340,16 @@ public final class JSHashMap {
             result.table = new Node[tableCapacityForSize(size)];
         }
         Node previous = null;
-        for (Node node = head; node != null; node = node.nextOrder) {
+        for (Node node = head; node != null; node = node.nextInOrder) {
             Node copy = new Node(node.hash, node.key, node.value, previous);
             if (previous == null) {
                 result.head = copy;
             } else {
-                previous.nextOrder = copy;
+                previous.nextInOrder = copy;
             }
             if (result.table != null) {
                 int bucketIndex = copy.hash & (result.table.length - 1);
-                copy.nextBucket = result.table[bucketIndex];
+                copy.nextInBucket = result.table[bucketIndex];
                 result.table[bucketIndex] = copy;
             }
             previous = copy;
@@ -369,7 +371,7 @@ public final class JSHashMap {
         if (table == null) {
             return findLinear(key, hash);
         }
-        for (Node node = table[hash & (table.length - 1)]; node != null; node = node.nextBucket) {
+        for (Node node = table[hash & (table.length - 1)]; node != null; node = node.nextInBucket) {
             if (node.hash == hash && compareKeys(key, node.key)) {
                 return node;
             }
@@ -378,7 +380,7 @@ public final class JSHashMap {
     }
 
     private Node findLinear(Object key, int hash) {
-        for (Node node = head; node != null; node = node.nextOrder) {
+        for (Node node = head; node != null; node = node.nextInOrder) {
             if (node.hash == hash && compareKeys(key, node.key)) {
                 return node;
             }
@@ -406,15 +408,15 @@ public final class JSHashMap {
         private final int hash;
         private Object key;
         private Object value;
-        private Node nextBucket;
-        private Node prevOrder;
-        private Node nextOrder;
+        private Node nextInBucket;
+        private Node prevInOrder;
+        private Node nextInOrder;
 
-        private Node(int hash, Object key, Object value, Node prevOrder) {
+        private Node(int hash, Object key, Object value, Node prevInOrder) {
             this.hash = hash;
             this.key = key;
             this.value = value;
-            this.prevOrder = prevOrder;
+            this.prevInOrder = prevInOrder;
         }
 
         @Override
@@ -447,10 +449,10 @@ public final class JSHashMap {
                 next = owner.head;
             } else {
                 Node rewound = current;
-                while (rewound.key == null && rewound.prevOrder != null) {
-                    rewound = rewound.prevOrder;
+                while (rewound.key == null && rewound.prevInOrder != null) {
+                    rewound = rewound.prevInOrder;
                 }
-                next = rewound.key == null ? owner.head : rewound.nextOrder;
+                next = rewound.key == null ? owner.head : rewound.nextInOrder;
             }
             if (next == null) {
                 current = null;
