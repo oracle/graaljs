@@ -185,6 +185,9 @@ public final class JSArrayBufferView extends JSNonProxy {
     public boolean set(JSDynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
         JSTypedArrayObject thisArray = (JSTypedArrayObject) thisObj;
         if (thisArray.getArrayBuffer().isImmutable()) {
+            if (isStrict) {
+                throw Errors.createTypeErrorImmutableBuffer();
+            }
             return false;
         }
         if (thisObj == receiver) {
