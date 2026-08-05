@@ -1043,12 +1043,10 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             JSModuleNamespaceObject store = (JSModuleNamespaceObject) receiverCheck.getStore(thisObj);
             assert store.isDeferred(); // guaranteed by shape check
             // Trigger module evaluation if needed (either not evaluated yet or errored).
-            // Not necessary for synthetic modules since their errors are thrown during load.
-            if (store.getModule() instanceof CyclicModuleRecord cyclicModule) {
-                if (cyclicModule.getStatus() != CyclicModuleRecord.Status.Evaluated || cyclicModule.getEvaluationError() != null) {
-                    evaluateDeferredBranch.enter();
-                    store.getModuleExportsList();
-                }
+            var module = store.getModule();
+            if (module.getStatus() != CyclicModuleRecord.Status.Evaluated || module.getEvaluationError() != null) {
+                evaluateDeferredBranch.enter();
+                store.getModuleExportsList();
             }
             if (property == null) {
                 return Undefined.instance;
