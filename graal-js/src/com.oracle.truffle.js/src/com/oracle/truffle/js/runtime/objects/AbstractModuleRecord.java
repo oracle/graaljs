@@ -239,7 +239,7 @@ public abstract class AbstractModuleRecord extends ScriptOrModule {
             return result;
         }
         if (this instanceof CyclicModuleRecord cyclicModule) {
-            if (cyclicModule.getStatus() == CyclicModuleRecord.Status.Evaluating || cyclicModule.getStatus() == CyclicModuleRecord.Status.Evaluated) {
+            if (cyclicModule.getStatus() == CyclicModuleRecord.Status.Evaluating || cyclicModule.isModuleSCCEvaluated()) {
                 return result;
             } else if (cyclicModule.hasTLA()) {
                 result.add(cyclicModule);

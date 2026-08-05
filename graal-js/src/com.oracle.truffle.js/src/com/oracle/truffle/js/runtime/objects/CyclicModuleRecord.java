@@ -314,6 +314,10 @@ public abstract class CyclicModuleRecord extends AbstractModuleRecord {
         return cycleRoot;
     }
 
+    public final boolean isModuleSCCEvaluated() {
+        return getCycleRoot().getStatus() == Status.Evaluated;
+    }
+
     @TruffleBoundary
     public final boolean isReadyForSyncExecution() {
         return isReadyForSyncExecution(new HashSet<>());
@@ -324,7 +328,7 @@ public abstract class CyclicModuleRecord extends AbstractModuleRecord {
         if (!seen.add(this)) {
             return true;
         }
-        if (getStatus() == Status.Evaluated) {
+        if (isModuleSCCEvaluated()) {
             return true;
         } else if (getStatus() == Status.Evaluating || getStatus() == Status.EvaluatingAsync) {
             return false;
