@@ -94,7 +94,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.SuppressFBWarnings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
@@ -676,9 +675,9 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         protected static class IteratorTakeArgs extends IteratorArgs {
-            public double remaining;
+            public long remaining;
 
-            public IteratorTakeArgs(IteratorRecord target, double limit) {
+            public IteratorTakeArgs(IteratorRecord target, long limit) {
                 super(target);
                 this.remaining = limit;
             }
@@ -693,15 +692,20 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 throw Errors.createTypeErrorNotAnObject(thisObj, this);
             }
 
-            double integerLimit;
+            long integerLimit;
             try {
                 Number numLimit = toNumberNode.executeNumber(limit);
-                if (JSRuntime.isNaN(numLimit)) {
-                    errorBranch.enter(this);
-                    throw Errors.createRangeError("NaN is not allowed", this);
+                if (numLimit instanceof Double numberLimit) {
+                    if (Double.isNaN(numberLimit)) {
+                        errorBranch.enter(this);
+                        throw Errors.createRangeError("NaN is not allowed", this);
+                    } else if (Double.isFinite(numberLimit) && numberLimit > JSRuntime.MAX_SAFE_INTEGER) {
+                        errorBranch.enter(this);
+                        throw Errors.createRangeError("limit exceeds the maximum safe integer", this);
+                    }
                 }
 
-                integerLimit = JSRuntime.doubleValue(toIntegerOrInfinityNode.executeNumber(numLimit));
+                integerLimit = JSRuntime.longValue(toIntegerOrInfinityNode.executeNumber(numLimit));
                 if (integerLimit < 0) {
                     errorBranch.enter(this);
                     throw Errors.createRangeErrorIndexNegative(this);
@@ -730,12 +734,12 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             @Specialization
             protected Object next(JSIteratorHelperObject thisObj) {
                 IteratorTakeArgs args = getArgs(thisObj);
-                double remaining = args.remaining;
+                long remaining = args.remaining;
 
                 if (remaining == 0) {
                     iteratorCloseNode.executeVoid(args.iterated);
                     return createResultDone(thisObj);
-                } else if (finiteProfile.profile(remaining != Double.POSITIVE_INFINITY)) {
+                } else if (finiteProfile.profile(remaining != Long.MAX_VALUE)) {
                     args.remaining = remaining - 1;
                 }
 
@@ -767,9 +771,9 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         protected static class IteratorDropArgs extends IteratorArgs {
-            public double remaining;
+            public long remaining;
 
-            public IteratorDropArgs(IteratorRecord target, double limit) {
+            public IteratorDropArgs(IteratorRecord target, long limit) {
                 super(target);
                 this.remaining = limit;
             }
@@ -784,15 +788,20 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 throw Errors.createTypeErrorNotAnObject(thisObj, this);
             }
 
-            double integerLimit;
+            long integerLimit;
             try {
                 Number numLimit = toNumberNode.executeNumber(limit);
-                if (JSRuntime.isNaN(numLimit)) {
-                    errorBranch.enter(this);
-                    throw Errors.createRangeError("NaN is not allowed", this);
+                if (numLimit instanceof Double numberLimit) {
+                    if (Double.isNaN(numberLimit)) {
+                        errorBranch.enter(this);
+                        throw Errors.createRangeError("NaN is not allowed", this);
+                    } else if (Double.isFinite(numberLimit) && numberLimit > JSRuntime.MAX_SAFE_INTEGER) {
+                        errorBranch.enter(this);
+                        throw Errors.createRangeError("limit exceeds the maximum safe integer", this);
+                    }
                 }
 
-                integerLimit = JSRuntime.doubleValue(toIntegerOrInfinityNode.executeNumber(numLimit));
+                integerLimit = JSRuntime.longValue(toIntegerOrInfinityNode.executeNumber(numLimit));
                 if (integerLimit < 0) {
                     errorBranch.enter(this);
                     throw Errors.createRangeErrorIndexNegative(this);
@@ -815,13 +824,12 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 super(context);
             }
 
-            @SuppressFBWarnings(value = "FL_FLOATS_AS_LOOP_COUNTERS", justification = "intentional use of floating-point variable as loop counter")
             @Specialization
             protected Object next(JSIteratorHelperObject thisObj) {
                 IteratorDropArgs args = getArgs(thisObj);
-                double remaining = args.remaining;
+                long remaining = args.remaining;
                 while (remaining > 0) {
-                    if (finiteProfile.profile(remaining != Double.POSITIVE_INFINITY)) {
+                    if (finiteProfile.profile(remaining != Long.MAX_VALUE)) {
                         args.remaining = remaining -= 1;
                     }
                     Object next = iteratorStep(args.iterated);
