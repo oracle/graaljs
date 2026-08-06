@@ -53,6 +53,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 public final class UTS35Validator {
     private static final Pattern LANGUAGE_ID_PATTERN = Pattern.compile(unicodeLanguageID());
     private static final Pattern LOCALE_ID_PATTERN = Pattern.compile(unicodeLocaleID());
+    private static final Pattern SUBDIVISION_ID_PATTERN = Pattern.compile(unicodeSubdivisionID());
 
     private UTS35Validator() {
     }
@@ -136,6 +137,12 @@ public final class UTS35Validator {
                         ((length == 3) && isDigit(region.charAt(0)) && isDigit(region.charAt(1)) && isDigit(region.charAt(2)));
     }
 
+    @TruffleBoundary
+    public static String getRegionFromUnicodeSubdivision(String subdivision) {
+        Matcher matcher = SUBDIVISION_ID_PATTERN.matcher(subdivision);
+        return matcher.matches() ? matcher.group(1) : null;
+    }
+
     public static boolean isStructurallyValidScriptSubtag(String script) {
         // unicode_script_subtag = alpha{4}
         return (script.length() == 4) && isAlpha(script.charAt(0)) && isAlpha(script.charAt(1)) && isAlpha(script.charAt(2)) && isAlpha(script.charAt(3));
@@ -187,6 +194,12 @@ public final class UTS35Validator {
     private static String unicodeRegionSubtag() {
         // unicode_region_subtag = (alpha{2} | digit{3})
         return group(alpha() + "{2}|" + digit() + "{3}");
+    }
+
+    private static String unicodeSubdivisionID() {
+        // unicode_subdivision_id = unicode_region_subtag unicode_subdivision_suffix
+        // unicode_subdivision_suffix = alphanum{1,4}
+        return group(unicodeRegionSubtag(), true) + alphanum() + "{1,4}";
     }
 
     private static String unicodeVariantSubtag() {

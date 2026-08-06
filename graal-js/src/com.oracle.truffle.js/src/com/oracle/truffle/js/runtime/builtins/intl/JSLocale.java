@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.js.runtime.builtins.intl;
 
 import java.util.Locale;
 
+import org.graalvm.shadowed.com.ibm.icu.util.Region;
 import org.graalvm.shadowed.com.ibm.icu.util.ULocale;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -61,6 +62,7 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
+import com.oracle.truffle.js.runtime.util.UTS35Validator;
 
 public final class JSLocale extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
 
@@ -122,6 +124,42 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
         @TruffleBoundary
         public ULocale getULocale() {
             return ULocale.forLocale(locale);
+        }
+
+        @TruffleBoundary
+        public ULocale getULocaleForRegionPreference() {
+            ULocale uLocale = getULocale();
+            ULocale.Builder builder = new ULocale.Builder().setLocale(uLocale);
+            String region = locale.getCountry();
+            if (region.isEmpty()) {
+                region = canonicalUnicodeSubdivisionRegion(locale, "sd");
+                if (region == null) {
+                    region = ULocale.addLikelySubtags(uLocale).getCountry();
+                    if (region.isEmpty()) {
+                        region = "001";
+                    }
+                }
+            }
+
+            String regionOverride = canonicalUnicodeSubdivisionRegion(locale, "rg");
+            if (regionOverride != null && isRegionDataAvailable(regionOverride)) {
+                region = regionOverride;
+            }
+            return builder.setRegion(region).setUnicodeLocaleKeyword("rg", null).build();
+        }
+
+        private static boolean isRegionDataAvailable(String region) {
+            return Region.getInstance(region).getType() != Region.RegionType.UNKNOWN;
+        }
+
+        @TruffleBoundary
+        private static String canonicalUnicodeSubdivisionRegion(Locale locale, String key) {
+            String subdivision = locale.getUnicodeLocaleType(key);
+            if (subdivision == null) {
+                return null;
+            }
+            String region = UTS35Validator.getRegionFromUnicodeSubdivision(subdivision);
+            return region == null ? null : ULocale.createCanonical(ULocale.forLanguageTag("und-" + region)).getCountry();
         }
 
         @TruffleBoundary
