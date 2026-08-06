@@ -55,6 +55,7 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.builtins.helper.JSCollectionsHashCodeNode;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
@@ -294,20 +295,20 @@ public class SerializedData {
 
     private void serializeMap(JSMapObject mapObject) {
         data.add(Type.Map);
-        JSHashMap map = mapObject.getMap();
-        data.add(map.size());
-        JSHashMap.Cursor cursor = map.getEntries();
+        data.add(mapObject.size());
+        JSHashMap.Cursor cursor = mapObject.getEntries();
         while (cursor.advance()) {
-            serializeValue(cursor.getKey());
-            serializeValue(cursor.getValue());
+            Object key = cursor.getKey();
+            Object value = cursor.getValue();
+            serializeValue(key);
+            serializeValue(value);
         }
     }
 
     private void serializeSet(JSSetObject setObject) {
         data.add(Type.Set);
-        JSHashMap map = setObject.getMap();
-        data.add(map.size());
-        JSHashMap.Cursor cursor = map.getEntries();
+        data.add(setObject.size());
+        JSHashMap.Cursor cursor = setObject.getEntries();
         while (cursor.advance()) {
             serializeValue(cursor.getKey());
         }
@@ -462,12 +463,11 @@ public class SerializedData {
     private static Object deserializeMap(JSRealm realm, Iterator<Object> iter, List<Object> deserialized) {
         JSMapObject mapObject = JSMap.create(realm.getContext(), realm);
         deserialized.add(mapObject);
-        JSHashMap map = mapObject.getMap();
         int size = (int) iter.next();
         for (int i = 0; i < size; i++) {
             Object key = deserializeValue(realm, iter, deserialized);
             Object value = deserializeValue(realm, iter, deserialized);
-            map.put(key, value);
+            mapObject.put(key, JSCollectionsHashCodeNode.getUncached().execute(key), value);
         }
         return mapObject;
     }
@@ -475,11 +475,10 @@ public class SerializedData {
     private static Object deserializeSet(JSRealm realm, Iterator<Object> iter, List<Object> deserialized) {
         JSSetObject setObject = JSSet.create(realm.getContext(), realm);
         deserialized.add(setObject);
-        JSHashMap map = setObject.getMap();
         int size = (int) iter.next();
         for (int i = 0; i < size; i++) {
             Object value = deserializeValue(realm, iter, deserialized);
-            map.put(value, value);
+            setObject.add(value, JSCollectionsHashCodeNode.getUncached().execute(value));
         }
         return setObject;
     }

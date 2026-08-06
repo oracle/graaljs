@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,6 +53,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.builtins.helper.JSCollectionsHashCodeNode;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
@@ -69,13 +70,41 @@ import com.oracle.truffle.js.runtime.util.JSHashMap;
 public final class JSMapObject extends JSNonProxyObject {
     private final JSHashMap map;
 
-    protected JSMapObject(Shape shape, JSDynamicObject proto, JSHashMap map) {
+    protected JSMapObject(Shape shape, JSDynamicObject proto) {
         super(shape, proto);
-        this.map = map;
+        this.map = new JSHashMap();
     }
 
-    public JSHashMap getMap() {
-        return map;
+    public int size() {
+        return map.size();
+    }
+
+    public Object getOrDefault(Object key, int hashCode, Object defaultValue) {
+        return map.getOrDefault(key, hashCode, defaultValue);
+    }
+
+    public boolean has(Object key, int hashCode) {
+        return map.has(key, hashCode);
+    }
+
+    public boolean remove(Object key, int hashCode) {
+        return map.remove(key, hashCode);
+    }
+
+    public void clear() {
+        map.clear();
+    }
+
+    public void put(Object key, int hashCode, Object value) {
+        map.put(key, hashCode, value);
+    }
+
+    public Object getOrInsert(Object key, int hashCode, Object value) {
+        return map.getOrInsert(key, hashCode, value);
+    }
+
+    public JSHashMap.Cursor getEntries() {
+        return map.getEntries();
     }
 
     @Override
@@ -91,29 +120,31 @@ public final class JSMapObject extends JSNonProxyObject {
 
     @ExportMessage
     long getHashSize() {
-        return getMap().size();
+        return size();
     }
 
     @ExportMessage
     Object getHashEntriesIterator() {
-        return new EntriesIterator(getMap().getEntries());
+        return new EntriesIterator(getEntries());
     }
 
     @ExportMessage
     boolean isHashEntryReadable(Object key,
                     @Cached @Shared ImportValueNode importKeyNode,
-                    @Cached @Shared JSCollectionsNormalizeNode normalizeKeyNode) {
+                    @Cached @Shared JSCollectionsNormalizeNode normalizeKeyNode,
+                    @Cached @Shared JSCollectionsHashCodeNode hashCodeNode) {
         Object normalizedKey = normalizeKeyNode.execute(importKeyNode.executeWithTarget(key));
-        return getMap().has(normalizedKey);
+        return has(normalizedKey, hashCodeNode.execute(normalizedKey));
     }
 
     @ExportMessage
     Object readHashValue(Object key,
                     @Cached @Shared ExportValueNode exportValueNode,
                     @Cached @Shared ImportValueNode importKeyNode,
-                    @Cached @Shared JSCollectionsNormalizeNode normalizeKeyNode) throws UnknownKeyException {
+                    @Cached @Shared JSCollectionsNormalizeNode normalizeKeyNode,
+                    @Cached @Shared JSCollectionsHashCodeNode hashCodeNode) throws UnknownKeyException {
         Object normalizedKey = normalizeKeyNode.execute(importKeyNode.executeWithTarget(key));
-        Object value = getMap().get(normalizedKey);
+        Object value = getOrDefault(normalizedKey, hashCodeNode.execute(normalizedKey), null);
         if (value == null) {
             throw UnknownKeyException.create(key);
         }
@@ -124,9 +155,10 @@ public final class JSMapObject extends JSNonProxyObject {
     Object readHashValueOrDefault(Object key, Object defaultValue,
                     @Cached @Shared ExportValueNode exportValueNode,
                     @Cached @Shared ImportValueNode importKeyNode,
-                    @Cached @Shared JSCollectionsNormalizeNode normalizeKeyNode) {
+                    @Cached @Shared JSCollectionsNormalizeNode normalizeKeyNode,
+                    @Cached @Shared JSCollectionsHashCodeNode hashCodeNode) {
         Object normalizedKey = normalizeKeyNode.execute(importKeyNode.executeWithTarget(key));
-        Object value = getMap().get(normalizedKey);
+        Object value = getOrDefault(normalizedKey, hashCodeNode.execute(normalizedKey), null);
         if (value == null) {
             return defaultValue;
         }
@@ -137,9 +169,10 @@ public final class JSMapObject extends JSNonProxyObject {
     @ExportMessage(name = "isHashEntryRemovable")
     boolean isHashEntryModifiable(Object key,
                     @Cached @Shared ImportValueNode importKeyNode,
-                    @Cached @Shared JSCollectionsNormalizeNode normalizeKeyNode) {
+                    @Cached @Shared JSCollectionsNormalizeNode normalizeKeyNode,
+                    @Cached @Shared JSCollectionsHashCodeNode hashCodeNode) {
         Object normalizedKey = normalizeKeyNode.execute(importKeyNode.executeWithTarget(key));
-        return getMap().has(normalizedKey);
+        return has(normalizedKey, hashCodeNode.execute(normalizedKey));
     }
 
     @ExportMessage
@@ -152,17 +185,19 @@ public final class JSMapObject extends JSNonProxyObject {
     void writeHashEntry(Object key, Object value,
                     @Cached @Shared ImportValueNode importKeyNode,
                     @Cached @Exclusive ImportValueNode importValueNode,
-                    @Cached @Shared JSCollectionsNormalizeNode normalizeKeyNode) {
+                    @Cached @Shared JSCollectionsNormalizeNode normalizeKeyNode,
+                    @Cached @Shared JSCollectionsHashCodeNode hashCodeNode) {
         Object normalizedKey = normalizeKeyNode.execute(importKeyNode.executeWithTarget(key));
-        getMap().put(normalizedKey, importValueNode.executeWithTarget(value));
+        put(normalizedKey, hashCodeNode.execute(normalizedKey), importValueNode.executeWithTarget(value));
     }
 
     @ExportMessage
     void removeHashEntry(Object key,
                     @Cached @Shared ImportValueNode importKeyNode,
-                    @Cached @Shared JSCollectionsNormalizeNode normalizeKeyNode) throws UnknownKeyException {
+                    @Cached @Shared JSCollectionsNormalizeNode normalizeKeyNode,
+                    @Cached @Shared JSCollectionsHashCodeNode hashCodeNode) throws UnknownKeyException {
         Object normalizedKey = normalizeKeyNode.execute(importKeyNode.executeWithTarget(key));
-        if (!getMap().remove(normalizedKey)) {
+        if (!remove(normalizedKey, hashCodeNode.execute(normalizedKey))) {
             throw UnknownKeyException.create(key);
         }
     }
@@ -173,7 +208,7 @@ public final class JSMapObject extends JSNonProxyObject {
         if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
             return Strings.concatAll(Strings.BRACKET_OPEN, getClassName(), Strings.BRACKET_CLOSE);
         } else {
-            return JSRuntime.collectionToConsoleString(this, allowSideEffects, format, getClassName(), JSMap.getInternalMap(this), depth);
+            return JSRuntime.collectionToConsoleString(this, allowSideEffects, format, getClassName(), map, depth);
         }
     }
 

@@ -476,8 +476,7 @@ public class Serializer {
 
     private void writeJSMap(JSMapObject object) {
         writeTag(SerializationTag.BEGIN_JS_MAP);
-        JSHashMap map = JSMap.getInternalMap(object);
-        JSHashMap.Cursor cursor = map.getEntries();
+        JSHashMap.Cursor cursor = object.getEntries();
         int count = 0;
         while (cursor.advance()) {
             count++;
@@ -490,8 +489,7 @@ public class Serializer {
 
     private void writeJSSet(JSSetObject object) {
         writeTag(SerializationTag.BEGIN_JS_SET);
-        JSHashMap map = JSSet.getInternalSet(object);
-        JSHashMap.Cursor cursor = map.getEntries();
+        JSHashMap.Cursor cursor = object.getEntries();
         int count = 0;
         while (cursor.advance()) {
             count++;

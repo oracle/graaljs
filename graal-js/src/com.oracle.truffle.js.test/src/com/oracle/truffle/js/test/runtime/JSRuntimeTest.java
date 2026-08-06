@@ -57,6 +57,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.builtins.helper.JSCollectionsHashCodeNode;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -308,11 +309,13 @@ public class JSRuntimeTest extends JSTest {
     @Test
     public void testSafeToStringCollections() {
         JSMapObject map = JSMap.create(testHelper.getJSContext(), testHelper.getRealm());
-        JSMap.getInternalMap(map).put("foo", "bar");
+        TruffleString key = Strings.fromJavaString("foo");
+        TruffleString value = Strings.fromJavaString("bar");
+        map.put(key, JSCollectionsHashCodeNode.getUncached().execute(key), value);
         assertEquals(Strings.constant("Map(1){\"foo\" => \"bar\"}"), JSRuntime.safeToString(map));
 
         JSSetObject set = JSSet.create(testHelper.getJSContext(), testHelper.getRealm());
-        JSSet.getInternalSet(set).put("foo", "UNUSED");
+        set.add(key, JSCollectionsHashCodeNode.getUncached().execute(key));
         assertEquals(Strings.constant("Set(1){\"foo\"}"), JSRuntime.safeToString(set));
     }
 

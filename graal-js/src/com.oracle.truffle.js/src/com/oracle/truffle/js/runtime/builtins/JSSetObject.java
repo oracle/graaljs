@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,15 +52,43 @@ import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 
 public final class JSSetObject extends JSNonProxyObject {
+    /** Dummy value to associate with a key in the backing map. */
+    private static final Object PRESENT = new Object();
+
     private final JSHashMap map;
 
-    protected JSSetObject(Shape shape, JSDynamicObject proto, JSHashMap map) {
+    protected JSSetObject(Shape shape, JSDynamicObject proto) {
         super(shape, proto);
-        this.map = map;
+        this.map = new JSHashMap();
     }
 
-    public JSHashMap getMap() {
-        return map;
+    protected JSSetObject(Shape shape, JSDynamicObject proto, JSSetObject originalSet) {
+        super(shape, proto);
+        this.map = originalSet.map.copy();
+    }
+
+    public int size() {
+        return map.size();
+    }
+
+    public boolean has(Object key, int hashCode) {
+        return map.has(key, hashCode);
+    }
+
+    public boolean remove(Object key, int hashCode) {
+        return map.remove(key, hashCode);
+    }
+
+    public void clear() {
+        map.clear();
+    }
+
+    public void add(Object key, int hashCode) {
+        map.putIfAbsent(key, hashCode, PRESENT);
+    }
+
+    public JSHashMap.Cursor getEntries() {
+        return map.getEntries();
     }
 
     @Override
@@ -74,7 +102,7 @@ public final class JSSetObject extends JSNonProxyObject {
         if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
             return Strings.concatAll(Strings.BRACKET_OPEN, getClassName(), Strings.BRACKET_CLOSE);
         } else {
-            return JSRuntime.collectionToConsoleString(this, allowSideEffects, format, getClassName(), JSSet.getInternalSet(this), depth);
+            return JSRuntime.collectionToConsoleString(this, allowSideEffects, format, getClassName(), map, depth);
         }
     }
 }

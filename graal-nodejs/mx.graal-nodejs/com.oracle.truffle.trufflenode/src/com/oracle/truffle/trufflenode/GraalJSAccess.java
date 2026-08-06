@@ -179,6 +179,8 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.builtins.helper.JSCollectionsHashCodeNode;
+import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
 import com.oracle.truffle.js.builtins.json.JSONBuiltins;
 import com.oracle.truffle.js.builtins.json.TruffleJSONParser;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -4312,18 +4314,20 @@ public final class GraalJSAccess {
 
     public void mapSet(Object set, Object key, Object value) {
         JSMapObject object = (JSMapObject) set;
-        JSMap.getInternalMap(object).put(JSSet.normalize(key), value);
+        Object normalizedKey = JSCollectionsNormalizeNode.getUncached().execute(key);
+        object.put(normalizedKey, JSCollectionsHashCodeNode.getUncached().execute(normalizedKey), value);
     }
 
     public Object mapGet(Object set, Object key) {
         JSMapObject object = (JSMapObject) set;
-        Object value = JSMap.getInternalMap(object).get(JSSet.normalize(key));
-        return JSRuntime.nullToUndefined(value);
+        Object normalizedKey = JSCollectionsNormalizeNode.getUncached().execute(key);
+        return object.getOrDefault(normalizedKey, JSCollectionsHashCodeNode.getUncached().execute(normalizedKey), Undefined.instance);
     }
 
     public boolean mapDelete(Object set, Object key) {
         JSMapObject object = (JSMapObject) set;
-        return JSMap.getInternalMap(object).remove(JSSet.normalize(key));
+        Object normalizedKey = JSCollectionsNormalizeNode.getUncached().execute(key);
+        return object.remove(normalizedKey, JSCollectionsHashCodeNode.getUncached().execute(normalizedKey));
     }
 
     public Object setNew(Object context) {
@@ -4334,7 +4338,8 @@ public final class GraalJSAccess {
 
     public void setAdd(Object set, Object key) {
         JSSetObject object = (JSSetObject) set;
-        JSSet.getInternalSet(object).put(JSSet.normalize(key), new Object());
+        Object normalizedKey = JSCollectionsNormalizeNode.getUncached().execute(key);
+        object.add(normalizedKey, JSCollectionsHashCodeNode.getUncached().execute(normalizedKey));
     }
 
     public long bigIntInt64Value(Object value) {

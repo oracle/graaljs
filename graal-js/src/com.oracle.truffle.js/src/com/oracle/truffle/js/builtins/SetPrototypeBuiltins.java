@@ -59,6 +59,7 @@ import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetIsSuperse
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetSymmetricDifferenceNodeGen;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetUnionNodeGen;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.SetGetSizeNodeGen;
+import com.oracle.truffle.js.builtins.helper.JSCollectionsHashCodeNode;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNodeGen;
 import com.oracle.truffle.js.nodes.access.GetIteratorFromMethodNode;
@@ -201,10 +202,8 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
     }
 
     public abstract static class JSSetOperation extends JSBuiltinNode {
-        /** Dummy value to associate with a key in the backing map. */
-        protected static final Object PRESENT = new Object();
-
         @Child private JSCollectionsNormalizeNode normalizeNode;
+        @Child private JSCollectionsHashCodeNode hashCodeNode;
 
         public JSSetOperation(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -216,6 +215,14 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                 normalizeNode = insert(JSCollectionsNormalizeNodeGen.create());
             }
             return normalizeNode.execute(value);
+        }
+
+        protected int hashCode(Object key) {
+            if (hashCodeNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                hashCodeNode = insert(JSCollectionsHashCodeNode.create());
+            }
+            return hashCodeNode.execute(key);
         }
     }
 
@@ -230,7 +237,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
 
         @Specialization
         protected static JSDynamicObject clear(JSSetObject thisObj) {
-            JSSet.getInternalSet(thisObj).clear();
+            thisObj.clear();
             return Undefined.instance;
         }
 
@@ -252,7 +259,8 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         @Specialization
         protected boolean delete(JSSetObject thisObj, Object key) {
             Object normalizedKey = normalize(key);
-            return JSSet.getInternalSet(thisObj).remove(normalizedKey);
+            int hashCode = hashCode(normalizedKey);
+            return thisObj.remove(normalizedKey, hashCode);
         }
 
         @SuppressWarnings("unused")
@@ -274,7 +282,8 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         @Specialization
         protected JSDynamicObject add(JSSetObject thisObj, Object key) {
             Object normalizedKey = normalize(key);
-            JSSet.getInternalSet(thisObj).put(normalizedKey, PRESENT);
+            int hashCode = hashCode(normalizedKey);
+            thisObj.add(normalizedKey, hashCode);
             return thisObj;
         }
 
@@ -297,7 +306,8 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         @Specialization
         protected boolean has(JSSetObject thisObj, Object key) {
             Object normalizedKey = normalize(key);
-            return JSSet.getInternalSet(thisObj).has(normalizedKey);
+            int hashCode = hashCode(normalizedKey);
+            return thisObj.has(normalizedKey, hashCode);
         }
 
         @SuppressWarnings("unused")
@@ -324,12 +334,12 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
             iteratorCloseNode = IteratorCloseNode.create(context);
         }
 
-        protected Object call(Object function, Object target, Object... userArguments) {
+        protected Object call(Object function, Object target, Object element) {
             if (callFunctionNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 callFunctionNode = insert(JSFunctionCallNode.createCall());
             }
-            return callFunctionNode.executeCall(JSArguments.create(target, function, userArguments));
+            return callFunctionNode.executeCall(JSArguments.createOneArg(target, function, element));
         }
 
     }
@@ -349,19 +359,17 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                         @Cached GetIteratorFromMethodNode getIteratorFromMethodNode) {
             SetRecord otherRec = getSetRecordNode.execute(other);
             IteratorRecord keysIter = getIteratorFromMethodNode.execute(this, otherRec.set(), otherRec.keys());
-            JSHashMap resultSetData = set.getMap().copy();
+            JSSetObject resultSet = JSSet.create(getContext(), JSRealm.get(this), set);
             while (true) {
                 Object next = iteratorStepNode.execute(keysIter);
                 if (next == Boolean.FALSE) {
                     break;
                 }
                 Object nextValue = normalize(iteratorValueNode.execute(next));
-                if (!resultSetData.has(nextValue)) {
-                    resultSetData.put(nextValue, PRESENT);
-                }
+                int hashCode = hashCode(nextValue);
+                resultSet.add(nextValue, hashCode);
             }
-            JSSetObject result = JSSet.create(getContext(), JSRealm.get(this), resultSetData);
-            return result;
+            return resultSet;
         }
 
         @SuppressWarnings("unused")
@@ -387,18 +395,17 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                         @Cached GetIteratorFromMethodNode getIteratorFromMethodNode,
                         @Cached InlinedBranchProfile thisSetSmallerProfile) {
             SetRecord otherRec = getSetRecordNode.execute(other);
-            JSHashMap resultSetData = new JSHashMap();
-            JSHashMap thisSetData = set.getMap();
-            int thisSize = thisSetData.size();
+            JSSetObject resultSet = JSSet.create(getContext(), JSRealm.get(this));
+            int thisSize = set.size();
             if (thisSize <= otherRec.size()) {
                 thisSetSmallerProfile.enter(this);
-                JSHashMap.Cursor cursor = thisSetData.getEntries();
+                JSHashMap.Cursor cursor = set.getEntries();
                 while (cursor.advance()) {
                     Object e = cursor.getKey();
                     Object inOtherObj = call(otherRec.has(), otherRec.set(), e);
                     boolean inOther = toBooleanNode.executeBoolean(this, inOtherObj);
-                    if (inOther && !resultSetData.has(e)) {
-                        resultSetData.put(e, PRESENT);
+                    if (inOther) {
+                        resultSet.add(e, hashCode(e));
                     }
                 }
             } else {
@@ -409,15 +416,14 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                         break;
                     }
                     Object nextValue = normalize(iteratorValueNode.execute(next));
-                    boolean alreadyInResult = resultSetData.has(nextValue);
-                    boolean inThis = thisSetData.has(nextValue);
-                    if (!alreadyInResult && inThis) {
-                        resultSetData.put(nextValue, PRESENT);
+                    int hashCode = hashCode(nextValue);
+                    boolean inThis = set.has(nextValue, hashCode);
+                    if (inThis) {
+                        resultSet.add(nextValue, hashCode);
                     }
                 }
             }
-            JSSetObject result = JSSet.create(getContext(), JSRealm.get(this), resultSetData);
-            return result;
+            return resultSet;
         }
 
         @SuppressWarnings("unused")
@@ -443,18 +449,17 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                         @Cached GetIteratorFromMethodNode getIteratorFromMethodNode,
                         @Cached InlinedBranchProfile thisSetSmallerProfile) {
             SetRecord otherRec = getSetRecordNode.execute(other);
-            JSHashMap thisSetData = set.getMap();
-            JSHashMap resultSetData = thisSetData.copy();
-            int thisSize = thisSetData.size();
+            JSSetObject resultSet = JSSet.create(getContext(), JSRealm.get(this), set);
+            int thisSize = set.size();
             if (thisSize <= otherRec.size()) {
                 thisSetSmallerProfile.enter(this);
-                JSHashMap.Cursor cursor = resultSetData.getEntries();
+                JSHashMap.Cursor cursor = resultSet.getEntries();
                 while (cursor.advance()) {
                     Object e = cursor.getKey();
                     Object inOtherObj = call(otherRec.has(), otherRec.set(), e);
                     boolean inOther = toBooleanNode.executeBoolean(this, inOtherObj);
                     if (inOther) {
-                        resultSetData.remove(e);
+                        resultSet.remove(e, hashCode(e));
                     }
                 }
             } else {
@@ -465,11 +470,11 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                         break;
                     }
                     Object nextValue = normalize(iteratorValueNode.execute(next));
-                    resultSetData.remove(nextValue);
+                    int hashCode = hashCode(nextValue);
+                    resultSet.remove(nextValue, hashCode);
                 }
             }
-            JSSetObject result = JSSet.create(getContext(), JSRealm.get(this), resultSetData);
-            return result;
+            return resultSet;
         }
 
         @SuppressWarnings("unused")
@@ -494,27 +499,21 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                         @Cached GetIteratorFromMethodNode getIteratorFromMethodNode) {
             SetRecord otherRec = getSetRecordNode.execute(other);
             IteratorRecord keysIter = getIteratorFromMethodNode.execute(this, otherRec.set(), otherRec.keys());
-            JSHashMap thisSetData = set.getMap();
-            JSHashMap resultSetData = thisSetData.copy();
+            JSSetObject resultSet = JSSet.create(getContext(), JSRealm.get(this), set);
             while (true) {
                 Object next = iteratorStepNode.execute(keysIter);
                 if (next == Boolean.FALSE) {
                     break;
                 }
                 Object nextValue = normalize(iteratorValueNode.execute(next));
-                boolean inResult = resultSetData.has(nextValue);
-                if (thisSetData.has(nextValue)) {
-                    if (inResult) {
-                        resultSetData.remove(nextValue);
-                    }
+                int hashCode = hashCode(nextValue);
+                if (set.has(nextValue, hashCode)) {
+                    resultSet.remove(nextValue, hashCode);
                 } else {
-                    if (!inResult) {
-                        resultSetData.put(nextValue, PRESENT);
-                    }
+                    resultSet.add(nextValue, hashCode);
                 }
             }
-            JSSetObject result = JSSet.create(getContext(), JSRealm.get(this), resultSetData);
-            return result;
+            return resultSet;
         }
 
         @SuppressWarnings("unused")
@@ -538,12 +537,11 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                         @Cached("create(getContext())") GetSetRecordNode getSetRecordNode,
                         @Cached(inline = true) JSToBooleanNode toBooleanNode) {
             SetRecord otherRec = getSetRecordNode.execute(other);
-            JSHashMap thisSetData = set.getMap();
-            int thisSize = thisSetData.size();
+            int thisSize = set.size();
             if (thisSize > otherRec.size()) {
                 return false;
             }
-            JSHashMap.Cursor cursor = thisSetData.getEntries();
+            JSHashMap.Cursor cursor = set.getEntries();
             while (cursor.advance()) {
                 Object e = cursor.getKey();
                 boolean inOther = toBooleanNode.executeBoolean(this, call(otherRec.has(), otherRec.set(), e));
@@ -575,8 +573,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                         @Cached("create(getContext())") GetSetRecordNode getSetRecordNode,
                         @Cached GetIteratorFromMethodNode getIteratorFromMethodNode) {
             SetRecord otherRec = getSetRecordNode.execute(other);
-            JSHashMap thisSetData = set.getMap();
-            int thisSize = thisSetData.size();
+            int thisSize = set.size();
             if (thisSize < otherRec.size()) {
                 return false;
             }
@@ -587,7 +584,8 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                     break;
                 }
                 Object nextValue = normalize(iteratorValueNode.execute(next));
-                if (!thisSetData.has(nextValue)) {
+                int hashCode = hashCode(nextValue);
+                if (!set.has(nextValue, hashCode)) {
                     iteratorCloseNode.executeVoid(keysIter);
                     return false;
                 }
@@ -618,11 +616,10 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                         @Cached GetIteratorFromMethodNode getIteratorFromMethodNode,
                         @Cached InlinedBranchProfile thisSetSmallerProfile) {
             SetRecord otherRec = getSetRecordNode.execute(other);
-            JSHashMap thisSetData = set.getMap();
-            int thisSize = thisSetData.size();
+            int thisSize = set.size();
             if (thisSize <= otherRec.size()) {
                 thisSetSmallerProfile.enter(this);
-                JSHashMap.Cursor cursor = thisSetData.getEntries();
+                JSHashMap.Cursor cursor = set.getEntries();
                 while (cursor.advance()) {
                     Object e = cursor.getKey();
                     boolean inOther = toBooleanNode.executeBoolean(this, call(otherRec.has(), otherRec.set(), e));
@@ -638,7 +635,8 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                         break;
                     }
                     Object nextValue = normalize(iteratorValueNode.execute(next));
-                    if (thisSetData.has(nextValue)) {
+                    int hashCode = hashCode(nextValue);
+                    if (set.has(nextValue, hashCode)) {
                         iteratorCloseNode.executeVoid(keysIter);
                         return false;
                     }
@@ -664,8 +662,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         protected Object forEachFunction(JSSetObject thisObj, Object callback, Object thisArg,
                         @Cached @Shared @SuppressWarnings("unused") IsCallableNode isCallable,
                         @Cached("createCall()") JSFunctionCallNode callNode) {
-            JSHashMap map = JSSet.getInternalSet(thisObj);
-            JSHashMap.Cursor cursor = map.getEntries();
+            JSHashMap.Cursor cursor = thisObj.getEntries();
             while (cursor.advance()) {
                 Object key = cursor.getKey();
                 callNode.executeCall(JSArguments.create(thisArg, callback, new Object[]{key, key, thisObj}));
@@ -698,7 +695,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
 
         @Specialization
         protected static int doSet(JSSetObject thisObj) {
-            return JSSet.getSetSize(thisObj);
+            return thisObj.size();
         }
 
         @SuppressWarnings("unused")
@@ -718,7 +715,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
 
         @Specialization
         protected final JSObject doSet(JSSetObject set) {
-            return JSSetIterator.create(getContext(), getRealm(), set, JSSet.getInternalSet(set).getEntries(), iterationKind);
+            return JSSetIterator.create(getContext(), getRealm(), set, set.getEntries(), iterationKind);
         }
 
         @SuppressWarnings("unused")

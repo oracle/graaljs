@@ -1099,6 +1099,7 @@ public final class JSRuntime {
             JSHashMap.Cursor cursor = map.getEntries();
             while (cursor.advance()) {
                 Object key = cursor.getKey();
+                Object value = isMap ? cursor.getValue() : null;
                 if (key != null) {
                     if (!isFirst) {
                         Strings.builderAppend(sb, Strings.COMMA_SPC);
@@ -1106,7 +1107,6 @@ public final class JSRuntime {
                     Strings.builderAppend(sb, toDisplayStringInner(key, allowSideEffects, format, depth, obj));
                     if (isMap) {
                         Strings.builderAppend(sb, Strings.BIG_ARROW_SPACES);
-                        Object value = cursor.getValue();
                         Strings.builderAppend(sb, toDisplayStringInner(value, allowSideEffects, format, depth, obj));
                     }
                     isFirst = false;
