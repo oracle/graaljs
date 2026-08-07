@@ -517,7 +517,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @TruffleBoundary
         @Specialization
         public Object doLocale(JSLocaleObject localeObject) {
-            ULocale locale = localeObject.getInternalState().getULocale();
+            ULocale locale = localeObject.getInternalState().getULocaleForRegionPreference();
             String calendar = locale.getUnicodeLocaleType("ca");
             String[] calendars;
             if (calendar == null) {
@@ -571,7 +571,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @TruffleBoundary
         @Specialization
         public Object doLocale(JSLocaleObject localeObject) {
-            ULocale locale = localeObject.getInternalState().getULocale();
+            ULocale locale = localeObject.getInternalState().getULocaleForRegionPreference();
             String hourCycle = locale.getUnicodeLocaleType("hc");
             if (hourCycle == null) {
                 DateTimePatternGenerator patternGenerator = DateTimePatternGenerator.getInstance(locale);
@@ -724,7 +724,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @TruffleBoundary
         private static Calendar.WeekData weekData(JSLocaleObject localeObject) {
-            ULocale locale = localeObject.getInternalState().getULocale();
+            ULocale locale = localeObject.getInternalState().getULocaleForRegionPreference();
             return Calendar.getInstance(locale).getWeekData();
         }
 

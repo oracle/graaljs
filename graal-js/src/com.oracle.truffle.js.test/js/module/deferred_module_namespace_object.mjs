@@ -9,6 +9,7 @@
  * Tests deferred module namespace object prototype property lookup.
  *
  * @option ecmascript-version=staging
+ * @option json-modules=true
  */
 
 load("../assert.js");
@@ -39,3 +40,9 @@ assertFalse('then' in defer3);
 assertFalse(globalThis.evaluated);
 assertFalse('doesNotExist' in defer3);
 assertTrue(globalThis.evaluated);
+
+import defer * as deferredJSON from "./fixtures/dummy.json" with {type: "json"};
+
+assertTrue('default' in deferredJSON);
+assertTrue(Object.hasOwn(deferredJSON, 'default'));
+assertSame('object', typeof deferredJSON.default);

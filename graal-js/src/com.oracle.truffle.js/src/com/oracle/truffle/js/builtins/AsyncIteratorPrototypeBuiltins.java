@@ -213,7 +213,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 if (returnMethod == Undefined.instance) {
                     callResolve(promiseCapability, Undefined.instance);
                 } else {
-                    Object result = callNode.executeCall(JSArguments.createOneArg(thisObj, returnMethod, Undefined.instance));
+                    Object result = callNode.executeCall(JSArguments.createZeroArg(thisObj, returnMethod));
                     JSPromiseObject resultWrapper = promiseResolveNode.executeDefault(result);
                     JSFunctionObject onFulfilled = JSFunction.create(getRealm(), JSFunction.createEmptyFunctionData(getContext()));
                     performPromiseThenNode.execute(resultWrapper, onFulfilled, Undefined.instance, promiseCapability);

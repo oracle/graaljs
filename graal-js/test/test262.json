@@ -18,10 +18,6 @@
     "status" : "FAIL",
     "comment" : "Off spec test that even does not reflect web reality."
   }, {
-    "filePath" : "built-ins/Atomics/pause/non-integral-iterationnumber-throws.js",
-    "status" : "FAIL",
-    "comment" : "Obsolete test: Atomics.pause does not process the first argument anymore."
-  }, {
     "filePath" : "built-ins/Atomics/wait/bigint/no-spurious-wakeup-no-operation.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -2288,18 +2284,6 @@
     "filePath" : "staging/sm/Date/two-digit-years.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-01-23"
-  }, {
-    "filePath" : "staging/sm/Error/constructor-proto.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-05-26"
-  }, {
-    "filePath" : "staging/sm/Error/prototype-properties.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-05-26"
-  }, {
-    "filePath" : "staging/sm/Error/prototype.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-05-26"
   }, {
     "filePath" : "staging/sm/expressions/destructuring-pattern-parenthesized.js",
     "status" : "FAIL",
