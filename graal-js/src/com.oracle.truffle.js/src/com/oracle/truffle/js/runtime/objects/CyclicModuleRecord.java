@@ -333,7 +333,6 @@ public abstract class CyclicModuleRecord extends AbstractModuleRecord {
         } else if (getStatus() == Status.Evaluating || getStatus() == Status.EvaluatingAsync) {
             return false;
         } else {
-            assert getStatus() == Status.Linked : getStatus();
             if (hasTLA()) {
                 return false;
             }
