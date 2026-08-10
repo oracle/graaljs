@@ -2114,6 +2114,22 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return statement;
     }
 
+    /**
+     * Preserves the function's completion/return value while executing a {@code finally} block. If
+     * the block completes normally, its temporary changes to the shared frame slot are discarded.
+     * If it completes abruptly, the restore is skipped, allowing the abrupt completion's value to
+     * override the pending completion or return value.
+     */
+    private JavaScriptNode wrapSaveAndRestoreCompletionOrReturnValue(JavaScriptNode statement) {
+        FunctionEnvironment function = currentFunction();
+        if (function.returnsLastStatementResult() || (JSConfig.ReturnValueInFrame && function.hasReturn())) {
+            VarRef returnVar = environment.findTempVar(function.getReturnSlot());
+            VarRef tempVar = environment.createTempVar();
+            return factory.createExprBlock(tempVar.createWriteNode(returnVar.createReadNode()), statement, returnVar.createWriteNode(tempVar.createReadNode()));
+        }
+        return statement;
+    }
+
     private JavaScriptNode wrapUsingScope(JavaScriptNode blockBody, boolean async, VarRef capabilityVar, VarRef errorVar) {
         JavaScriptNode catchBlock = factory.createThrow(context, errorVar.createReadNode());
         JavaScriptNode tryCatch = factory.createTryCatch(context, blockBody, catchBlock, errorVar.createWriteNode(null), null, null, null);
@@ -3538,7 +3554,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
         if (tryNode.getFinallyBody() != null) {
             JavaScriptNode finallyBlock = transform(tryNode.getFinallyBody());
-            result = factory.createTryFinally(result, wrapSaveAndRestoreCompletionValue(wrapClearCompletionValue(finallyBlock)));
+            result = factory.createTryFinally(result, wrapSaveAndRestoreCompletionOrReturnValue(wrapClearCompletionValue(finallyBlock)));
         }
         result = wrapClearAndGetCompletionValue(result);
         return result;
