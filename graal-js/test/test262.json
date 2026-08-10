@@ -2321,14 +2321,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2025-01-23"
   }, {
-    "filePath" : "staging/sm/Function/return-finally.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
-  }, {
-    "filePath" : "staging/sm/generators/return-finally.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
-  }, {
     "filePath" : "staging/sm/JSON/parse-with-source.js",
     "ecmaVersion" : {
       "minVersion" : 17
