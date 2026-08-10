@@ -23,9 +23,9 @@ suite = {
     "organizationUrl" : "http://www.graalvm.org/",
   },
   "scm" : {
-    "url" : "https://github.com/graalvm/graaljs",
-    "read" : "https://github.com/graalvm/graaljs.git",
-    "write" : "git@github.com:graalvm/graaljs.git",
+    "url" : "https://github.com/oracle/graaljs",
+    "read" : "https://github.com/oracle/graaljs.git",
+    "write" : "git@github.com:oracle/graaljs.git",
   },
   "url" : "http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/index.html",
 
