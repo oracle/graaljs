@@ -2,6 +2,7 @@
 suite = {
   "mxversion" : "7.82.0",
   "name" : "graal-nodejs",
+  "groupId" : "org.graalvm.node",
   "version_from" : "graal-js",
   "release_from" : "graal-js",
   "versionConflictResolution" : "latest",
@@ -20,6 +21,11 @@ suite = {
     "email" : "graalvm-dev@oss.oracle.com",
     "organization" : "Oracle Corporation",
     "organizationUrl" : "http://www.graalvm.org/",
+  },
+  "scm" : {
+    "url" : "https://github.com/oracle/graaljs",
+    "read" : "https://github.com/oracle/graaljs.git",
+    "write" : "git@github.com:oracle/graaljs.git",
   },
   "url" : "http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/index.html",
 
@@ -171,9 +177,26 @@ suite = {
         "sdk:LAUNCHER_COMMON",
         "sdk:JLINE3",
       ],
-      "description" : "Graal Node.js",
-      "maven" : False,
+      "description" : "Graal Node.js bridge",
+      "maven" : {
+        "artifactId" : "trufflenode",
+        "tag" : ["default", "public"],
+      },
       "useModulePath": True,
+    },
+
+    "NODEJS_POM" : {
+      "type" : "pom",
+      "runtimeDependencies" : [
+        "TRUFFLENODE",
+        "truffle:TRUFFLE_RUNTIME",
+      ],
+      "description" : "Graal Node JVM runtime. This POM dependency includes the Node.js bridge, GraalJS, and the optimizing Truffle runtime.",
+      "maven" : {
+        "artifactId" : "node",
+        "tag" : ["default", "public"],
+      },
+      "license" : "UPL",
     },
 
     "TRUFFLENODE_GRAALVM_SUPPORT" : {
