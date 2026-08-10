@@ -481,10 +481,20 @@ public class JSContext {
     private final JSFunctionFactory boundFunctionFactory;
     private final JSFunctionFactory wrappedFunctionFactory;
 
+    private final JSFunctionFactory derivedErrorConstructorFactory;
+    private final JSFunctionFactory derivedFunctionConstructorFactory;
+    private final JSFunctionFactory derivedTypedArrayConstructorFactory;
+    private final JSFunctionFactory derivedAbstractModuleSourceConstructorFactory;
+
     static final PrototypeSupplier functionPrototypeSupplier = JSRealm::getFunctionPrototype;
     static final PrototypeSupplier asyncFunctionPrototypeSupplier = JSRealm::getAsyncFunctionPrototype;
     static final PrototypeSupplier generatorFunctionPrototypeSupplier = JSRealm::getGeneratorFunctionPrototype;
     static final PrototypeSupplier asyncGeneratorFunctionPrototypeSupplier = JSRealm::getAsyncGeneratorFunctionPrototype;
+
+    static final PrototypeSupplier errorConstructorSupplier = realm -> realm.getErrorConstructor(JSErrorType.Error);
+    static final PrototypeSupplier functionConstructorSupplier = JSRealm::getFunctionConstructor;
+    static final PrototypeSupplier typedArrayConstructorSupplier = JSRealm::getTypedArrayConstructor;
+    static final PrototypeSupplier abstractModuleSourceConstructorSupplier = JSRealm::getAbstractModuleSourceConstructor;
 
     private final JSObjectFactory ordinaryObjectFactory;
     private final JSObjectFactory arrayFactory;
@@ -694,6 +704,11 @@ public class JSContext {
 
         this.boundFunctionFactory = builder.function(functionPrototypeSupplier, true, false, false, true, false);
         this.wrappedFunctionFactory = builder.function(functionPrototypeSupplier, true, false, false, true, false);
+
+        this.derivedErrorConstructorFactory = builder.function(errorConstructorSupplier, getEcmaScriptVersion() >= 6, false, false, false, false);
+        this.derivedFunctionConstructorFactory = builder.function(functionConstructorSupplier, true, false, false, false, false);
+        this.derivedTypedArrayConstructorFactory = builder.function(typedArrayConstructorSupplier, getEcmaScriptVersion() >= 6, false, false, false, false);
+        this.derivedAbstractModuleSourceConstructorFactory = builder.function(abstractModuleSourceConstructorSupplier, true, false, false, false, false);
 
         this.ordinaryObjectFactory = builder.create(JSOrdinary.INSTANCE);
         this.arrayFactory = builder.create(JSArray.INSTANCE);
@@ -1927,6 +1942,22 @@ public class JSContext {
                 return functionFactory;
             }
         }
+    }
+
+    public JSFunctionFactory getDerivedFunctionConstructorFactory() {
+        return derivedFunctionConstructorFactory;
+    }
+
+    public JSFunctionFactory getDerivedErrorConstructorFactory() {
+        return derivedErrorConstructorFactory;
+    }
+
+    public JSFunctionFactory getDerivedTypedArrayConstructorFactory() {
+        return derivedTypedArrayConstructorFactory;
+    }
+
+    public JSFunctionFactory getDerivedAbstractModuleSourceConstructorFactory() {
+        return derivedAbstractModuleSourceConstructorFactory;
     }
 
     public JSFunctionFactory getBoundFunctionFactory(JSFunctionData functionData) {

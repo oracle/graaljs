@@ -100,7 +100,8 @@ public final class JSWebAssemblyModule extends JSNonProxy implements JSConstruct
     @Override
     public JSFunctionObject createConstructorObject(JSRealm realm) {
         if (realm.getContextOptions().isSourcePhaseImports()) {
-            return realm.lookupFunctionWithPrototype(ConstructorBuiltins.BUILTINS, getClassName(), realm.getAbstractModuleSourceConstructor());
+            return realm.lookupFunctionWithPrototype(ConstructorBuiltins.BUILTINS, getClassName(), realm.getAbstractModuleSourceConstructor(),
+                            realm.getContext().getDerivedAbstractModuleSourceConstructorFactory());
         }
         return realm.lookupFunction(ConstructorBuiltins.BUILTINS, getClassName());
     }

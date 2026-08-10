@@ -370,8 +370,8 @@ public final class JSArrayBufferView extends JSNonProxy {
     }
 
     public static JSConstructor createConstructor(JSRealm realm, TypedArrayFactory factory, JSConstructor taConstructor) {
-        JSFunctionObject arrayBufferViewConstructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, factory.getName());
-        JSObject.setPrototype(arrayBufferViewConstructor, taConstructor.getFunctionObject());
+        JSFunctionObject arrayBufferViewConstructor = realm.lookupFunctionWithPrototype(ConstructorBuiltins.BUILTINS, factory.getName(), taConstructor.getFunctionObject(),
+                        realm.getContext().getDerivedTypedArrayConstructorFactory());
 
         JSObject arrayBufferViewPrototype = createArrayBufferViewPrototype(realm, arrayBufferViewConstructor, factory.getBytesPerElement(), factory, taConstructor.getPrototype());
         JSObjectUtil.putConstructorPrototypeProperty(arrayBufferViewConstructor, arrayBufferViewPrototype);

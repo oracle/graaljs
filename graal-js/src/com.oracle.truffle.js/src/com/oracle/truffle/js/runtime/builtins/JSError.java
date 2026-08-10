@@ -186,11 +186,10 @@ public final class JSError extends JSNonProxy {
 
     public static JSConstructor createErrorConstructor(JSRealm realm, JSErrorType errorType) {
         TruffleString name = Strings.fromJavaString(errorType.toString());
-        JSFunctionObject errorConstructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, name); // (Type)Error
+        JSFunctionObject errorConstructor = errorType == JSErrorType.Error
+                        ? realm.lookupFunction(ConstructorBuiltins.BUILTINS, name)
+                        : realm.lookupFunctionWithPrototype(ConstructorBuiltins.BUILTINS, name, realm.getErrorConstructor(JSErrorType.Error), realm.getContext().getDerivedErrorConstructorFactory());
         JSDynamicObject classPrototype = JSError.createErrorPrototype(realm, errorType); // (Type)Error.prototype
-        if (errorType != JSErrorType.Error) {
-            JSObject.setPrototype(errorConstructor, realm.getErrorConstructor(JSErrorType.Error));
-        }
         JSObjectUtil.putConstructorProperty(classPrototype, errorConstructor);
         JSObjectUtil.putDataProperty(classPrototype, NAME, name, MESSAGE_ATTRIBUTES);
         JSObjectUtil.putConstructorPrototypeProperty(errorConstructor, classPrototype);
