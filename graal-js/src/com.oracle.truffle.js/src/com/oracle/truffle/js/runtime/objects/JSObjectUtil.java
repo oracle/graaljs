@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -312,7 +312,6 @@ public final class JSObjectUtil {
         return (JSPrototypeData) JSDynamicObject.getOrNull(obj, PROTOTYPE_DATA);
     }
 
-    @SuppressWarnings("deprecation")
     @TruffleBoundary
     public static void setPrototypeImpl(JSDynamicObject object, JSDynamicObject newPrototype) {
         CompilerAsserts.neverPartOfCompilation();
@@ -341,9 +340,7 @@ public final class JSObjectUtil {
             archive.add(value);
         }
 
-        // Temporary workaround for GR-71599
-        // DynamicObject.ResetShapeNode.getUncached().execute(object, newRootShape);
-        com.oracle.truffle.api.object.DynamicObjectLibrary.getUncached().resetShape(object, newRootShape);
+        DynamicObject.ResetShapeNode.getUncached().execute(object, newRootShape);
 
         if (newRootShape.getFlags() != oldShape.getFlags()) {
             DynamicObject.SetShapeFlagsNode.getUncached().execute(object, oldShape.getFlags());
