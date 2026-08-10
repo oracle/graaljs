@@ -2289,10 +2289,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2025-01-23"
   }, {
-    "filePath" : "staging/sm/expressions/short-circuit-compound-assignment-property-key-evaluation.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
-  }, {
     "filePath" : "staging/sm/extensions/arguments-property-access-in-function.js",
     "status" : "FAIL",
     "comment" : "Test of non-standard 'arguments' property"
