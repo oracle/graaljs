@@ -352,7 +352,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         boolean isClassConstructor = functionNode.isClassConstructor();
         boolean isConstructor = !isArrowFunction && !isGeneratorFunction && !isAsyncFunction && ((!isMethod || context.getEcmaScriptVersion() == 5) || isClassConstructor);
         assert !isDerivedConstructor || isConstructor;
-        boolean strictFunctionProperties = isStrict || isArrowFunction || isMethod || isGeneratorFunction;
+        boolean strictFunctionProperties = isStrict || isArrowFunction || isMethod || isGeneratorFunction || isAsyncFunction;
         boolean isBuiltin = false;
         boolean hasSyntheticArguments = functionNode.isScript() && this.argumentNames != null;
 
