@@ -248,6 +248,10 @@ public final class JSFunction extends JSNonProxy {
         return createWithPrototype(initialFactory(functionData), realm, functionData, JSFrameUtil.NULL_MATERIALIZED_FRAME, prototype);
     }
 
+    public static JSFunctionObject createWithPrototype(JSFunctionFactory factory, JSRealm realm, JSFunctionData functionData, JSDynamicObject prototype) {
+        return createWithPrototype(factory, realm, functionData, JSFrameUtil.NULL_MATERIALIZED_FRAME, prototype);
+    }
+
     public static JSFunctionObject createWithPrototype(JSFunctionFactory factory, JSRealm realm, JSFunctionData functionData, MaterializedFrame enclosingFrame, JSDynamicObject prototype) {
         return createWithPrototype(factory, functionData, enclosingFrame, CLASS_PROTOTYPE_PLACEHOLDER, realm, prototype);
     }
@@ -673,8 +677,8 @@ public final class JSFunction extends JSNonProxy {
 
     public static JSConstructor createGeneratorFunctionConstructor(JSRealm realm) {
         // intrinsic object %GeneratorFunction%
-        JSFunctionObject constructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, GENERATOR_FUNCTION_NAME);
-        JSObject.setPrototype(constructor, realm.getFunctionConstructor());
+        JSFunctionObject constructor = realm.lookupFunctionWithPrototype(ConstructorBuiltins.BUILTINS, GENERATOR_FUNCTION_NAME, realm.getFunctionConstructor(),
+                        realm.getContext().getDerivedFunctionConstructorFactory());
         JSObject prototype = createGeneratorFunctionPrototype(realm, constructor);
         JSObjectUtil.putDataProperty(constructor, JSObject.PROTOTYPE, prototype, JSAttributes.notConfigurableNotEnumerableNotWritable());
         return new JSConstructor(constructor, prototype);
@@ -692,8 +696,8 @@ public final class JSFunction extends JSNonProxy {
 
     public static JSConstructor createAsyncFunctionConstructor(JSRealm realm) {
         // intrinsic constructor %AsyncFunction%
-        JSFunctionObject constructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, ASYNC_FUNCTION_NAME);
-        JSObject.setPrototype(constructor, realm.getFunctionConstructor());
+        JSFunctionObject constructor = realm.lookupFunctionWithPrototype(ConstructorBuiltins.BUILTINS, ASYNC_FUNCTION_NAME, realm.getFunctionConstructor(),
+                        realm.getContext().getDerivedFunctionConstructorFactory());
         JSObject prototype = createAsyncFunctionPrototype(realm, constructor);
         JSObjectUtil.putDataProperty(constructor, JSObject.PROTOTYPE, prototype, JSAttributes.notConfigurableNotEnumerableNotWritable());
         return new JSConstructor(constructor, prototype);
@@ -750,8 +754,8 @@ public final class JSFunction extends JSNonProxy {
 
     public static JSConstructor createAsyncGeneratorFunctionConstructor(JSRealm realm) {
         // intrinsic constructor %AsyncGeneratorFunction%
-        JSFunctionObject constructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, ASYNC_GENERATOR_FUNCTION_NAME);
-        JSObject.setPrototype(constructor, realm.getFunctionConstructor());
+        JSFunctionObject constructor = realm.lookupFunctionWithPrototype(ConstructorBuiltins.BUILTINS, ASYNC_GENERATOR_FUNCTION_NAME, realm.getFunctionConstructor(),
+                        realm.getContext().getDerivedFunctionConstructorFactory());
         JSObject prototype = createAsyncGeneratorFunctionPrototype(realm, constructor);
         JSObjectUtil.putDataProperty(constructor, JSObject.PROTOTYPE, prototype, JSAttributes.notConfigurableNotEnumerableNotWritable());
         return new JSConstructor(constructor, prototype);

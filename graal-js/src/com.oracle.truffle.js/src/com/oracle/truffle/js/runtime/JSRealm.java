@@ -146,6 +146,7 @@ import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionFactory;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSGlobal;
 import com.oracle.truffle.js.runtime.builtins.JSIterator;
@@ -1273,11 +1274,11 @@ public class JSRealm {
         return JSFunction.create(this, functionData);
     }
 
-    public final JSFunctionObject lookupFunctionWithPrototype(JSBuiltinsContainer container, Object key, JSDynamicObject prototype) {
+    public final JSFunctionObject lookupFunctionWithPrototype(JSBuiltinsContainer container, Object key, JSDynamicObject prototype, JSFunctionFactory factory) {
         assert JSRuntime.isPropertyKey(key);
         Builtin builtin = Objects.requireNonNull(container.lookupFunctionByKey(key));
         JSFunctionData functionData = builtin.createFunctionData(context);
-        return JSFunction.createWithPrototype(this, functionData, prototype);
+        return JSFunction.createWithPrototype(factory, this, functionData, prototype);
     }
 
     public final Accessor lookupAccessor(JSBuiltinsContainer container, Object key) {
