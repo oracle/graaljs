@@ -421,7 +421,8 @@ public abstract class GraalJSException extends AbstractTruffleException {
         } else if (rootNode instanceof FunctionRootNode) {
             functionName = ((FunctionRootNode) rootNode).getNameTString();
         } else {
-            functionName = Strings.fromJavaString(rootNode.getName());
+            String rootName = rootNode.getName();
+            functionName = rootName == null ? Strings.EMPTY_STRING : Strings.fromJavaString(rootName);
         }
         boolean eval = false;
         if (isEvalSource(source)) {
