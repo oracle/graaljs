@@ -2281,10 +2281,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2025-01-23"
   }, {
-    "filePath" : "staging/sm/expressions/destructuring-pattern-parenthesized.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
-  }, {
     "filePath" : "staging/sm/extensions/arguments-property-access-in-function.js",
     "status" : "FAIL",
     "comment" : "Test of non-standard 'arguments' property"
@@ -2376,10 +2372,6 @@
     "filePath" : "staging/sm/regress/regress-586482-4.js",
     "status" : "FAIL",
     "comment" : "Test of non-standard 'caller' property"
-  }, {
-    "filePath" : "staging/sm/statements/arrow-function-in-for-statement-head.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
   }, {
     "filePath" : "staging/sm/String/string-code-point-upper-lower-mapping.js",
     "javaVersion" : {
