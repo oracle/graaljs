@@ -2257,10 +2257,6 @@
     },
     "comment" : "nonextensible-applies-to-private proposal"
   }, {
-    "filePath" : "staging/sm/Array/from-iterator-close.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
-  }, {
     "filePath" : "staging/sm/Array/length-truncate-nonconfigurable-sparse.js",
     "status" : "SKIP",
     "comment" : "Long running test"
@@ -2340,10 +2336,6 @@
     "comment" : "new failures 2025-01-23"
   }, {
     "filePath" : "staging/sm/lexical-environment/block-scoped-functions-deprecated-redecl.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
-  }, {
-    "filePath" : "staging/sm/Map/constructor-iterator-close.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-01-23"
   }, {
