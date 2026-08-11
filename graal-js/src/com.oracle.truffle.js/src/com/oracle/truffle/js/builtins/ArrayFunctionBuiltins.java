@@ -305,23 +305,23 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
         private Object arrayFromIteratorRecord(Object obj, IteratorRecord iteratorRecord, Object mapFn, Object thisArg, boolean mapping) {
             long k = 0;
-            try {
-                while (true) {
-                    Object next = iteratorStep(iteratorRecord);
-                    if (next == Boolean.FALSE) {
-                        setLength(obj, k);
-                        return obj;
-                    }
-                    Object mapped = getIteratorValue(next);
+            while (true) {
+                Object next = iteratorStep(iteratorRecord);
+                if (next == Boolean.FALSE) {
+                    setLength(obj, k);
+                    return obj;
+                }
+                Object mapped = getIteratorValue(next);
+                try {
                     if (mapping) {
                         mapped = callMapFn(thisArg, mapFn, mapped, JSRuntime.positiveLongToIntOrDouble(k));
                     }
                     writeOwn(obj, k, mapped);
                     k++;
+                } catch (AbstractTruffleException ex) {
+                    iteratorCloseAbrupt(iteratorRecord);
+                    throw ex; // should be executed by iteratorClose
                 }
-            } catch (AbstractTruffleException ex) {
-                iteratorCloseAbrupt(iteratorRecord);
-                throw ex; // should be executed by iteratorClose
             }
         }
 

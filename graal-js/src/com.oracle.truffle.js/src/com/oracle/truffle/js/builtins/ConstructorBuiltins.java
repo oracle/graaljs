@@ -3009,13 +3009,13 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             }
             IteratorRecord iter = getIteratorNode.execute(node, iterable);
 
-            try {
-                while (true) {
-                    Object next = iteratorStep(iter);
-                    if (next == Boolean.FALSE) {
-                        break;
-                    }
-                    Object nextItem = getIteratorValue(next);
+            while (true) {
+                Object next = iteratorStep(iter);
+                if (next == Boolean.FALSE) {
+                    break;
+                }
+                Object nextItem = getIteratorValue(next);
+                try {
                     if (!isObjectNode.executeBoolean(nextItem)) {
                         errorBranch.enter(node);
                         throw Errors.createTypeErrorIteratorResultNotObject(nextItem, this);
@@ -3023,10 +3023,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     Object k = readElementNode.executeWithTargetAndIndex(nextItem, 0);
                     Object v = readElementNode.executeWithTargetAndIndex(nextItem, 1);
                     call(mapObj, adder, k, v);
+                } catch (AbstractTruffleException ex) {
+                    iteratorCloseAbrupt(iter);
+                    throw ex;
                 }
-            } catch (AbstractTruffleException ex) {
-                iteratorCloseAbrupt(iter);
-                throw ex;
             }
 
             return mapObj;
@@ -3074,18 +3074,18 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             }
             IteratorRecord iter = getIteratorNode.execute(node, iterable);
 
-            try {
-                while (true) {
-                    Object next = iteratorStep(iter);
-                    if (next == Boolean.FALSE) {
-                        break;
-                    }
-                    Object nextValue = getIteratorValue(next);
-                    call(setObj, adder, nextValue);
+            while (true) {
+                Object next = iteratorStep(iter);
+                if (next == Boolean.FALSE) {
+                    break;
                 }
-            } catch (AbstractTruffleException ex) {
-                iteratorCloseAbrupt(iter);
-                throw ex;
+                Object nextValue = getIteratorValue(next);
+                try {
+                    call(setObj, adder, nextValue);
+                } catch (AbstractTruffleException ex) {
+                    iteratorCloseAbrupt(iter);
+                    throw ex;
+                }
             }
 
             return setObj;
