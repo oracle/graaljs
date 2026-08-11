@@ -66,9 +66,9 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
     private static final AtomicInteger NEXT_SLOT = new AtomicInteger();
 
     private final int index;
+    private final Object key;
     private final TruffleString name;
     private final TruffleString fullName;
-    private final Object key;
     private final int length;
     private final byte attributeFlags;
     private final byte ecmaScriptVersion;
@@ -87,9 +87,9 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
         assert isAllowedKey(key);
         assert (byte) ecmaScriptVersion == ecmaScriptVersion && (byte) attributeFlags == attributeFlags;
         this.index = NEXT_SLOT.getAndIncrement();
-        this.name = functionName;
-        this.fullName = (containerName == null) ? name : Strings.concatAll(containerName, Strings.DOT, name);
         this.key = key;
+        this.name = key instanceof TruffleString keyString && Strings.equals(keyString, functionName) ? keyString : functionName;
+        this.fullName = (containerName == null) ? name : Strings.concatAll(containerName, Strings.DOT, name);
         this.length = length;
         this.ecmaScriptVersion = (byte) ecmaScriptVersion;
         this.attributeFlags = (byte) (attributeFlags | detectAccessor(functionName));

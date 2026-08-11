@@ -249,7 +249,6 @@ public class JSRealm {
     public static final TruffleString REALM_BUILTIN_CLASS_NAME = Strings.constant("Realm");
     public static final TruffleString ARGUMENTS_NAME = Strings.ARGUMENTS;
     public static final TruffleString JAVA_CLASS_NAME = Strings.constant("Java");
-    public static final TruffleString JAVA_CLASS_NAME_NASHORN_COMPAT = Strings.constant("JavaNashornCompat");
     public static final TruffleString DEBUG_CLASS_NAME = Strings.constant("Debug");
     public static final TruffleString CONSOLE_CLASS_NAME = Strings.constant("Console");
     public static final TruffleString SYMBOL_ITERATOR_NAME = Strings.constant("[Symbol.iterator]");

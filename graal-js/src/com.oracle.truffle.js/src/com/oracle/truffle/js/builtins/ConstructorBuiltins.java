@@ -336,7 +336,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
     public static final JSBuiltinsContainer BUILTINS = new ConstructorBuiltins();
 
     protected ConstructorBuiltins() {
-        super(null, Constructor.class);
+        super(Constructor.class);
     }
 
     public enum Constructor implements BuiltinEnum<Constructor> {
