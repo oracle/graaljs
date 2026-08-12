@@ -2915,6 +2915,9 @@ public class Parser extends AbstractParser {
         @Override
         public boolean enterBinaryNode(BinaryNode binaryNode) {
             if (binaryNode.isTokenType(ASSIGN)) {
+                if (binaryNode.isParenthesized()) {
+                    throw error(AbstractParser.message(MSG_INVALID_LVALUE), binaryNode.getToken());
+                }
                 binaryNode.getLhs().accept(this);
                 // Initializer(rhs) can be any AssignmentExpression
                 return false;
@@ -5933,6 +5936,10 @@ public class Parser extends AbstractParser {
      * @return function node (body.)
      */
     private Block functionBody(final ParserContextFunctionNode functionNode) {
+        return functionBody(functionNode, true);
+    }
+
+    private Block functionBody(final ParserContextFunctionNode functionNode, boolean in) {
         final boolean yield = functionNode.isGenerator();
         final boolean await = functionNode.isAsync() || (isTopLevelAwait() && isModule && functionNode.isModule()) || functionNode.isClassStaticBlock();
         final long bodyToken = token;
@@ -5951,7 +5958,7 @@ public class Parser extends AbstractParser {
                 // print(square(3));
 
                 // just expression as function body
-                final Expression expr = assignmentExpression(true, yield, await);
+                final Expression expr = assignmentExpression(in, yield, await);
                 long lastToken = previousToken;
                 functionNode.setLastToken(previousToken);
                 assert lc.getCurrentBlock().getScope().isFunctionBodyScope();
@@ -6639,7 +6646,7 @@ public class Parser extends AbstractParser {
         if (ES6_ARROW_FUNCTION && type == ARROW && isES6()) {
             // Look behind to check there's no LineTerminator between IDENT/RPAREN and ARROW
             if (lookbehindNoLineTerminatorBeforeArrow()) {
-                return arrowFunction(startToken, startLine, exprLhs, asyncArrow);
+                return arrowFunction(startToken, startLine, exprLhs, asyncArrow, in);
             }
         }
         assert !(exprLhs instanceof ExpressionList);
@@ -6708,8 +6715,10 @@ public class Parser extends AbstractParser {
      * @param startToken start token of the ArrowParameters expression
      * @param functionLine start line of the arrow function
      * @param paramListExpr ArrowParameters expression or {@code null} for {@code ()} (empty list)
+     * @param async whether this is an async arrow function
+     * @param in whether the {@code in} operator is allowed in a concise body
      */
-    private Expression arrowFunction(final long startToken, final int functionLine, final Expression paramListExpr, boolean async) {
+    private Expression arrowFunction(final long startToken, final int functionLine, final Expression paramListExpr, boolean async, boolean in) {
         // caller needs to check that there's no LineTerminator between parameter list and arrow
         assert type != ARROW || lookbehindNoLineTerminatorBeforeArrow();
         expect(ARROW);
@@ -6734,7 +6743,7 @@ public class Parser extends AbstractParser {
             try {
                 convertArrowFunctionParameterList(paramListExpr, functionNode);
                 assert functionNode.isAsync() == async;
-                functionBody = functionBody(functionNode);
+                functionBody = functionBody(functionNode, in);
             } finally {
                 restoreBlock(parameterBlock);
             }
