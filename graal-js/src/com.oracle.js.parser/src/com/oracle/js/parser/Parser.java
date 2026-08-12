@@ -2915,6 +2915,9 @@ public class Parser extends AbstractParser {
         @Override
         public boolean enterBinaryNode(BinaryNode binaryNode) {
             if (binaryNode.isTokenType(ASSIGN)) {
+                if (binaryNode.isParenthesized()) {
+                    throw error(AbstractParser.message(MSG_INVALID_LVALUE), binaryNode.getToken());
+                }
                 binaryNode.getLhs().accept(this);
                 // Initializer(rhs) can be any AssignmentExpression
                 return false;
