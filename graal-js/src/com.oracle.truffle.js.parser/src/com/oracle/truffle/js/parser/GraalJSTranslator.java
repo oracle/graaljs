@@ -3107,17 +3107,17 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             // Index must be ToPropertyKey-converted only once, save it in temp var
             VarRef keyTemp = environment.createTempVar();
             JavaScriptNode readIndex = keyTemp.createReadNode();
-            JSWriteFrameSlotNode writeIndex = (JSWriteFrameSlotNode) keyTemp.createWriteNode(null);
 
             JavaScriptNode target1;
             JavaScriptNode target2;
-            if ((elem instanceof JSConstantNode && target instanceof RepeatableNode)) {
+            VarRef targetTemp = null;
+            if (!isLogicalOp(binaryOp) && elem instanceof JSConstantNode && target instanceof RepeatableNode) {
                 // Cannot be used for any indexNode and any target RepeatableNode
                 // because there is an invocation of indexNode in between targets
                 target1 = target;
                 target2 = factory.copy(target);
             } else {
-                VarRef targetTemp = environment.createTempVar();
+                targetTemp = environment.createTempVar();
                 if (target instanceof SuperPropertyReferenceNode superTarget) {
                     // Various places depend on 'instanceof SuperPropertyReferenceNode',
                     // so we cannot use the branch below, but we can use a similar
@@ -3131,11 +3131,16 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             }
 
             if (isLogicalOp(binaryOp)) {
-                assert !convertToNumeric && !returnOldValue && assignedValue != null;
-                JavaScriptNode readNode = tagExpression(factory.createReadElementNode(context, target1, keyTemp.createWriteNode(elem)), indexNode);
+                assert !convertToNumeric && !returnOldValue && assignedValue != null && targetTemp != null;
+                JavaScriptNode preparedIndex = factory.createExprBlock(
+                                keyTemp.createWriteNode(elem),
+                                factory.createRequireObjectCoercible(targetTemp.createReadNode()),
+                                keyTemp.createWriteNode(factory.createToPropertyKey(keyTemp.createReadNode())));
+                JavaScriptNode readNode = tagExpression(factory.createReadElementNode(context, target1, preparedIndex), indexNode);
                 JavaScriptNode writeNode = factory.createCompoundWriteElementNode(target2, readIndex, assignedValue, null, context, environment.isStrictMode());
                 assignedNode = factory.createBinary(context, binaryOp, readNode, writeNode);
             } else {
+                JSWriteFrameSlotNode writeIndex = (JSWriteFrameSlotNode) keyTemp.createWriteNode(null);
                 JavaScriptNode readNode = tagExpression(factory.createReadElementNode(context, target2, readIndex), indexNode);
                 if (convertToNumeric) {
                     readNode = factory.createToNumericOperand(readNode);
