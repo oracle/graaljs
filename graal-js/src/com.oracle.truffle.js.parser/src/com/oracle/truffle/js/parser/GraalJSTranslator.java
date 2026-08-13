@@ -772,6 +772,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
         assert !(resumableNode instanceof SuspendNode) : resumableNode;
         JSFrameSlot stateSlot = addGeneratorStateSlot(environment.getFunctionFrameDescriptor(), ((ResumableNode) resumableNode).getStateSlotKind());
+        if (resumableNode instanceof SuperPropertyReferenceNode superPropertyReference) {
+            // Do not use a GeneratorWrapperNode: ReadElementNode, WriteElementNode, and
+            // JSFunctionCallNode use instanceof SuperPropertyReferenceNode to select `this` as
+            // the receiver. Without it, for example, super[key]() would use a wrong receiver.
+            superPropertyReference.setGeneratorStateSlot(stateSlot.getIndex());
+            return superPropertyReference;
+        }
         return factory.createGeneratorWrapper((JavaScriptNode) resumableNode, stateSlot);
     }
 
@@ -864,7 +871,16 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 JavaScriptNode writeState = factory.createWriteCurrentFrameSlot(frameSlot, jschild);
                 extracted.add(writeState);
                 // replace child with saved expression result
-                factory.fixNodeChild(parent, child, readState);
+                JavaScriptNode replacement = readState;
+                if (jschild instanceof SuperPropertyReferenceNode superPropertyReference) {
+                    // readState is the saved super base, but we need an instance of
+                    // SuperPropertyReferenceNode for ReadElementNode, WriteElementNode, and
+                    // JSFunctionCallNode to select the derived `this` as the receiver.
+                    JavaScriptNode receiver = factory.copy(superPropertyReference.getThisValue());
+                    replacement = factory.createSuperPropertyReference(readState, receiver);
+                    JavaScriptNode.transferSourceSectionAndTags(superPropertyReference, replacement);
+                }
+                factory.fixNodeChild(parent, child, replacement);
             } else {
                 // not assignable to field type (e.g. JSTargetableNode), cannot extract
                 // but try to extract grandchildren instead, e.g.:
@@ -2627,7 +2643,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
         if (baseNode.isSuper()) {
             // If IsSuperReference(ref) is true, throw a ReferenceError exception.
-            return tagExpression(factory.createThrowError(JSErrorType.ReferenceError, UNSUPPORTED_REFERENCE_TO_SUPER), deleteNode);
+            if (baseNode instanceof IndexNode) {
+                SuperPropertyReferenceNode superTarget = (SuperPropertyReferenceNode) target;
+                target = tagExpression(factory.createSuperPropertyReference(superTarget.getBaseValue(), superTarget.getThisValue(), key), baseNode.getBase());
+            }
+            return tagExpression(factory.createExprBlock(target, factory.createThrowError(JSErrorType.ReferenceError, UNSUPPORTED_REFERENCE_TO_SUPER)), deleteNode);
         }
 
         if (baseNode.isOptionalChain()) {
@@ -3043,6 +3063,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private JavaScriptNode transformPropertyAssignment(AccessNode accessNode, JavaScriptNode assignedValue, BinaryOperation binaryOp, boolean returnOldValue, boolean convertToNumeric) {
         JavaScriptNode assignedNode;
+        JavaScriptNode evaluatedSuperTarget = null;
         JavaScriptNode target = transform(accessNode.getBase());
 
         if (binaryOp == null) {
@@ -3051,7 +3072,15 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         } else {
             JavaScriptNode target1;
             JavaScriptNode target2;
-            if (target instanceof RepeatableNode) {
+            if (target instanceof SuperPropertyReferenceNode superTarget) {
+                // The property get and put must use the same super base, but both must retain the
+                // super reference so that they select the derived instance as receiver.
+                VarRef targetTemp = environment.createTempVar();
+                evaluatedSuperTarget = tagExpression(factory.createSuperPropertyReference(targetTemp.createWriteNode(superTarget.getBaseValue()), factory.copy(superTarget.getThisValue())),
+                                accessNode.getBase());
+                target1 = tagExpression(factory.createSuperPropertyReference(targetTemp.createReadNode(), factory.copy(superTarget.getThisValue())), accessNode.getBase());
+                target2 = tagExpression(factory.createSuperPropertyReference(targetTemp.createReadNode(), factory.copy(superTarget.getThisValue())), accessNode.getBase());
+            } else if (target instanceof RepeatableNode) {
                 target1 = target;
                 target2 = factory.copy(target);
             } else {
@@ -3083,7 +3112,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 }
             }
         }
-        return assignedNode;
+        return evaluatedSuperTarget == null ? assignedNode : factory.createExprBlock(evaluatedSuperTarget, assignedNode);
     }
 
     private JavaScriptNode transformIndexAssignment(IndexNode indexNode, JavaScriptNode assignedValue, BinaryOperation binaryOp, boolean returnOldValue, boolean convertToNumeric) {
@@ -3093,7 +3122,14 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
         if (binaryOp == null) {
             assert assignedValue != null;
-            assignedNode = factory.createWriteElementNode(target, elem, assignedValue, context, environment.isStrictMode());
+            if (target instanceof SuperPropertyReferenceNode superTarget) {
+                VarRef keyTemp = environment.createTempVar();
+                JavaScriptNode targetWithIndex = tagExpression(factory.createSuperPropertyReference(superTarget.getBaseValue(), superTarget.getThisValue(), keyTemp.createWriteNode(elem)),
+                                indexNode.getBase());
+                assignedNode = factory.createWriteElementNode(targetWithIndex, keyTemp.createReadNode(), assignedValue, context, environment.isStrictMode());
+            } else {
+                assignedNode = factory.createWriteElementNode(target, elem, assignedValue, context, environment.isStrictMode());
+            }
         } else {
             // Evaluation order:
             // 1. target = GetValue(baseReference)
@@ -3111,18 +3147,18 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             JavaScriptNode target1;
             JavaScriptNode target2;
             VarRef targetTemp = null;
-            if (!isLogicalOp(binaryOp) && elem instanceof JSConstantNode && target instanceof RepeatableNode) {
+            boolean computedSuperPropertyReference = target instanceof SuperPropertyReferenceNode;
+            if (!computedSuperPropertyReference && !isLogicalOp(binaryOp) && elem instanceof JSConstantNode && target instanceof RepeatableNode) {
                 // Cannot be used for any indexNode and any target RepeatableNode
                 // because there is an invocation of indexNode in between targets
                 target1 = target;
                 target2 = factory.copy(target);
             } else {
                 targetTemp = environment.createTempVar();
-                if (target instanceof SuperPropertyReferenceNode superTarget) {
-                    // Various places depend on 'instanceof SuperPropertyReferenceNode',
-                    // so we cannot use the branch below, but we can use a similar
-                    // SuperPropertyReferenceNode-specific approach
-                    target1 = tagExpression(factory.createSuperPropertyReference(targetTemp.createWriteNode(superTarget.getBaseValue()), superTarget.getThisValue()), indexNode.getBase());
+                if (computedSuperPropertyReference) {
+                    SuperPropertyReferenceNode superTarget = (SuperPropertyReferenceNode) target;
+                    target1 = tagExpression(factory.createSuperPropertyReference(targetTemp.createWriteNode(superTarget.getBaseValue()), superTarget.getThisValue(),
+                                    keyTemp.createWriteNode(elem)), indexNode.getBase());
                     target2 = tagExpression(factory.createSuperPropertyReference(targetTemp.createReadNode(), superTarget.getThisValue()), indexNode.getBase());
                 } else {
                     target1 = targetTemp.createWriteNode(target);
@@ -3133,7 +3169,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             if (isLogicalOp(binaryOp)) {
                 assert !convertToNumeric && !returnOldValue && assignedValue != null && targetTemp != null;
                 JavaScriptNode preparedIndex = factory.createExprBlock(
-                                keyTemp.createWriteNode(elem),
+                                computedSuperPropertyReference ? factory.createEmpty() : keyTemp.createWriteNode(elem),
                                 factory.createRequireObjectCoercible(targetTemp.createReadNode()),
                                 keyTemp.createWriteNode(factory.createToPropertyKey(keyTemp.createReadNode())));
                 JavaScriptNode readNode = tagExpression(factory.createReadElementNode(context, target1, preparedIndex), indexNode);
@@ -3151,7 +3187,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     readNode = prevValueTemp.createWriteNode(readNode);
                 }
                 JavaScriptNode binOpNode = tagExpression(factory.createBinary(context, binaryOp, readNode, assignedValue), indexNode);
-                JavaScriptNode writeNode = factory.createCompoundWriteElementNode(target1, elem, binOpNode, writeIndex, context, environment.isStrictMode());
+                JavaScriptNode writeNode = factory.createCompoundWriteElementNode(target1, computedSuperPropertyReference ? readIndex : elem, binOpNode, writeIndex, context,
+                                environment.isStrictMode());
                 if (returnOldValue) {
                     assignedNode = factory.createDual(context, writeNode, prevValueTemp.createReadNode());
                 } else {
@@ -3354,6 +3391,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JavaScriptNode index = transform(indexNode.getIndex());
         if (indexNode.isOptionalChain()) {
             return createOptionalIndexNode(indexNode, base, index);
+        }
+        if (base instanceof SuperPropertyReferenceNode superTarget) {
+            VarRef indexTemp = environment.createTempVar();
+            base = tagExpression(factory.createSuperPropertyReference(superTarget.getBaseValue(), superTarget.getThisValue(), indexTemp.createWriteNode(index)), indexNode.getBase());
+            index = indexTemp.createReadNode();
         }
         return tagExpression(factory.createReadElementNode(context, base, index), indexNode);
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,26 +48,52 @@ import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.RepeatableNode;
+import com.oracle.truffle.js.nodes.control.GeneratorNode;
+import com.oracle.truffle.js.nodes.control.ResumableNode;
+import com.oracle.truffle.js.nodes.control.YieldException;
 
 @GenerateWrapper
-public class SuperPropertyReferenceNode extends JSTargetableNode implements RepeatableNode {
+public class SuperPropertyReferenceNode extends JSTargetableNode implements ResumableNode.WithIntState, GeneratorNode {
 
-    @Child private JavaScriptNode baseValueNode;
+    // Child fields are declared in execution order.
     @Child private JavaScriptNode thisValueNode;
+    @Child private JavaScriptNode propertyKeyNode;
+    @Child private JavaScriptNode baseValueNode;
+
+    private static final int RESUME_PROPERTY_KEY = 1;
+    private int generatorStateSlot = -1;
 
     private SuperPropertyReferenceNode(JavaScriptNode baseNode, JavaScriptNode thisValueNode) {
+        this(baseNode, thisValueNode, null);
+    }
+
+    private SuperPropertyReferenceNode(JavaScriptNode baseNode, JavaScriptNode thisValueNode, JavaScriptNode propertyKeyNode) {
         this.baseValueNode = baseNode;
         this.thisValueNode = thisValueNode;
+        this.propertyKeyNode = propertyKeyNode;
     }
 
     SuperPropertyReferenceNode(SuperPropertyReferenceNode copy) {
-        this.baseValueNode = copy.baseValueNode;
         this.thisValueNode = copy.thisValueNode;
+        this.propertyKeyNode = copy.propertyKeyNode;
+        this.baseValueNode = copy.baseValueNode;
+        this.generatorStateSlot = copy.generatorStateSlot;
     }
 
     public static JSTargetableNode create(JavaScriptNode baseNode, JavaScriptNode thisValueNode) {
         assert thisValueNode instanceof RepeatableNode;
         return new SuperPropertyReferenceNode(baseNode, thisValueNode);
+    }
+
+    public static JSTargetableNode create(JavaScriptNode baseNode, JavaScriptNode thisValueNode, JavaScriptNode propertyKeyNode) {
+        assert thisValueNode instanceof RepeatableNode;
+        return new SuperPropertyReferenceNode(baseNode, thisValueNode, propertyKeyNode);
+    }
+
+    public void setGeneratorStateSlot(int stateSlot) {
+        assert propertyKeyNode != null;
+        assert generatorStateSlot == -1;
+        this.generatorStateSlot = stateSlot;
     }
 
     public JavaScriptNode getBaseValue() {
@@ -81,8 +107,33 @@ public class SuperPropertyReferenceNode extends JSTargetableNode implements Repe
 
     @Override
     public Object execute(VirtualFrame frame) {
+        if (generatorStateSlot >= 0) {
+            return resume(frame, generatorStateSlot);
+        }
         // GetThisBinding() must be evaluated first: may throw a ReferenceError.
         thisValueNode.executeVoid(frame);
+        // ToPropertyKey is performed by the later GetValue/PutValue operation.
+        if (propertyKeyNode != null) {
+            propertyKeyNode.executeVoid(frame);
+        }
+        return baseValueNode.execute(frame);
+    }
+
+    @Override
+    public Object resume(VirtualFrame frame, int stateSlot) {
+        assert propertyKeyNode != null;
+        int state = getStateAsIntAndReset(frame, stateSlot);
+        if (state == 0) {
+            thisValueNode.executeVoid(frame);
+        } else {
+            assert state == RESUME_PROPERTY_KEY;
+        }
+        try {
+            propertyKeyNode.executeVoid(frame);
+        } catch (YieldException e) {
+            setStateAsInt(frame, stateSlot, RESUME_PROPERTY_KEY);
+            throw e;
+        }
         return baseValueNode.execute(frame);
     }
 
@@ -107,6 +158,9 @@ public class SuperPropertyReferenceNode extends JSTargetableNode implements Repe
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return new SuperPropertyReferenceNode(cloneUninitialized(baseValueNode, materializedTags), cloneUninitialized(thisValueNode, materializedTags));
+        JavaScriptNode propertyKeyCopy = propertyKeyNode == null ? null : cloneUninitialized(propertyKeyNode, materializedTags);
+        SuperPropertyReferenceNode copy = new SuperPropertyReferenceNode(cloneUninitialized(baseValueNode, materializedTags), cloneUninitialized(thisValueNode, materializedTags), propertyKeyCopy);
+        copy.generatorStateSlot = generatorStateSlot;
+        return copy;
     }
 }
