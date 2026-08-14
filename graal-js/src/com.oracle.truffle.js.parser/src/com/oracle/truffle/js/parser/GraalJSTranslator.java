@@ -772,13 +772,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
         assert !(resumableNode instanceof SuspendNode) : resumableNode;
         JSFrameSlot stateSlot = addGeneratorStateSlot(environment.getFunctionFrameDescriptor(), ((ResumableNode) resumableNode).getStateSlotKind());
-        if (resumableNode instanceof SuperPropertyReferenceNode superPropertyReference) {
-            // Do not use a GeneratorWrapperNode: ReadElementNode, WriteElementNode, and
-            // JSFunctionCallNode use instanceof SuperPropertyReferenceNode to select `this` as
-            // the receiver. Without it, for example, super[key]() would use a wrong receiver.
-            superPropertyReference.setGeneratorStateSlot(stateSlot.getIndex());
-            return superPropertyReference;
-        }
         return factory.createGeneratorWrapper((JavaScriptNode) resumableNode, stateSlot);
     }
 
