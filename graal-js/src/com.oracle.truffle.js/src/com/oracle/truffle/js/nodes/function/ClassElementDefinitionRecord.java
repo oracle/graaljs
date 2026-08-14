@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,6 +76,8 @@ public final class ClassElementDefinitionRecord {
     private int initializersCount;
     /** Private field storage key for an auto accessor or a private field. */
     private HiddenKey backingStorageKey;
+    /** Private brand captured by private decorator context access closures. */
+    private Object decoratorPrivateBrand;
 
     public static ClassElementDefinitionRecord createPublicField(Object key, Object value, boolean anonymousFunctionDefinition, Object[] decorators) {
         return new ClassElementDefinitionRecord(Kind.Field, key, value, null, null, false, anonymousFunctionDefinition, decorators);
@@ -251,6 +253,18 @@ public final class ClassElementDefinitionRecord {
 
     public HiddenKey getBackingStorageKey() {
         return backingStorageKey;
+    }
+
+    public void setDecoratorPrivateBrand(Object brand) {
+        this.decoratorPrivateBrand = brand;
+    }
+
+    public boolean hasDecoratorPrivateBrand() {
+        return decoratorPrivateBrand != null;
+    }
+
+    public Object getDecoratorPrivateBrand() {
+        return decoratorPrivateBrand;
     }
 
     @Override

@@ -3358,13 +3358,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
     }
 
-    private JSFrameSlot getConstructorFrameSlotForVariable(VarRef privateNameVar) {
-        int frameLevel = ((AbstractFrameVarRef) privateNameVar).getFrameLevel();
-        int scopeLevel = ((AbstractFrameVarRef) privateNameVar).getScopeLevel();
-        Environment memberEnv = environment.getParentAt(frameLevel, scopeLevel);
-        return memberEnv.findBlockFrameSlot(ClassNode.PRIVATE_CONSTRUCTOR_BINDING_NAME);
-    }
-
     private JavaScriptNode getPrivateBrandNode(JSFrameSlot frameSlot, VarRef privateNameVar) {
         int frameLevel = ((AbstractFrameVarRef) privateNameVar).getFrameLevel();
         int scopeLevel = ((AbstractFrameVarRef) privateNameVar).getScopeLevel();
@@ -3455,8 +3448,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         } else if (property.isPrivate()) {
             VarRef privateVar = environment.findLocalVar(property.getPrivateNameTS());
             JSWriteFrameSlotNode writePrivateNode = (JSWriteFrameSlotNode) privateVar.createWriteNode(null);
-            JSFrameSlot constructorSlot = getConstructorFrameSlotForVariable(privateVar);
-            return factory.createPrivateAccessorMember(property.isStatic(), getter, setter, writePrivateNode, constructorSlot.getIndex());
+            return factory.createPrivateAccessorMember(property.isStatic(), getter, setter, writePrivateNode);
         } else {
             return factory.createAccessorMember(property.getKeyNameTS(), property.isStatic(), enumerable, getter, setter);
         }
@@ -3509,15 +3501,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             if (((ClassElement) property).isAutoAccessor()) {
                 JSWriteFrameSlotNode writePrivateAccessor = (JSWriteFrameSlotNode) privateVar.createWriteNode(null);
                 JavaScriptNode fieldStorageKey = factory.createNewPrivateName(property.getPrivateNameTS());
-                JSFrameSlot constructorSlot = getConstructorFrameSlotForVariable(privateVar);
-                return factory.createPrivateAutoAccessorMember(property.isStatic(), value, writePrivateAccessor, fieldStorageKey, constructorSlot.getIndex());
+                return factory.createPrivateAutoAccessorMember(property.isStatic(), value, writePrivateAccessor, fieldStorageKey);
             } else if (property.isClassField()) {
                 JSWriteFrameSlotNode writePrivateNode = (JSWriteFrameSlotNode) privateVar.createWriteNode(factory.createNewPrivateName(property.getPrivateNameTS()));
                 return factory.createPrivateFieldMember(privateVar.createReadNode(), property.isStatic(), value, writePrivateNode);
             } else {
                 JSWriteFrameSlotNode writePrivateNode = (JSWriteFrameSlotNode) privateVar.createWriteNode(null);
-                JSFrameSlot constructorSlot = getConstructorFrameSlotForVariable(privateVar);
-                return factory.createPrivateMethodMember(property.getPrivateNameTS(), property.isStatic(), value, writePrivateNode, constructorSlot.getIndex());
+                return factory.createPrivateMethodMember(property.getPrivateNameTS(), property.isStatic(), value, writePrivateNode);
             }
         } else if (isClass && ((ClassElement) property).isAutoAccessor()) {
             if (property.isComputed()) {

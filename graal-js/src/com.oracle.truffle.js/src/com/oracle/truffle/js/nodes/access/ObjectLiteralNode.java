@@ -325,15 +325,6 @@ public final class ObjectLiteralNode extends JavaScriptNode {
             return true;
         }
 
-        public final ScopeFrameNode getPrivateScopeNode() {
-            return writePrivateNode.getLevelFrameNode();
-        }
-
-        public final int getPrivateMemberSlotIndex() {
-            return writePrivateNode.getSlotIndex();
-        }
-
-        public abstract int getPrivateBrandSlotIndex();
     }
 
     private abstract static class CachingObjectLiteralMemberNode extends ClassElementNode {
@@ -936,11 +927,6 @@ public final class ObjectLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        public int getPrivateBrandSlotIndex() {
-            return -1;
-        }
-
-        @Override
         protected ObjectLiteralMemberNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new PrivateFieldMemberNode(JavaScriptNode.cloneUninitialized(keyNode, materializedTags), isStatic, JavaScriptNode.cloneUninitialized(valueNode, materializedTags),
                             JavaScriptNode.cloneUninitialized(writePrivateNode, materializedTags));
@@ -951,19 +937,12 @@ public final class ObjectLiteralNode extends JavaScriptNode {
         @Child private JavaScriptNode valueNode;
 
         private final TruffleString privateName;
-        private final int privateBrandSlotIndex;
 
-        PrivateMethodMemberNode(TruffleString privateName, boolean isStatic, JavaScriptNode valueNode, JSWriteFrameSlotNode writePrivateNode, int privateBrandSlotIndex) {
+        PrivateMethodMemberNode(TruffleString privateName, boolean isStatic, JavaScriptNode valueNode, JSWriteFrameSlotNode writePrivateNode) {
             super(isStatic, false, writePrivateNode);
             this.privateName = privateName;
             this.valueNode = valueNode;
             this.writePrivateNode = writePrivateNode;
-            this.privateBrandSlotIndex = privateBrandSlotIndex;
-        }
-
-        @Override
-        public int getPrivateBrandSlotIndex() {
-            return privateBrandSlotIndex;
         }
 
         @Override
@@ -980,7 +959,7 @@ public final class ObjectLiteralNode extends JavaScriptNode {
         @Override
         protected ObjectLiteralMemberNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new PrivateMethodMemberNode(privateName, isStatic, JavaScriptNode.cloneUninitialized(valueNode, materializedTags),
-                            JavaScriptNode.cloneUninitialized(writePrivateNode, materializedTags), privateBrandSlotIndex);
+                            JavaScriptNode.cloneUninitialized(writePrivateNode, materializedTags));
         }
     }
 
@@ -988,19 +967,11 @@ public final class ObjectLiteralNode extends JavaScriptNode {
         @Child private JavaScriptNode getterNode;
         @Child private JavaScriptNode setterNode;
 
-        private final int privateBrandSlotIndex;
-
-        PrivateAccessorMemberNode(boolean isStatic, JavaScriptNode getterNode, JavaScriptNode setterNode, JSWriteFrameSlotNode writePrivateNode, int privateBrandSlotIndex) {
+        PrivateAccessorMemberNode(boolean isStatic, JavaScriptNode getterNode, JavaScriptNode setterNode, JSWriteFrameSlotNode writePrivateNode) {
             super(isStatic, false, writePrivateNode);
             this.getterNode = getterNode;
             this.setterNode = setterNode;
             this.writePrivateNode = writePrivateNode;
-            this.privateBrandSlotIndex = privateBrandSlotIndex;
-        }
-
-        @Override
-        public int getPrivateBrandSlotIndex() {
-            return privateBrandSlotIndex;
         }
 
         @Override
@@ -1054,7 +1025,7 @@ public final class ObjectLiteralNode extends JavaScriptNode {
         @Override
         protected ObjectLiteralMemberNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new PrivateAccessorMemberNode(isStatic, JavaScriptNode.cloneUninitialized(getterNode, materializedTags), JavaScriptNode.cloneUninitialized(setterNode, materializedTags),
-                            JavaScriptNode.cloneUninitialized(writePrivateNode, materializedTags), privateBrandSlotIndex);
+                            JavaScriptNode.cloneUninitialized(writePrivateNode, materializedTags));
         }
     }
 
@@ -1065,16 +1036,14 @@ public final class ObjectLiteralNode extends JavaScriptNode {
         @Child private JavaScriptNode storageKeyNode;
         @Child private DynamicObject.PutNode backingStorageMagicSetNode;
 
-        private final int privateBrandSlotIndex;
         private final JSFunctionData getterFunctionData;
         private final JSFunctionData setterFunctionData;
 
         PrivateAutoAccessorMemberNode(boolean isStatic, JavaScriptNode valueNode,
-                        JSWriteFrameSlotNode writePrivateAccessorNode, JavaScriptNode storageKeyNode, int privateBrandSlot) {
+                        JSWriteFrameSlotNode writePrivateAccessorNode, JavaScriptNode storageKeyNode) {
             super(isStatic, false, writePrivateAccessorNode);
             this.valueNode = valueNode;
             this.storageKeyNode = storageKeyNode;
-            this.privateBrandSlotIndex = privateBrandSlot;
             JSContext context = getLanguage().getJSContext();
             this.backingStorageMagicSetNode = DynamicObject.PutNode.create();
             this.setterFunctionData = createAutoAccessorSetFunctionData(context);
@@ -1160,17 +1129,11 @@ public final class ObjectLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        public int getPrivateBrandSlotIndex() {
-            return privateBrandSlotIndex;
-        }
-
-        @Override
         protected ObjectLiteralMemberNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new PrivateAutoAccessorMemberNode(isStatic,
                             JavaScriptNode.cloneUninitialized(valueNode, materializedTags),
                             JavaScriptNode.cloneUninitialized(writePrivateNode, materializedTags),
-                            JavaScriptNode.cloneUninitialized(storageKeyNode, materializedTags),
-                            privateBrandSlotIndex);
+                            JavaScriptNode.cloneUninitialized(storageKeyNode, materializedTags));
         }
     }
 
@@ -1240,19 +1203,17 @@ public final class ObjectLiteralNode extends JavaScriptNode {
         return new PrivateFieldMemberNode(name, isStatic, valueNode, writePrivateNode);
     }
 
-    public static ObjectLiteralMemberNode newPrivateMethodMember(TruffleString privateName, boolean isStatic, JavaScriptNode valueNode, JSWriteFrameSlotNode writePrivateNode,
-                    int privateBrandSlotIndex) {
-        return new PrivateMethodMemberNode(privateName, isStatic, valueNode, writePrivateNode, privateBrandSlotIndex);
+    public static ObjectLiteralMemberNode newPrivateMethodMember(TruffleString privateName, boolean isStatic, JavaScriptNode valueNode, JSWriteFrameSlotNode writePrivateNode) {
+        return new PrivateMethodMemberNode(privateName, isStatic, valueNode, writePrivateNode);
     }
 
-    public static ObjectLiteralMemberNode newPrivateAccessorMember(boolean isStatic, JavaScriptNode getterNode, JavaScriptNode setterNode, JSWriteFrameSlotNode writePrivateNode,
-                    int privateBrandSlotIndex) {
-        return new PrivateAccessorMemberNode(isStatic, getterNode, setterNode, writePrivateNode, privateBrandSlotIndex);
+    public static ObjectLiteralMemberNode newPrivateAccessorMember(boolean isStatic, JavaScriptNode getterNode, JavaScriptNode setterNode, JSWriteFrameSlotNode writePrivateNode) {
+        return new PrivateAccessorMemberNode(isStatic, getterNode, setterNode, writePrivateNode);
     }
 
     public static ObjectLiteralMemberNode newPrivateAutoAccessorMember(boolean isStatic, JavaScriptNode valueNode,
-                    JSWriteFrameSlotNode writePrivateAccessor, JavaScriptNode storageKey, int privateBrandSlotIndex) {
-        return new PrivateAutoAccessorMemberNode(isStatic, valueNode, writePrivateAccessor, storageKey, privateBrandSlotIndex);
+                    JSWriteFrameSlotNode writePrivateAccessor, JavaScriptNode storageKey) {
+        return new PrivateAutoAccessorMemberNode(isStatic, valueNode, writePrivateAccessor, storageKey);
     }
 
     public static ObjectLiteralMemberNode newProtoMember(TruffleString name, boolean isStatic, JavaScriptNode valueNode) {

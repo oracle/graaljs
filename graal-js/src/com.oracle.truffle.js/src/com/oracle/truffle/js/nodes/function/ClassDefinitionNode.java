@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -279,6 +279,15 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
                         stateSlot,
                         realm);
 
+        // Create the instance-private brand before applying element decorators so their context
+        // access closures can capture it without retaining the lexical class frame. Install the
+        // same brand on the original constructor for subsequent instance initialization.
+        HiddenKey privateBrand = null;
+        if (setPrivateBrandNode != null) {
+            privateBrand = new HiddenKey("Brand");
+            setPrivateBrandNode.setValue(constructor, privateBrand);
+        }
+
         SimpleArrayList<Object> staticExtraInitializers = SimpleArrayList.createEmpty();
         SimpleArrayList<Object> instanceExtraInitializers = SimpleArrayList.createEmpty();
         applyDecoratorsAndDefineMethods(frame,
@@ -287,18 +296,13 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
                         staticExtraInitializers,
                         staticElements,
                         constructor,
-                        proto);
+                        proto,
+                        privateBrand);
 
         if (setElementsNode != null) {
             setElementsNode.setValue(constructor, instanceElements);
         }
         setInitializersNode.setValue(constructor, instanceExtraInitializers.toArray());
-
-        // If the class contains a private instance method or accessor, set F.[[PrivateBrand]].
-        if (setPrivateBrandNode != null) {
-            HiddenKey privateBrand = new HiddenKey("Brand");
-            setPrivateBrandNode.setValue(constructor, privateBrand);
-        }
 
         // internal constructor binding used for private brand checks.
         // Should set before static blocks execution.
@@ -334,11 +338,12 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
                     SimpleArrayList<Object> staticExtraInitializers,
                     ClassElementDefinitionRecord[] staticElements,
                     JSObject constructor,
-                    JSObject proto) {
-        applyDecoratorsAndDefineMethods(frame, constructor, staticElements, staticExtraInitializers, true);
-        applyDecoratorsAndDefineMethods(frame, proto, instanceElements, instanceExtraInitializers, false);
-        applyDecoratorsToElements(frame, constructor, staticElements, staticExtraInitializers, true);
-        applyDecoratorsToElements(frame, proto, instanceElements, instanceExtraInitializers, false);
+                    JSObject proto,
+                    HiddenKey privateBrand) {
+        applyDecoratorsAndDefineMethods(frame, constructor, staticElements, staticExtraInitializers, true, constructor, privateBrand);
+        applyDecoratorsAndDefineMethods(frame, proto, instanceElements, instanceExtraInitializers, false, constructor, privateBrand);
+        applyDecoratorsToElements(frame, constructor, staticElements, staticExtraInitializers, true, constructor, privateBrand);
+        applyDecoratorsToElements(frame, proto, instanceElements, instanceExtraInitializers, false, constructor, privateBrand);
     }
 
     private void executeStaticExtraInitializers(Object target, Object[] initializers) {
@@ -348,7 +353,8 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
     }
 
     @ExplodeLoop
-    private void applyDecoratorsAndDefineMethods(VirtualFrame frame, JSObject homeObject, ClassElementDefinitionRecord[] elements, SimpleArrayList<Object> extraInitializers, boolean isStatic) {
+    private void applyDecoratorsAndDefineMethods(VirtualFrame frame, JSObject homeObject, ClassElementDefinitionRecord[] elements, SimpleArrayList<Object> extraInitializers,
+                    boolean isStatic, JSObject constructor, HiddenKey privateBrand) {
         if (elements == null) {
             return;
         }
@@ -360,6 +366,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
                 if (!member.isFieldOrStaticBlock()) {
                     ClassElementDefinitionRecord m = elements[elementIndex];
                     if (applyDecoratorsToElementDefinition != null && applyDecoratorsToElementDefinition[i] != null) {
+                        captureDecoratorPrivateBrand(m, isStatic, constructor, privateBrand);
                         applyDecoratorsToElementDefinition[i].executeDecorator(frame, homeObject, m, extraInitializers);
                     }
                     member.defineClassElement(frame, homeObject, m);
@@ -371,7 +378,8 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
     }
 
     @ExplodeLoop
-    private void applyDecoratorsToElements(VirtualFrame frame, JSObject homeObject, ClassElementDefinitionRecord[] elements, SimpleArrayList<Object> extraInitializers, boolean isStatic) {
+    private void applyDecoratorsToElements(VirtualFrame frame, JSObject homeObject, ClassElementDefinitionRecord[] elements, SimpleArrayList<Object> extraInitializers,
+                    boolean isStatic, JSObject constructor, HiddenKey privateBrand) {
         if (elements == null) {
             return;
         }
@@ -383,6 +391,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
                 if (member.isFieldOrStaticBlock()) {
                     ClassElementDefinitionRecord f = elements[elementIndex];
                     if (applyDecoratorsToElementDefinition != null && applyDecoratorsToElementDefinition[i] != null) {
+                        captureDecoratorPrivateBrand(f, isStatic, constructor, privateBrand);
                         applyDecoratorsToElementDefinition[i].executeDecorator(frame, homeObject, f, extraInitializers);
                     }
                 }
@@ -390,6 +399,12 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
             }
         }
         assert elementIndex == elements.length;
+    }
+
+    private static void captureDecoratorPrivateBrand(ClassElementDefinitionRecord record, boolean isStatic, JSObject constructor, HiddenKey privateBrand) {
+        if (record.isPrivate() && (record.isMethod() || record.isAccessor() || record.isAutoAccessor())) {
+            record.setDecoratorPrivateBrand(isStatic ? constructor : privateBrand);
+        }
     }
 
     private static ApplyDecoratorsToElementDefinition[] initApplyDecoratorsToElementDefinitionNodes(JSContext context,
