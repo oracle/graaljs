@@ -1171,6 +1171,10 @@ public class NodeFactory {
         return SuperPropertyReferenceNode.create(delegate, target);
     }
 
+    public JSTargetableNode createSuperPropertyReference(JavaScriptNode delegate, JavaScriptNode target, JavaScriptNode propertyKey) {
+        return SuperPropertyReferenceNode.create(delegate, target, propertyKey);
+    }
+
     public JSTargetableNode createTargetableWrapper(JavaScriptNode delegate, JavaScriptNode target) {
         return JSTargetableWrapperNode.create(delegate, target);
     }
