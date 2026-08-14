@@ -1338,12 +1338,12 @@ public class NodeFactory {
         return NewPrivateNameNode.create(Strings.toJavaString(description));
     }
 
-    public JavaScriptNode createPrivateFieldGet(JSContext context, JavaScriptNode target, JavaScriptNode key) {
-        return PrivateFieldGetNode.create(target, key, context);
+    public JavaScriptNode createPrivateFieldGet(JSContext context, JavaScriptNode target, JavaScriptNode key, TruffleString keyName) {
+        return PrivateFieldGetNode.create(target, key, context, keyName);
     }
 
-    public JavaScriptNode createPrivateFieldSet(JSContext context, JavaScriptNode targetNode, JavaScriptNode indexNode, JavaScriptNode valueNode) {
-        return PrivateFieldSetNode.create(targetNode, indexNode, valueNode, context);
+    public JavaScriptNode createPrivateFieldSet(JSContext context, JavaScriptNode targetNode, JavaScriptNode indexNode, JavaScriptNode valueNode, TruffleString keyName) {
+        return PrivateFieldSetNode.create(targetNode, indexNode, valueNode, context, keyName);
     }
 
     public ObjectLiteralMemberNode createPrivateFieldMember(JavaScriptNode keyNode, boolean isStatic, JavaScriptNode valueNode, JSWriteFrameSlotNode writePrivateNode) {

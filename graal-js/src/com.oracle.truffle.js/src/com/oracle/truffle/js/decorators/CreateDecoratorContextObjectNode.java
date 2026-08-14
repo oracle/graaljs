@@ -230,8 +230,8 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     public JSObject doPrivateField(JSRealm realm, ClassElementDefinitionRecord record, Object initializers, DecorationState state,
                     @Cached("getPrivateName(record.getKey())") TruffleString description,
                     @Cached("createSetHidden(BACKING_STORAGE_KEY, context)") PropertySetNode setStorageKeyNode,
-                    @Cached("createPrivateFieldGetter(context)") JSFunctionData valueGetterFunctionData,
-                    @Cached("createPrivateFieldSetter(context)") JSFunctionData valueSetterFunctionData) {
+                    @Cached("createPrivateFieldGetter(context, description)") JSFunctionData valueGetterFunctionData,
+                    @Cached("createPrivateFieldSetter(context, description)") JSFunctionData valueSetterFunctionData) {
         assert description.equals(getPrivateName(record.getKey()));
         JSObject getter = JSFunction.create(realm, valueGetterFunctionData);
         setStorageKeyNode.setValue(getter, record.getBackingStorageKey());
@@ -347,11 +347,9 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
 
     private static final class DecoratorPrivateMemberNode extends JavaScriptNode {
         @Child private JavaScriptNode getElementRecord;
-        private final TruffleString privateName;
 
-        DecoratorPrivateMemberNode(JSContext context, TruffleString privateName) {
+        DecoratorPrivateMemberNode(JSContext context) {
             this.getElementRecord = PropertyNode.createGetHidden(context, AccessFunctionNode.create(), ELEMENT_RECORD_KEY);
-            this.privateName = privateName;
         }
 
         @Override
@@ -361,13 +359,8 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
         }
 
         @Override
-        public String expressionToString() {
-            return Strings.toJavaString(privateName);
-        }
-
-        @Override
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            return new DecoratorPrivateMemberNode(getJSContext(), privateName);
+            return new DecoratorPrivateMemberNode(getJSContext());
         }
     }
 
@@ -531,11 +524,11 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     }
 
     @NeverDefault
-    protected static JSFunctionData createPrivateFieldGetter(JSContext context) {
+    protected static JSFunctionData createPrivateFieldGetter(JSContext context, TruffleString privateName) {
         CompilerAsserts.neverPartOfCompilation();
         JavaScriptRootNode getter = new JavaScriptRootNode(context.getLanguage()) {
             @Child private PrivateFieldGetNode privateFieldGet = PrivateFieldGetNode.create(AccessThisNode.create(),
-                            PropertyNode.createGetHidden(context, AccessFunctionNode.create(), BACKING_STORAGE_KEY), context);
+                            PropertyNode.createGetHidden(context, AccessFunctionNode.create(), BACKING_STORAGE_KEY), context, privateName);
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -546,12 +539,12 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     }
 
     @NeverDefault
-    protected static JSFunctionData createPrivateFieldSetter(JSContext context) {
+    protected static JSFunctionData createPrivateFieldSetter(JSContext context, TruffleString privateName) {
         CompilerAsserts.neverPartOfCompilation();
         JavaScriptRootNode setter = new JavaScriptRootNode(context.getLanguage()) {
             @Child private PrivateFieldSetNode privateFieldSet = PrivateFieldSetNode.create(AccessThisNode.create(),
                             PropertyNode.createGetHidden(context, AccessFunctionNode.create(), BACKING_STORAGE_KEY),
-                            AccessIndexedArgumentNode.create(0), context);
+                            AccessIndexedArgumentNode.create(0), context, privateName);
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -568,7 +561,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
         CallTarget callTarget = new JavaScriptRootNode(context.getLanguage()) {
             @Child private PrivateFieldGetNode privateGetNode = PrivateFieldGetNode.create(
                             PrivateBrandCheckNode.create(AccessThisNode.create(), new DecoratorPrivateBrandNode(context)),
-                            new DecoratorPrivateMemberNode(context, privateName), context);
+                            new DecoratorPrivateMemberNode(context), context, privateName);
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -584,7 +577,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
         CallTarget callTarget = new JavaScriptRootNode(context.getLanguage()) {
             @Child private PrivateFieldSetNode privateSetNode = PrivateFieldSetNode.create(
                             PrivateBrandCheckNode.create(AccessThisNode.create(), new DecoratorPrivateBrandNode(context)),
-                            new DecoratorPrivateMemberNode(context, privateName), AccessIndexedArgumentNode.create(0), context);
+                            new DecoratorPrivateMemberNode(context), AccessIndexedArgumentNode.create(0), context, privateName);
 
             @Override
             public Object execute(VirtualFrame frame) {

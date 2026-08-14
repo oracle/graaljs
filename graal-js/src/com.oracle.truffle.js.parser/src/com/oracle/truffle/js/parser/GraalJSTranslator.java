@@ -3339,13 +3339,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private JavaScriptNode createPrivateFieldGet(AccessNode accessNode, JavaScriptNode base) {
         VarRef privateNameVar = environment.findLocalVar(accessNode.getPrivateNameTS());
         JavaScriptNode privateName = privateNameVar.createReadNode();
-        return factory.createPrivateFieldGet(context, insertPrivateBrandCheck(base, privateNameVar), privateName);
+        return factory.createPrivateFieldGet(context, insertPrivateBrandCheck(base, privateNameVar), privateName, accessNode.getPrivateNameTS());
     }
 
     private JavaScriptNode createPrivateFieldSet(AccessNode accessNode, JavaScriptNode base, JavaScriptNode rhs) {
         VarRef privateNameVar = environment.findLocalVar(accessNode.getPrivateNameTS());
         JavaScriptNode privateName = privateNameVar.createReadNode();
-        return factory.createPrivateFieldSet(context, insertPrivateBrandCheck(base, privateNameVar), privateName, rhs);
+        return factory.createPrivateFieldSet(context, insertPrivateBrandCheck(base, privateNameVar), privateName, rhs, accessNode.getPrivateNameTS());
     }
 
     private JavaScriptNode insertPrivateBrandCheck(JavaScriptNode base, VarRef privateNameVar) {
