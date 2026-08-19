@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,21 +54,27 @@ public final class ObjectNode extends Expression {
     /** Literal elements. */
     private final List<PropertyNode> elements;
 
+    /** Whether the object literal has a comma after the last element. */
+    private final boolean hasTrailingComma;
+
     /**
      * Constructor
      *
      * @param token token
      * @param finish finish
      * @param elements the elements used to initialize this ObjectNode
+     * @param hasTrailingComma whether the object literal has a comma after the last element
      */
-    public ObjectNode(final long token, final int finish, final List<PropertyNode> elements) {
+    public ObjectNode(final long token, final int finish, final List<PropertyNode> elements, boolean hasTrailingComma) {
         super(token, finish);
         this.elements = List.copyOf(elements);
+        this.hasTrailingComma = hasTrailingComma;
     }
 
     private ObjectNode(final ObjectNode objectNode, final List<PropertyNode> elements) {
         super(objectNode);
         this.elements = List.copyOf(elements);
+        this.hasTrailingComma = objectNode.hasTrailingComma;
     }
 
     @Override
@@ -114,6 +120,13 @@ public final class ObjectNode extends Expression {
      */
     public List<PropertyNode> getElements() {
         return elements;
+    }
+
+    /**
+     * Returns whether this object literal has a comma after the last element.
+     */
+    public boolean hasTrailingComma() {
+        return hasTrailingComma;
     }
 
     private ObjectNode setElements(final List<PropertyNode> elements) {
