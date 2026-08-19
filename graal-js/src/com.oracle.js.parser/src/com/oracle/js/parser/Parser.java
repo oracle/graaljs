@@ -2848,15 +2848,16 @@ public class Parser extends AbstractParser {
 
         @Override
         public boolean enterLiteralNode(LiteralNode<?> literalNode) {
-            if (literalNode.isArray()) {
+            if (literalNode instanceof ArrayLiteralNode arrayLiteral) {
                 if (literalNode.isParenthesized()) {
                     throw error(AbstractParser.message(MSG_INVALID_LVALUE), literalNode.getToken());
                 }
-                if (((ArrayLiteralNode) literalNode).hasSpread() && ((ArrayLiteralNode) literalNode).hasTrailingComma()) {
-                    throw error("Rest element must be last", literalNode.getElementExpressions().get(literalNode.getElementExpressions().size() - 1).getToken());
+                List<Expression> elements = literalNode.getElementExpressions();
+                if (arrayLiteral.hasSpread() && arrayLiteral.hasTrailingComma()) {
+                    throw error("Rest element must be last", elements.get(elements.size() - 1).getToken());
                 }
                 boolean restElement = false;
-                for (Expression element : literalNode.getElementExpressions()) {
+                for (Expression element : elements) {
                     if (element != null) {
                         if (restElement) {
                             throw error("Unexpected element after rest element", element.getToken());
