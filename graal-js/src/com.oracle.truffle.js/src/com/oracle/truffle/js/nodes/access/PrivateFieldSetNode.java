@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,18 +48,19 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -73,16 +74,19 @@ public abstract class PrivateFieldSetNode extends JSTargetableNode {
     @Child @Executed protected JavaScriptNode keyNode;
     @Child @Executed protected JavaScriptNode valueNode;
     protected final JSContext context;
+    private final TruffleString keyName;
 
-    public static PrivateFieldSetNode create(JavaScriptNode targetNode, JavaScriptNode keyNode, JavaScriptNode valueNode, JSContext context) {
-        return PrivateFieldSetNodeGen.create(targetNode, keyNode, valueNode, context);
+    @NeverDefault
+    public static PrivateFieldSetNode create(JavaScriptNode targetNode, JavaScriptNode keyNode, JavaScriptNode valueNode, JSContext context, TruffleString keyName) {
+        return PrivateFieldSetNodeGen.create(targetNode, keyNode, valueNode, context, keyName);
     }
 
-    protected PrivateFieldSetNode(JavaScriptNode targetNode, JavaScriptNode keyNode, JavaScriptNode valueNode, JSContext context) {
+    protected PrivateFieldSetNode(JavaScriptNode targetNode, JavaScriptNode keyNode, JavaScriptNode valueNode, JSContext context, TruffleString keyName) {
         this.targetNode = targetNode;
         this.keyNode = keyNode;
         this.valueNode = valueNode;
         this.context = context;
+        this.keyName = keyName;
     }
 
     @SuppressWarnings("truffle-static-method")
@@ -105,7 +109,7 @@ public abstract class PrivateFieldSetNode extends JSTargetableNode {
         Object setter = accessor.getSetter();
         if (setter == Undefined.instance) {
             errorBranch.enter(this);
-            throw Errors.createTypeErrorCannotSetAccessorProperty(keyAsString(), target, this);
+            throw Errors.createTypeErrorCannotSetAccessorProperty(keyName, target, this);
         }
         callNode.executeCall(JSArguments.createOneArg(target, setter, value));
         return value;
@@ -114,12 +118,7 @@ public abstract class PrivateFieldSetNode extends JSTargetableNode {
     @TruffleBoundary
     @Fallback
     Object missing(@SuppressWarnings("unused") Object target, @SuppressWarnings("unused") Object key, @SuppressWarnings("unused") Object value) {
-        throw Errors.createTypeErrorCannotSetPrivateMember(keyAsString(), this);
-    }
-
-    @TruffleBoundary
-    private Object keyAsString() {
-        return Strings.fromJavaString(keyNode.expressionToString());
+        throw Errors.createTypeErrorCannotSetPrivateMember(keyName, this);
     }
 
     @Override
@@ -129,6 +128,6 @@ public abstract class PrivateFieldSetNode extends JSTargetableNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return create(cloneUninitialized(targetNode, materializedTags), cloneUninitialized(keyNode, materializedTags), cloneUninitialized(valueNode, materializedTags), context);
+        return create(cloneUninitialized(targetNode, materializedTags), cloneUninitialized(keyNode, materializedTags), cloneUninitialized(valueNode, materializedTags), context, keyName);
     }
 }

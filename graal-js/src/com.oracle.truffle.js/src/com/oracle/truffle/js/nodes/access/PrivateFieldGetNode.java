@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -63,7 +64,6 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -77,17 +77,20 @@ public abstract class PrivateFieldGetNode extends JSTargetableNode implements Re
     @Child @Executed protected JavaScriptNode targetNode;
     @Child @Executed protected JavaScriptNode keyNode;
     protected final JSContext context;
+    private final TruffleString keyName;
 
     private static final Object MISSING = null;
 
-    public static PrivateFieldGetNode create(JavaScriptNode targetNode, JavaScriptNode keyNode, JSContext context) {
-        return PrivateFieldGetNodeGen.create(targetNode, keyNode, context);
+    @NeverDefault
+    public static PrivateFieldGetNode create(JavaScriptNode targetNode, JavaScriptNode keyNode, JSContext context, TruffleString keyName) {
+        return PrivateFieldGetNodeGen.create(targetNode, keyNode, context, keyName);
     }
 
-    protected PrivateFieldGetNode(JavaScriptNode targetNode, JavaScriptNode keyNode, JSContext context) {
+    protected PrivateFieldGetNode(JavaScriptNode targetNode, JavaScriptNode keyNode, JSContext context, TruffleString keyName) {
         this.targetNode = targetNode;
         this.keyNode = keyNode;
         this.context = context;
+        this.keyName = Objects.requireNonNull(keyName);
     }
 
     @SuppressWarnings("truffle-static-method")
@@ -122,21 +125,16 @@ public abstract class PrivateFieldGetNode extends JSTargetableNode implements Re
         Object getter = accessor.getGetter();
         if (getter == Undefined.instance) {
             errorBranch.enter(this);
-            throw Errors.createTypeErrorCannotGetAccessorProperty(keyAsString(), target, this);
+            throw Errors.createTypeErrorCannotGetAccessorProperty(keyName, target, this);
         }
         return callNode.executeCall(JSArguments.createZeroArg(target, getter));
     }
 
     @TruffleBoundary
     @Fallback
-    Object missing(@SuppressWarnings("unused") Object target, @SuppressWarnings("unused") Object key) {
+    Object missing(@SuppressWarnings("unused") Object target, Object key) {
         boolean fieldAccess = key instanceof HiddenKey;
-        throw Errors.createTypeErrorCannotGetPrivateMember(fieldAccess, keyAsString(), this);
-    }
-
-    @TruffleBoundary
-    private TruffleString keyAsString() {
-        return Strings.fromJavaString(keyNode.expressionToString());
+        throw Errors.createTypeErrorCannotGetPrivateMember(fieldAccess, keyName, this);
     }
 
     @Override
@@ -146,13 +144,13 @@ public abstract class PrivateFieldGetNode extends JSTargetableNode implements Re
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return create(cloneUninitialized(targetNode, materializedTags), cloneUninitialized(keyNode, materializedTags), context);
+        return create(cloneUninitialized(targetNode, materializedTags), cloneUninitialized(keyNode, materializedTags), context, keyName);
     }
 
     @Override
     public String expressionToString() {
         if (targetNode != null && keyNode != null) {
-            return Objects.toString(targetNode.expressionToString(), INTERMEDIATE_VALUE) + "." + Objects.toString(keyAsString(), INTERMEDIATE_VALUE);
+            return Objects.toString(targetNode.expressionToString(), INTERMEDIATE_VALUE) + "." + keyName;
         }
         return null;
     }

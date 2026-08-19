@@ -1338,30 +1338,29 @@ public class NodeFactory {
         return NewPrivateNameNode.create(Strings.toJavaString(description));
     }
 
-    public JavaScriptNode createPrivateFieldGet(JSContext context, JavaScriptNode target, JavaScriptNode key) {
-        return PrivateFieldGetNode.create(target, key, context);
+    public JavaScriptNode createPrivateFieldGet(JSContext context, JavaScriptNode target, JavaScriptNode key, TruffleString keyName) {
+        return PrivateFieldGetNode.create(target, key, context, keyName);
     }
 
-    public JavaScriptNode createPrivateFieldSet(JSContext context, JavaScriptNode targetNode, JavaScriptNode indexNode, JavaScriptNode valueNode) {
-        return PrivateFieldSetNode.create(targetNode, indexNode, valueNode, context);
+    public JavaScriptNode createPrivateFieldSet(JSContext context, JavaScriptNode targetNode, JavaScriptNode indexNode, JavaScriptNode valueNode, TruffleString keyName) {
+        return PrivateFieldSetNode.create(targetNode, indexNode, valueNode, context, keyName);
     }
 
     public ObjectLiteralMemberNode createPrivateFieldMember(JavaScriptNode keyNode, boolean isStatic, JavaScriptNode valueNode, JSWriteFrameSlotNode writePrivateNode) {
         return ObjectLiteralNode.newPrivateFieldMember(keyNode, isStatic, valueNode, writePrivateNode);
     }
 
-    public ObjectLiteralMemberNode createPrivateMethodMember(TruffleString privateName, boolean isStatic, JavaScriptNode valueNode, JSWriteFrameSlotNode writePrivateNode, int privateBrandSlotIndex) {
-        return ObjectLiteralNode.newPrivateMethodMember(privateName, isStatic, valueNode, writePrivateNode, privateBrandSlotIndex);
+    public ObjectLiteralMemberNode createPrivateMethodMember(TruffleString privateName, boolean isStatic, JavaScriptNode valueNode, JSWriteFrameSlotNode writePrivateNode) {
+        return ObjectLiteralNode.newPrivateMethodMember(privateName, isStatic, valueNode, writePrivateNode);
     }
 
-    public ObjectLiteralMemberNode createPrivateAccessorMember(boolean isStatic, JavaScriptNode getterNode, JavaScriptNode setterNode, JSWriteFrameSlotNode writePrivateNode,
-                    int privateBrandSlotIndex) {
-        return ObjectLiteralNode.newPrivateAccessorMember(isStatic, getterNode, setterNode, writePrivateNode, privateBrandSlotIndex);
+    public ObjectLiteralMemberNode createPrivateAccessorMember(boolean isStatic, JavaScriptNode getterNode, JavaScriptNode setterNode, JSWriteFrameSlotNode writePrivateNode) {
+        return ObjectLiteralNode.newPrivateAccessorMember(isStatic, getterNode, setterNode, writePrivateNode);
     }
 
     public ObjectLiteralMemberNode createPrivateAutoAccessorMember(boolean isStatic, JavaScriptNode valueNode,
-                    JSWriteFrameSlotNode writePrivateAccessor, JavaScriptNode storageKey, int privateBrandSlotIndex) {
-        return ObjectLiteralNode.newPrivateAutoAccessorMember(isStatic, valueNode, writePrivateAccessor, storageKey, privateBrandSlotIndex);
+                    JSWriteFrameSlotNode writePrivateAccessor, JavaScriptNode storageKey) {
+        return ObjectLiteralNode.newPrivateAutoAccessorMember(isStatic, valueNode, writePrivateAccessor, storageKey);
     }
 
     public JavaScriptNode createPrivateBrandCheck(JavaScriptNode targetNode, JavaScriptNode brandNode) {
