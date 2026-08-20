@@ -823,7 +823,7 @@ public abstract class TestSuite {
         Map<String, TestFile> unexpectedlyPassed = new LinkedHashMap<>();
         for (TestFile testFile : shouldRunAndFailTests.values()) {
             if (testFile.hasRun() && testFile.hasPassed()) {
-                System.out.println("Unexpectedly passed '" + testFile.getFilePath() + "' (expected status: " + testFile.getStatus().name() + "), please update the configuration file!");
+                System.out.println("Unexpectedly passed '" + testFile.getFilePath() + "' (expected status: " + testFile.getStatus().name() + ")");
                 unexpectedlyPassed.put(testFile.getFilePath(), testFile);
             }
         }
@@ -839,7 +839,7 @@ public abstract class TestSuite {
             assert testFile.hasRun() : testFile;
             assert !testFile.hasPassed() : testFile;
             if (testFile.getRealStatus(config) != TestFile.Status.FAIL) {
-                System.out.println("Unexpectedly failed '" + testFile.getFilePath() + "', please update the configuration file!");
+                System.out.println("Unexpectedly failed '" + testFile.getFilePath() + "'");
                 unexpectedlyFailed.put(testFile.getFilePath(), testFile);
             }
         }
