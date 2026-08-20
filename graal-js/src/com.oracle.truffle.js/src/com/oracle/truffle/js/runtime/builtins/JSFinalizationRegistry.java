@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -179,6 +179,16 @@ public final class JSFinalizationRegistry extends JSNonProxy implements JSConstr
         return null;
     }
 
+    @TruffleBoundary
+    public static boolean hasPendingCleanup(JSFinalizationRegistryObject finalizationRegistry) {
+        for (FinalizationRecord record : finalizationRegistry.getCells()) {
+            if (record.getWeakRefTarget().get() == null) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /**
      * 4.1.3 Execution and 4.1.4.1 HostCleanupFinalizationRegistry.
      */
@@ -186,7 +196,7 @@ public final class JSFinalizationRegistry extends JSNonProxy implements JSConstr
         // if something can be polled, clean up the FinalizationRegistry
         ReferenceQueue<Object> queue = finalizationRegistry.getReferenceQueue();
         boolean queueNotEmpty = (queue.poll() != null);
-        // Cleared WeakReferences may not appear in ReferenceQueue immediatelly
+        // Cleared WeakReferences may not appear in ReferenceQueue immediately
         // but V8 tests expect the invocation of the callbacks as soon as possible
         // => do not wait for enqueuing in TestV8 mode.
         boolean performCleanup = queueNotEmpty || JSObject.getJSContext(finalizationRegistry).getLanguageOptions().testV8Mode();

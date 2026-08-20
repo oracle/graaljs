@@ -3158,10 +3158,6 @@
     "status" : "FAIL",
     "comment" : "Uses Realm.detachGlobal()"
   }, {
-    "filePath" : "mjsunit/weakrefs/finalizationregistry-and-weakref.js",
-    "status" : "FAIL",
-    "comment" : "Relies on V8-specific deterministic GC and WeakRef/FinalizationRegistry scheduling"
-  }, {
     "filePath" : "mjsunit/weakrefs/finalizationregistry-independent-lifetime-multiple.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-02-12"
@@ -3170,17 +3166,9 @@
     "status" : "FAIL",
     "comment" : "Expects GC of a registry but the registry is kept alive by a closure (passes when rewritten slightly to avoid the problem with the closure)."
   }, {
-    "filePath" : "mjsunit/weakrefs/finalizationregistry-scheduled-for-cleanup-multiple-times.js",
-    "status" : "SKIP",
-    "comment" : "Unstable due to non-deterministic GC and FinalizationRegistry scheduling"
-  }, {
     "filePath" : "mjsunit/weakrefs/minor-gc-cleanup-on-detached-realm.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-02-12"
-  }, {
-    "filePath" : "mjsunit/weakrefs/minor-gc-finalizationregistry-and-weakref.js",
-    "status" : "FAIL",
-    "comment" : "Relies on V8-specific minor GC and WeakRef/FinalizationRegistry scheduling"
   }, {
     "filePath" : "mjsunit/weakrefs/minor-gc-finalizationregistry-independent-lifetime-multiple.js",
     "status" : "SKIP",
@@ -3190,36 +3178,12 @@
     "status" : "SKIP",
     "comment" : "Relies on deterministic V8 minor GC to collect the FinalizationRegistry before its scheduled cleanup"
   }, {
-    "filePath" : "mjsunit/weakrefs/minor-gc-finalizationregistry-scheduled-for-cleanup-multiple-times.js",
-    "status" : "SKIP",
-    "comment" : "Unstable due to non-deterministic GC and FinalizationRegistry scheduling"
-  }, {
-    "filePath" : "mjsunit/weakrefs/minor-gc-reclaims-unreachable-weak-cell-target.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-02-12"
-  }, {
-    "filePath" : "mjsunit/weakrefs/minor-gc-reclaims-unreachable-weakref-target.js",
-    "status" : "FAIL",
-    "comment" : "Relies on V8-specific minor GC and deterministic WeakRef clearing"
-  }, {
     "filePath" : "mjsunit/weakrefs/minor-gc-two-weakrefs.js",
     "status" : "SKIP",
     "comment" : "Unstable on native-image / when compiled (GR-23663)"
   }, {
     "filePath" : "mjsunit/weakrefs/minor-gc-weakref-deref-keeps-alive.js",
-    "status" : "FAIL",
-    "comment" : "Relies on V8-specific minor GC and deterministic WeakRef clearing"
-  }, {
-    "filePath" : "mjsunit/weakrefs/symbol-as-weakref-target-gc.js",
-    "status" : "FAIL",
-    "comment" : "Relies on V8-specific deterministic GC and WeakRef clearing"
-  }, {
-    "filePath" : "mjsunit/weakrefs/two-weakrefs.js",
-    "status" : "FAIL",
-    "comment" : "Relies on V8-specific deterministic GC and WeakRef clearing"
-  }, {
-    "filePath" : "mjsunit/weakrefs/weakref-deref-keeps-alive.js",
-    "status" : "FAIL",
-    "comment" : "Relies on V8-specific deterministic GC and WeakRef clearing"
+    "status" : "SKIP",
+    "comment" : "Relies on V8-specific minor GC promotion semantics"
   } ]
 }

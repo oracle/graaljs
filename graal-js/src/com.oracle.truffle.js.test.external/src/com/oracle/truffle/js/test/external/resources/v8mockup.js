@@ -356,10 +356,15 @@ globalThis['%HasFixedUint8ClampedElements'] = function(ob) {
 
 //watch out: this might be modified by TestV8Runnable, see GR-29754.
 function gc(options) {
-    TestV8.gc();
     if (typeof options === 'object' && options.execution === 'async') {
-        return Promise.resolve();
+        return new Promise(resolve => {
+            TestV8.setTimeout(() => {
+                TestV8.gc();
+                resolve();
+            });
+        });
     }
+    TestV8.gc();
 }
 
 globalThis['%IsMinusZero'] = function(a) {

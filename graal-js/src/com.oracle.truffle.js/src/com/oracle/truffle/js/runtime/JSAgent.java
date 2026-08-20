@@ -174,9 +174,7 @@ public abstract class JSAgent {
         } finally {
             interopBoundaryExit();
             if (processWeakRefs) {
-                if (weakRefTargets != null) {
-                    weakRefTargets.clear();
-                }
+                clearKeptObjects();
                 cleanupFinalizers();
             }
             if (promiseRejectionTracker != null) {
@@ -185,6 +183,12 @@ public abstract class JSAgent {
         }
         if (topLevelRejection != null) {
             throw topLevelRejection;
+        }
+    }
+
+    public final void clearKeptObjects() {
+        if (weakRefTargets != null) {
+            weakRefTargets.clear();
         }
     }
 
@@ -218,11 +222,24 @@ public abstract class JSAgent {
         return checkWaiterRecords;
     }
 
+    public final boolean hasPendingFinalizers() {
+        for (Iterator<WeakReference<JSFinalizationRegistryObject>> iter = finalizationRegistryQueue.iterator(); iter.hasNext();) {
+            WeakReference<JSFinalizationRegistryObject> ref = iter.next();
+            JSFinalizationRegistryObject fr = ref.get();
+            if (fr == null) {
+                iter.remove();
+            } else if (JSFinalizationRegistry.hasPendingCleanup(fr)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /**
      * Cleanup the finalizationRegistries that are unreferenced; cleanup referenced ones according
-     * to 4.1.3 Execution and 4.1.4.1 HostCleanupFinalizatioRegistry.
+     * to 4.1.3 Execution and 4.1.4.1 HostCleanupFinalizationRegistry.
      */
-    private void cleanupFinalizers() {
+    public final void cleanupFinalizers() {
         for (Iterator<WeakReference<JSFinalizationRegistryObject>> iter = finalizationRegistryQueue.iterator(); iter.hasNext();) {
             WeakReference<JSFinalizationRegistryObject> ref = iter.next();
             JSFinalizationRegistryObject fr = ref.get();
