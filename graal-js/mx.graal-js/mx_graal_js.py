@@ -396,10 +396,11 @@ def _fetch_test262():
             # Not a git repository, an old version of the test-suite extracted from an archive most likely.
             shutil.rmtree(_location)
             _clone = True
+    git = NoCRLFGitConfig()
     if _clone:
-        NoCRLFGitConfig().clone(url=mx_urlrewrites.rewriteurl(TEST262_REPO), dest=_location, rev=TEST262_REV, abortOnError=True)
-    else:
-        mx.GitConfig().update(_location, rev=TEST262_REV, mayPull=True, abortOnError=True)
+        git.clone(url=mx_urlrewrites.rewriteurl(TEST262_REPO), dest=_location, rev=TEST262_REV, abortOnError=True)
+    elif (git.tip(_location, abortOnError=False) or "").strip() != TEST262_REV:
+        git.update(_location, rev=TEST262_REV, mayPull=True, abortOnError=True)
 
 def jsnative(args):
     """builds and executes native JS image"""
@@ -492,6 +493,8 @@ def _fetch_testv8():
         _git_config.init(_location)
         _git_config.git_command(_location, ['remote', 'add', 'origin', mx_urlrewrites.rewriteurl(TESTV8_REPO)])
         _git_config.git_command(_location, ['sparse-checkout', 'set', 'test/mjsunit', 'test/intl'])
+    elif (_git_config.tip(_location, abortOnError=False) or "").strip() == TESTV8_REV:
+        return
     rev_exists = _git_config.git_command(_location, ['rev-parse', '--verify', TESTV8_REV + '^{commit}'], abortOnError=False) is not None
     if not rev_exists:
         # A checkout of a missing commit returns exit code 1, which git_command
