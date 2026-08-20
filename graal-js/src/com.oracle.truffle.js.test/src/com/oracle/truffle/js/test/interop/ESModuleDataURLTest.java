@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -121,6 +121,17 @@ public class ESModuleDataURLTest {
                 mainSource = Source.newBuilder(ID, functionExportTest.formatted(dataURLUpperCase), "functionexporttest.mjs").buildLiteral();
                 commonCheck(context.eval(mainSource));
             }
+        }
+    }
+
+    @Test
+    public void testUnescapedDataURL() {
+        String dataURL = "data:text/javascript,export function square(x) { return x * x; }";
+        String mainSourceText = "import { square } from '" + dataURL + "'; square(11);";
+        Source mainSource = Source.newBuilder(ID, mainSourceText, "unescaped-data-url.mjs").buildLiteral();
+
+        try (Context context = JSTest.newContextBuilder().build()) {
+            assertEquals(121, context.eval(mainSource).asInt());
         }
     }
 
