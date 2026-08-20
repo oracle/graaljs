@@ -1045,6 +1045,7 @@ public abstract class TestSuite {
                 key = rawArg.toLowerCase(Locale.US);
             }
             switch (key) {
+                case "--help":
                 case "help":
                     System.out.println("usage: " + builder.getSuiteName() +
                                     " [gate [regenerateconfig] [resume]] [verbose|verbosefail] [printscript] [regression] [filter=] [single=] [nothreads] [externallauncher=X [compile]]\n");
@@ -1072,7 +1073,7 @@ public abstract class TestSuite {
                     System.out.println(" polyglot               run with polyglot access allowed");
                     System.out.println(" shareengine            use shared Engine for all tests");
                     System.out.println(" minesversion           minimal ECMAScript version used for test execution");
-                    System.exit(-2);
+                    System.exit(0);
                     break;
                 case "nothreads":
                     builder.setUseThreads(false);
@@ -1172,7 +1173,7 @@ public abstract class TestSuite {
                     builder.setMinESVersion(minESVersion);
                     break;
                 default:
-                    System.out.println("unrecognized argument: " + key + "\nCall \"" + builder.getSuiteName() + " help\" for more information.");
+                    System.out.println("unrecognized argument: " + key + "\nCall \"" + builder.getSuiteName() + " --help\" for more information.");
                     System.exit(-2);
             }
         }
