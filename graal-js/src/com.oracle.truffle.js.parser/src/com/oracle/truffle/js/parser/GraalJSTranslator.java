@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.parser;
 
 import java.math.BigInteger;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -226,7 +225,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     protected final int prologLength;
     protected final ScriptOrModule activeScriptOrModule;
     private final boolean isParentStrict;
-    private final ArrayDeque<UsingScopeInfo> usingScopes = new ArrayDeque<>();
+    private UsingScopeInfo currentUsingScope;
 
     private static final class UsingScopeInfo {
         final VarRef capabilityVar;
@@ -1329,11 +1328,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JavaScriptNode result;
         try (EnvironmentCloseable blockEnv = enterBlockEnvironment(block)) {
             List<Statement> blockStatements = block.getStatements();
-            UsingScopeInfo usingScopeInfo = null;
-            if (block.hasDirectUsingDeclarations()) {
-                usingScopeInfo = new UsingScopeInfo(environment.createTempVar(), environment.createTempVar(), block.hasDirectAwaitUsingDeclarations());
-                usingScopes.push(usingScopeInfo);
-            }
             List<JavaScriptNode> scopeInit = new ArrayList<>(block.getSymbolCount());
             if (block.getScope().hasBlockScopedOrRedeclaredSymbols() && !(environment instanceof GlobalEnvironment)) {
                 createTemporalDeadZoneInit(block.getScope(), scopeInit);
@@ -1363,6 +1357,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
             JavaScriptNode blockNode;
             boolean usingScopeWrapped = false;
+            UsingScopeInfo usingScopeInfo = null;
+            UsingScopeInfo parentUsingScope = currentUsingScope;
+            if (block.hasDirectUsingDeclarations()) {
+                usingScopeInfo = new UsingScopeInfo(environment.createTempVar(), environment.createTempVar(), block.hasDirectAwaitUsingDeclarations());
+                currentUsingScope = usingScopeInfo;
+            }
             try {
                 if (block.isFunctionBody()) {
                     // Note: Parameters should already be initialized when entering the function
@@ -1425,9 +1425,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     blockNode = transformStatements(newBlockStatements, block.isTerminal(), block.isExpressionBlock() || block.isParameterBlock(), scopeInit);
                 }
             } finally {
-                if (usingScopeInfo != null) {
-                    usingScopes.pop();
-                }
+                currentUsingScope = parentUsingScope;
             }
 
             if (usingScopeInfo != null && !usingScopeWrapped) {
@@ -2013,7 +2011,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
 
         if (varNode.isUsing()) {
-            UsingScopeInfo usingScopeInfo = usingScopes.peek();
+            UsingScopeInfo usingScopeInfo = currentUsingScope;
             assert usingScopeInfo != null : varNode;
             JavaScriptNode registerNode = factory.createRegisterDisposableResource(context, usingScopeInfo.capabilityVar.createReadNode(), findScopeVar(varName, false).createReadNode(),
                             varNode.isAwaitUsing());
