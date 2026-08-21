@@ -46,11 +46,13 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
+import com.oracle.truffle.js.nodes.control.AsyncDisposeResourcesNode.AsyncDisposeState;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DisposeCapability;
 
-public final class AsyncDisposeResourcesWrapperNode extends AbstractAwaitNode implements ResumableNode.WithIntState {
+public final class AsyncDisposeResourcesWrapperNode extends AbstractAwaitNode implements ResumableNode.WithObjectState {
     @Child private JavaScriptNode capabilityNode;
     @Child private JavaScriptNode errorNode;
     @Child private AsyncDisposeResourcesNode asyncDisposeResourcesNode;
@@ -70,20 +72,31 @@ public final class AsyncDisposeResourcesWrapperNode extends AbstractAwaitNode im
 
     @Override
     public Object execute(VirtualFrame frame) {
-        int index = getStateAsInt(frame, stateSlot);
-        if (index == 0) {
+        Object savedState = getState(frame, stateSlot);
+        AsyncDisposeState state;
+        if (savedState == Undefined.instance) {
             DisposeCapability capability = (DisposeCapability) capabilityNode.execute(frame);
             Object errorObject = errorNode.execute(frame);
-            Object result = asyncDisposeResourcesNode.execute(capability, errorObject);
-            if (result == Undefined.instance) {
-                return result;
-            }
-            setStateAsInt(frame, stateSlot, 1);
-            return suspendAwait(frame, result);
+            state = AsyncDisposeResourcesNode.createState(capability, errorObject);
         } else {
-            setStateAsInt(frame, stateSlot, 0);
-            return resumeAwait(frame);
+            state = (AsyncDisposeState) savedState;
+            Completion completion = resumeAwaitCompletion(frame);
+            if (completion.isThrow()) {
+                asyncDisposeResourcesNode.rejectAwait(state, completion.getValue());
+            } else {
+                assert completion.isNormal();
+            }
         }
+
+        Object promiseOrValue = asyncDisposeResourcesNode.disposeUntilAwait(state);
+        if (promiseOrValue == null) {
+            resetState(frame, stateSlot);
+            asyncDisposeResourcesNode.complete(state);
+            return Undefined.instance;
+        }
+
+        setState(frame, stateSlot, state);
+        return suspendAwait(frame, promiseOrValue);
     }
 
     @Override

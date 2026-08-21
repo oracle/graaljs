@@ -47,12 +47,11 @@ import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.nodes.promise.NewPromiseCapabilityNode;
 import com.oracle.truffle.js.nodes.promise.PerformPromiseThenNode;
 import com.oracle.truffle.js.nodes.promise.PromiseResolveNode;
+import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
-import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
@@ -66,69 +65,60 @@ import com.oracle.truffle.js.runtime.util.DisposeCapability;
 import com.oracle.truffle.js.runtime.util.DisposeCapability.DisposableResource;
 
 public final class AsyncDisposeResourcesNode extends AbstractDisposeResourcesNode {
-    private static final HiddenKey CAPABILITY_ID = new HiddenKey("DisposeCapability");
-    private static final HiddenKey ERROR_ID = new HiddenKey("DisposeError");
+    private static final HiddenKey ASYNC_DISPOSE_STATE_ID = new HiddenKey("AsyncDisposeState");
     private static final HiddenKey PROMISE_CAPABILITY_ID = new HiddenKey("PromiseCapability");
-    private static final HiddenKey NEEDS_AWAIT_ID = new HiddenKey("NeedsAwait");
-    private static final HiddenKey HAS_AWAITED_ID = new HiddenKey("HasAwaited");
+
+    static final class AsyncDisposeState {
+        private final DisposeCapability capability;
+        private Object errorObject;
+        private boolean needsAwait;
+        private boolean hasAwaited;
+
+        private AsyncDisposeState(DisposeCapability capability, Object errorObject) {
+            this.capability = capability;
+            this.errorObject = errorObject;
+        }
+    }
 
     @Child private PromiseResolveNode promiseResolveNode;
-    @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
     @Child private PerformPromiseThenNode performPromiseThenNode;
     @Child private JSFunctionCallNode callNode;
-    @Child private PropertySetNode setCapability;
-    @Child private PropertySetNode setError;
+    @Child private PropertySetNode setAsyncDisposeState;
     @Child private PropertySetNode setPromiseCapability;
-    @Child private PropertySetNode setNeedsAwait;
-    @Child private PropertySetNode setHasAwaited;
 
     private final JSContext context;
 
     private AsyncDisposeResourcesNode(JSContext context) {
         this.context = context;
         this.promiseResolveNode = PromiseResolveNode.create(context);
-        this.newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
         this.performPromiseThenNode = PerformPromiseThenNode.create();
         this.callNode = JSFunctionCallNode.createCall();
-        this.setCapability = PropertySetNode.createSetHidden(CAPABILITY_ID, context);
-        this.setError = PropertySetNode.createSetHidden(ERROR_ID, context);
+        this.setAsyncDisposeState = PropertySetNode.createSetHidden(ASYNC_DISPOSE_STATE_ID, context);
         this.setPromiseCapability = PropertySetNode.createSetHidden(PROMISE_CAPABILITY_ID, context);
-        this.setNeedsAwait = PropertySetNode.createSetHidden(NEEDS_AWAIT_ID, context);
-        this.setHasAwaited = PropertySetNode.createSetHidden(HAS_AWAITED_ID, context);
     }
 
     public static AsyncDisposeResourcesNode create(JSContext context) {
         return new AsyncDisposeResourcesNode(context);
     }
 
-    public Object execute(DisposeCapability capability, Object currentError) {
-        return disposeRemaining(capability, currentError, null, false, false);
+    static AsyncDisposeState createState(DisposeCapability capability, Object currentError) {
+        return new AsyncDisposeState(capability, currentError);
     }
 
-    Object resumeRejected(DisposeCapability capability, Object currentError, Object rejection, boolean needsAwait, boolean hasAwaited) {
-        return disposeRemaining(capability, combineDisposeErrors(rejection, currentError), null, needsAwait, hasAwaited);
-    }
-
-    public void execute(DisposeCapability capability, Object currentError, PromiseCapabilityRecord promiseCapability) {
-        disposeRemaining(capability, currentError, promiseCapability, false, false);
-    }
-
-    void execute(DisposeCapability capability, Object currentError, PromiseCapabilityRecord promiseCapability, boolean needsAwait, boolean hasAwaited) {
-        disposeRemaining(capability, currentError, promiseCapability, needsAwait, hasAwaited);
-    }
-
-    void resumeRejected(DisposeCapability capability, Object currentError, Object rejection, PromiseCapabilityRecord promiseCapability, boolean needsAwait, boolean hasAwaited) {
-        disposeRemaining(capability, combineDisposeErrors(rejection, currentError), promiseCapability, needsAwait, hasAwaited);
-    }
-
-    private Object disposeRemaining(DisposeCapability capability, Object currentError, PromiseCapabilityRecord promiseCapability, boolean needsAwaitParam, boolean hasAwaited) {
-        Object errorObject = currentError;
+    /**
+     * Disposes resources synchronously until either disposal is complete or a value must be
+     * awaited. Returns {@code null} when disposal is complete, otherwise the value to await.
+     */
+    Object disposeUntilAwait(AsyncDisposeState state) {
+        DisposeCapability capability = state.capability;
+        Object errorObject = state.errorObject;
+        boolean needsAwait = state.needsAwait;
+        boolean hasAwaited = state.hasAwaited;
         DisposableResource resource;
-        boolean needsAwait = needsAwaitParam;
         while ((resource = capability.popResource()) != null) {
             if (!resource.isAsyncDispose() && needsAwait && !hasAwaited) {
                 capability.pushResourceUnchecked(resource);
-                return awaitResult(capability, errorObject, promiseCapability, false, hasAwaited, Undefined.instance);
+                return awaitResult(state, errorObject, false, false, Undefined.instance);
             }
 
             if (resource.getDisposeMethod() == Undefined.instance) {
@@ -146,60 +136,66 @@ public final class AsyncDisposeResourcesNode extends AbstractDisposeResourcesNod
             }
 
             if (resource.isAsyncDispose()) {
-                try {
-                    return awaitResult(capability, errorObject, promiseCapability, needsAwait, true, promiseOrValue);
-                } catch (Throwable throwable) {
-                    errorObject = combineDisposeErrors(captureDisposeError(throwable), errorObject);
-                }
+                return awaitResult(state, errorObject, needsAwait, true, promiseOrValue);
             }
         }
         if (needsAwait && !hasAwaited) {
-            return awaitResult(capability, errorObject, promiseCapability, false, false, Undefined.instance);
+            return awaitResult(state, errorObject, false, false, Undefined.instance);
         }
-        if (promiseCapability != null) {
-            if (errorObject != DisposeCapability.NO_ERROR) {
-                rejectPromise(promiseCapability, errorObject);
-            } else {
-                resolvePromise(promiseCapability, Undefined.instance);
-            }
-            return Undefined.instance;
-        }
-        if (errorObject != DisposeCapability.NO_ERROR) {
-            throwError(errorObject);
-        }
-        return Undefined.instance;
+        state.errorObject = errorObject;
+        return null;
     }
 
-    private Object awaitResult(DisposeCapability capability, Object errorObject, PromiseCapabilityRecord promiseCapability, boolean needsAwait, boolean hasAwaited, Object promiseOrValue) {
+    private static Object awaitResult(AsyncDisposeState state, Object errorObject, boolean needsAwait, boolean hasAwaited, Object promiseOrValue) {
+        state.errorObject = errorObject;
+        state.needsAwait = needsAwait;
+        state.hasAwaited = hasAwaited;
+        return promiseOrValue;
+    }
+
+    void rejectAwait(AsyncDisposeState state, Object reason) {
+        state.errorObject = combineDisposeErrors(reason, state.errorObject);
+    }
+
+    void complete(AsyncDisposeState state) {
+        if (state.errorObject != DisposeCapability.NO_ERROR) {
+            throwError(state.errorObject);
+        }
+    }
+
+    public void execute(DisposeCapability capability, Object currentError, PromiseCapabilityRecord promiseCapability) {
+        continueDispose(createState(capability, currentError), promiseCapability);
+    }
+
+    private void continueDispose(AsyncDisposeState state, PromiseCapabilityRecord promiseCapability) {
+        Object promiseOrValue = disposeUntilAwait(state);
+        if (promiseOrValue == null) {
+            complete(state, promiseCapability);
+        } else {
+            scheduleAwait(state, promiseCapability, promiseOrValue);
+        }
+    }
+
+    private void scheduleAwait(AsyncDisposeState state, PromiseCapabilityRecord promiseCapability, Object promiseOrValue) {
         JSPromiseObject promise = promiseResolveNode.executeDefault(promiseOrValue);
-        JSFunctionObject onFulfilled = createContinuationFunction(capability, errorObject, false, promiseCapability, needsAwait, hasAwaited);
-        JSFunctionObject onRejected = createContinuationFunction(capability, errorObject, true, promiseCapability, needsAwait, hasAwaited);
-        if (promiseCapability == null) {
-            return performPromiseThenNode.execute(promise, onFulfilled, onRejected, newPromiseCapabilityNode.executeDefault());
-        }
+        JSFunctionObject onFulfilled = createContinuationFunction(state, promiseCapability, false);
+        JSFunctionObject onRejected = createContinuationFunction(state, promiseCapability, true);
         performPromiseThenNode.execute(promise, onFulfilled, onRejected);
-        return Undefined.instance;
     }
 
-    private JSFunctionObject createContinuationFunction(DisposeCapability capability, Object errorObject, boolean rejected, PromiseCapabilityRecord promiseCapability,
-                    boolean needsAwait, boolean hasAwaited) {
+    private JSFunctionObject createContinuationFunction(AsyncDisposeState state, PromiseCapabilityRecord promiseCapability, boolean rejected) {
         BuiltinFunctionKey key = rejected ? BuiltinFunctionKey.AsyncDisposeResourcesReject : BuiltinFunctionKey.AsyncDisposeResourcesContinue;
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(key, ctx -> createContinuationFunctionData(ctx, rejected));
         JSFunctionObject function = JSFunction.create(getRealm(), functionData);
-        setCapability.setValue(function, capability);
-        setError.setValue(function, errorObject);
-        setPromiseCapability.setValue(function, promiseCapability == null ? Undefined.instance : promiseCapability);
-        setNeedsAwait.setValue(function, needsAwait);
-        setHasAwaited.setValue(function, hasAwaited);
+        setAsyncDisposeState.setValue(function, state);
+        setPromiseCapability.setValue(function, promiseCapability);
         return function;
     }
 
-    private void resolvePromise(PromiseCapabilityRecord promiseCapability, Object value) {
-        callNode.executeCall(JSArguments.createOneArg(promiseCapability.getPromise(), promiseCapability.getResolve(), value));
-    }
-
-    private void rejectPromise(PromiseCapabilityRecord promiseCapability, Object error) {
-        callNode.executeCall(JSArguments.createOneArg(promiseCapability.getPromise(), promiseCapability.getReject(), error));
+    private void complete(AsyncDisposeState state, PromiseCapabilityRecord promiseCapability) {
+        Object callback = state.errorObject == DisposeCapability.NO_ERROR ? promiseCapability.getResolve() : promiseCapability.getReject();
+        Object value = state.errorObject == DisposeCapability.NO_ERROR ? Undefined.instance : state.errorObject;
+        callNode.executeCall(JSArguments.createOneArg(Undefined.instance, callback, value));
     }
 
     private static JSFunctionData createContinuationFunctionData(JSContext context, boolean rejected) {
@@ -209,11 +205,8 @@ public final class AsyncDisposeResourcesNode extends AbstractDisposeResourcesNod
     private static final class AsyncDisposeResourcesRootNode extends JavaScriptRootNode {
         @Child private JavaScriptNode valueNode;
         @Child private AsyncDisposeResourcesNode asyncDisposeResourcesNode;
-        @Child private PropertyGetNode getCapability;
-        @Child private PropertyGetNode getError;
+        @Child private PropertyGetNode getAsyncDisposeState;
         @Child private PropertyGetNode getPromiseCapability;
-        @Child private PropertyGetNode getNeedsAwait;
-        @Child private PropertyGetNode getHasAwaited;
 
         private final boolean rejected;
 
@@ -221,34 +214,20 @@ public final class AsyncDisposeResourcesNode extends AbstractDisposeResourcesNod
             this.rejected = rejected;
             this.valueNode = rejected ? AccessIndexedArgumentNode.create(0) : null;
             this.asyncDisposeResourcesNode = AsyncDisposeResourcesNode.create(context);
-            this.getCapability = PropertyGetNode.createGetHidden(CAPABILITY_ID, context);
-            this.getError = PropertyGetNode.createGetHidden(ERROR_ID, context);
+            this.getAsyncDisposeState = PropertyGetNode.createGetHidden(ASYNC_DISPOSE_STATE_ID, context);
             this.getPromiseCapability = PropertyGetNode.createGetHidden(PROMISE_CAPABILITY_ID, context);
-            this.getNeedsAwait = PropertyGetNode.createGetHidden(NEEDS_AWAIT_ID, context);
-            this.getHasAwaited = PropertyGetNode.createGetHidden(HAS_AWAITED_ID, context);
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
             JSFunctionObject functionObject = JSFrameUtil.getFunctionObject(frame);
-            DisposeCapability capability = (DisposeCapability) getCapability.getValue(functionObject);
-            Object errorObject = getError.getValue(functionObject);
-            Object promiseCapability = getPromiseCapability.getValue(functionObject);
-            boolean needsAwait = (boolean) getNeedsAwait.getValue(functionObject);
-            boolean hasAwaited = (boolean) getHasAwaited.getValue(functionObject);
-            boolean completesPromise = promiseCapability != Undefined.instance;
+            AsyncDisposeState state = (AsyncDisposeState) getAsyncDisposeState.getValue(functionObject);
+            PromiseCapabilityRecord promiseCapability = (PromiseCapabilityRecord) getPromiseCapability.getValue(functionObject);
             if (rejected) {
-                if (completesPromise) {
-                    asyncDisposeResourcesNode.resumeRejected(capability, errorObject, valueNode.execute(frame), (PromiseCapabilityRecord) promiseCapability, needsAwait, hasAwaited);
-                    return Undefined.instance;
-                }
-                return asyncDisposeResourcesNode.resumeRejected(capability, errorObject, valueNode.execute(frame), needsAwait, hasAwaited);
+                asyncDisposeResourcesNode.rejectAwait(state, valueNode.execute(frame));
             }
-            if (completesPromise) {
-                asyncDisposeResourcesNode.execute(capability, errorObject, (PromiseCapabilityRecord) promiseCapability, needsAwait, hasAwaited);
-                return Undefined.instance;
-            }
-            return asyncDisposeResourcesNode.disposeRemaining(capability, errorObject, null, needsAwait, hasAwaited);
+            asyncDisposeResourcesNode.continueDispose(state, promiseCapability);
+            return Undefined.instance;
         }
     }
 }

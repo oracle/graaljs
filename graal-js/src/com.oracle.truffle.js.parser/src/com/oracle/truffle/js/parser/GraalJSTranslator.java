@@ -2147,7 +2147,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             currentFunction().addAwait();
             JSReadFrameSlotNode asyncContextNode = (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getAsyncContextSlot()).createReadNode();
             JSReadFrameSlotNode asyncResultNode = (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getAsyncResultSlot()).createReadNode();
-            JSFrameSlot stateSlot = addGeneratorStateSlot(currentFunction().getFunctionFrameDescriptor(), FrameSlotKind.Int);
+            JSFrameSlot stateSlot = addGeneratorStateSlot(currentFunction().getFunctionFrameDescriptor(), FrameSlotKind.Object);
             finallyBlock = factory.createAsyncDisposeResources(context, stateSlot, capabilityVar.createReadNode(), errorVar.createReadNode(), asyncContextNode, asyncResultNode);
         } else {
             finallyBlock = factory.createDisposeResources(capabilityVar.createReadNode(), errorVar.createReadNode());
