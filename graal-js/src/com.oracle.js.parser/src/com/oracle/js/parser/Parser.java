@@ -2848,15 +2848,16 @@ public class Parser extends AbstractParser {
 
         @Override
         public boolean enterLiteralNode(LiteralNode<?> literalNode) {
-            if (literalNode.isArray()) {
+            if (literalNode instanceof ArrayLiteralNode arrayLiteral) {
                 if (literalNode.isParenthesized()) {
                     throw error(AbstractParser.message(MSG_INVALID_LVALUE), literalNode.getToken());
                 }
-                if (((ArrayLiteralNode) literalNode).hasSpread() && ((ArrayLiteralNode) literalNode).hasTrailingComma()) {
-                    throw error("Rest element must be last", literalNode.getElementExpressions().get(literalNode.getElementExpressions().size() - 1).getToken());
+                List<Expression> elements = literalNode.getElementExpressions();
+                if (arrayLiteral.hasSpread() && arrayLiteral.hasTrailingComma()) {
+                    throw error("Rest element must be last", elements.get(elements.size() - 1).getToken());
                 }
                 boolean restElement = false;
-                for (Expression element : literalNode.getElementExpressions()) {
+                for (Expression element : elements) {
                     if (element != null) {
                         if (restElement) {
                             throw error("Unexpected element after rest element", element.getToken());
@@ -2883,16 +2884,22 @@ public class Parser extends AbstractParser {
             if (objectNode.isParenthesized()) {
                 throw error(AbstractParser.message(MSG_INVALID_LVALUE), objectNode.getToken());
             }
+            List<PropertyNode> elements = objectNode.getElements();
+            if (objectNode.hasTrailingComma() && !elements.isEmpty()) {
+                PropertyNode lastProperty = elements.get(elements.size() - 1);
+                if (lastProperty.isRest()) {
+                    throw error("Rest element must be last", lastProperty.getToken());
+                }
+            }
             boolean restElement = false;
-            for (PropertyNode property : objectNode.getElements()) {
+            for (PropertyNode property : elements) {
                 if (property != null) {
                     if (restElement) {
                         throw error("Unexpected element after rest element", property.getToken());
                     }
-                    Expression key = property.getKey();
-                    if (key.isTokenType(SPREAD_OBJECT)) {
+                    if (property.isRest()) {
                         restElement = true;
-                        Expression lvalue = ((UnaryNode) key).getExpression();
+                        Expression lvalue = ((UnaryNode) property.getKey()).getExpression();
                         verifySpreadElement(lvalue);
                     } else {
                         property.accept(this);
@@ -4428,6 +4435,7 @@ public class Parser extends AbstractParser {
 
         // Create a block for the object literal.
         boolean commaSeen = true;
+        boolean hasTrailingComma = false;
         boolean hasDuplicateProto = false;
         boolean hasProto = false;
         loop: while (true) {
@@ -4442,6 +4450,7 @@ public class Parser extends AbstractParser {
                     }
                     next();
                     commaSeen = true;
+                    hasTrailingComma = true;
                     break;
 
                 default:
@@ -4450,6 +4459,7 @@ public class Parser extends AbstractParser {
                     }
 
                     commaSeen = false;
+                    hasTrailingComma = false;
                     // Get and add the next property.
                     final PropertyNode property = propertyDefinition(yield, await, coverExpression);
                     elements.add(property);
@@ -4471,7 +4481,7 @@ public class Parser extends AbstractParser {
             }
         }
 
-        return new ObjectNode(objectToken, finish, elements);
+        return new ObjectNode(objectToken, finish, elements, hasTrailingComma);
     }
 
     private void checkES5PropertyDefinition(PropertyNode property, Map<String, PropertyNode> map) {
