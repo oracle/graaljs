@@ -147,6 +147,17 @@ public class ESModuleDataURLTest {
     }
 
     @Test
+    public void testUnescapedDataURLImportMetaURL() {
+        String dataURL = "data:text/javascript,export default import.meta.url; export {}";
+        String mainSourceText = "import url from '" + dataURL + "'; url;";
+        Source mainSource = Source.newBuilder(ID, mainSourceText, "unescaped-data-url-import-meta.mjs").buildLiteral();
+
+        try (Context context = JSTest.newContextBuilder().build()) {
+            assertEquals(dataURL, context.eval(mainSource).asString());
+        }
+    }
+
+    @Test
     public void testCharset() {
         String mainSourceTemplate = """
                         import str from "%s";
