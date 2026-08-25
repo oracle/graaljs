@@ -136,6 +136,17 @@ public class ESModuleDataURLTest {
     }
 
     @Test
+    public void testUnescapedDataURLWithMalformedPercentEncoding() {
+        String dataURL = "data:text/javascript,export default ['%', '%A', '%zz']";
+        String mainSourceText = "import value from \"" + dataURL + "\"; value.join('|');";
+        Source mainSource = Source.newBuilder(ID, mainSourceText, "unescaped-percent-data-url.mjs").buildLiteral();
+
+        try (Context context = JSTest.newContextBuilder().build()) {
+            assertEquals("%|%A|%zz", context.eval(mainSource).asString());
+        }
+    }
+
+    @Test
     public void testCharset() {
         String mainSourceTemplate = """
                         import str from "%s";
