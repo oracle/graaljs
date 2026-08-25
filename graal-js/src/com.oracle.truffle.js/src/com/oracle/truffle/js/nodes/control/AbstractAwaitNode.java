@@ -236,10 +236,15 @@ public abstract class AbstractAwaitNode extends JavaScriptNode implements Resuma
         return JSTags.createNodeObjectDescriptor("type", JSTags.ControlFlowBranchTag.Type.Await.name());
     }
 
-    protected final Object resumeAwait(VirtualFrame frame) {
+    protected final Completion resumeAwaitCompletion(VirtualFrame frame) {
         // We have been restored at this point. The frame contains the resumption state.
         Completion result = (Completion) readAsyncResultNode.execute(frame);
         echoInput(frame, result.getValue());
+        return result;
+    }
+
+    protected final Object resumeAwait(VirtualFrame frame) {
+        Completion result = resumeAwaitCompletion(frame);
         if (resumptionTypeProf.profile(result.isNormal())) {
             return result.getValue();
         } else {
