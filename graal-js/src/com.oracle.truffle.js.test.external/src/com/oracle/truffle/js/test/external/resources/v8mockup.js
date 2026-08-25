@@ -102,6 +102,9 @@ Worker = (function() {
     };
 })();
 
+performance.measureMemory ??= function() {
+};
+
 // Ignore `assertTrue(Number.isInteger(e_runtime_id));` in exceptions-utils.js
 Number.isInteger = (function() {
     let originalIsInteger = Number.isInteger;

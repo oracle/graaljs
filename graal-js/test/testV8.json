@@ -945,6 +945,14 @@
     "status" : "FAIL",
     "comment" : "Uses %GetUndetectable"
   }, {
+    "filePath" : "mjsunit/measure-memory-multiple-realms.js",
+    "status" : "FAIL",
+    "comment" : "The performance.measureMemory() mock does not provide memory measurement results"
+  }, {
+    "filePath" : "mjsunit/measure-memory.js",
+    "status" : "FAIL",
+    "comment" : "The performance.measureMemory() mock does not provide memory measurement results"
+  }, {
     "filePath" : "mjsunit/messages.js",
     "status" : "FAIL"
   }, {
@@ -1146,14 +1154,6 @@
     "status" : "SKIP",
     "comment" : "NOW: Fails consistently with NoClassDefFoundError. Uses infinite recursion, expects to run out of stack and catch the exception. BEFORE: spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
   }, {
-    "filePath" : "mjsunit/regress/regress-1494164.js",
-    "status" : "FAIL",
-    "comment" : "Uses performance.measureMemory()"
-  }, {
-    "filePath" : "mjsunit/regress/regress-1502014.js",
-    "status" : "FAIL",
-    "comment" : "Uses performance.measureMemory() in worker code"
-  }, {
     "filePath" : "mjsunit/regress/regress-233.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
@@ -1218,14 +1218,6 @@
     "status" : "FAIL",
     "comment" : "Uses d8.dom.Div"
   }, {
-    "filePath" : "mjsunit/regress/regress-368467195.js",
-    "status" : "FAIL",
-    "comment" : "Uses performance.measureMemory()"
-  }, {
-    "filePath" : "mjsunit/regress/regress-371237560.js",
-    "status" : "FAIL",
-    "comment" : "Uses performance.measureMemory()"
-  }, {
     "filePath" : "mjsunit/regress/regress-380416869.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
@@ -1241,10 +1233,6 @@
     "filePath" : "mjsunit/regress/regress-401111776.js",
     "status" : "FAIL",
     "comment" : "Test of externalizable strings"
-  }, {
-    "filePath" : "mjsunit/regress/regress-408820921.js",
-    "status" : "FAIL",
-    "comment" : "Uses performance.measureMemory() in worker code"
   }, {
     "filePath" : "mjsunit/regress/regress-411210.js",
     "runInIsolation" : true,
@@ -1969,17 +1957,9 @@
     "status" : "FAIL",
     "comment" : "Uses return_call instruction (opcode 0x12) from the tail call proposal."
   }, {
-    "filePath" : "mjsunit/regress/wasm/regress-1500804.js",
-    "status" : "FAIL",
-    "comment" : "Uses performance.measureMemory()."
-  }, {
     "filePath" : "mjsunit/regress/wasm/regress-1500812.js",
     "status" : "FAIL",
     "comment" : "Different error message for out-of-bounds memory access."
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-1517559.js",
-    "status" : "FAIL",
-    "comment" : "Uses performance.measureMemory()."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1523740.js",
     "status" : "FAIL",
@@ -2126,8 +2106,8 @@
     "comment" : "new failures 2025-02-10"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-370191716.js",
-    "status" : "FAIL",
-    "comment" : "Uses performance.measureMemory() in worker code"
+    "status" : "SKIP",
+    "comment" : "The performance.measureMemory() mock does not trigger the worker callback, causing worker.getMessage() to block indefinitely"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-371565065.js",
     "status" : "FAIL",
@@ -2136,10 +2116,6 @@
     "filePath" : "mjsunit/regress/wasm/regress-372261626.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-373907109.js",
-    "status" : "FAIL",
-    "comment" : "Uses performance.measureMemory() in worker code"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-375220562.js",
     "status" : "FAIL",
