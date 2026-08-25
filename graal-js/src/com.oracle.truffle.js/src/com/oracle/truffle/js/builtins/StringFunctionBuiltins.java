@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -252,13 +252,13 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             Object cooked = templateToObjectNode.execute(template);
             Object raw = rawToObjectNode.execute(getRawNode.getValue(cooked));
 
-            int literalSegments = getRawLength(raw);
+            long literalSegments = getRawLengthNode.executeLong(raw);
             if (emptyProf.profile(this, literalSegments <= 0)) {
                 return Strings.EMPTY_STRING;
             }
 
             var result = Strings.builderCreate();
-            for (int i = 0;; i++) {
+            for (long i = 0;; i++) {
                 Object rawElement = readRawElementNode.executeWithTargetAndIndex(raw, i);
                 TruffleString nextSeg = segToStringNode.executeString(rawElement);
                 appendChecked(result, nextSeg);
@@ -266,20 +266,11 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                     break;
                 }
                 if (i < numberOfSubstitutions) {
-                    TruffleString nextSub = subToStringNode.executeString(substitutions[i]);
+                    TruffleString nextSub = subToStringNode.executeString(substitutions[(int) i]);
                     appendChecked(result, nextSub);
                 }
             }
             return Strings.builderToString(builderToStringNode, result);
-        }
-
-        private int getRawLength(Object raw) {
-            long length = getRawLengthNode.executeLong(raw);
-            try {
-                return Math.toIntExact(length);
-            } catch (ArithmeticException e) {
-                return 0;
-            }
         }
 
         private void appendChecked(TruffleStringBuilderUTF16 result, TruffleString str) {
