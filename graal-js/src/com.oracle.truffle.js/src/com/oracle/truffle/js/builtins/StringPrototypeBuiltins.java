@@ -3068,14 +3068,31 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @TruffleBoundary
         private Object wrapInTag(TruffleString string) {
+            // "<" + tag + ">" + string + "</" + tag + ">"
+            long resultLength = Strings.length(string) + 2L * Strings.length(tag) + 5;
+            validateStringLength(resultLength);
             return Strings.concatAll(Strings.ANGLE_BRACKET_OPEN, tag, Strings.ANGLE_BRACKET_CLOSE, string, Strings.ANGLE_BRACKET_OPEN_SLASH, tag, Strings.ANGLE_BRACKET_CLOSE);
         }
 
         @TruffleBoundary
         private Object wrapInTagWithAttribute(TruffleString string, TruffleString attrVal) {
+            // "<" + tag + " " + attribute + "=\"" + escapedAttrVal + "\">" + string + "</" + tag + ">"
+            long resultLength = (long) Strings.length(string) + Strings.length(attrVal) + 2L * Strings.length(tag) + Strings.length(attribute) + 9;
+            validateStringLength(resultLength);
+            for (int quoteIndex = Strings.indexOf(attrVal, '"'); quoteIndex >= 0; quoteIndex = Strings.indexOf(attrVal, '"', quoteIndex + 1)) {
+                // Each double quote is replaced with "&quot;".
+                resultLength += Strings.length(Strings.HTML_QUOT) - 1;
+            }
+            validateStringLength(resultLength);
             TruffleString escapedVal = Strings.replace(attrVal, Strings.DOUBLE_QUOTE, Strings.HTML_QUOT);
             return Strings.concatAll(Strings.ANGLE_BRACKET_OPEN, tag, Strings.SPACE, attribute, Strings.EQUALS_DOUBLE_QUOTE, escapedVal, Strings.DOUBLE_QUOTE, Strings.ANGLE_BRACKET_CLOSE, string,
                             Strings.ANGLE_BRACKET_OPEN_SLASH, tag, Strings.ANGLE_BRACKET_CLOSE);
+        }
+
+        private void validateStringLength(long length) {
+            if (length > getContext().getStringLengthLimit()) {
+                throw Errors.createRangeErrorInvalidStringLength(this);
+            }
         }
     }
 
