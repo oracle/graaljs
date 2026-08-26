@@ -421,8 +421,11 @@ public class JSRealm {
 
     private final JSFunctionObject promiseConstructor;
     private final JSDynamicObject promisePrototype;
-    /** Promise.all function object, null in ES5 mode. */
+    /** Promise combinator function objects, null when unavailable in the selected ECMAScript version. */
     private JSFunctionObject promiseAllFunctionObject;
+    private JSFunctionObject promiseAllSettledFunctionObject;
+    private JSFunctionObject promiseAllKeyedFunctionObject;
+    private JSFunctionObject promiseAllSettledKeyedFunctionObject;
     /** Promise.resolve function object, null in ES5 mode. */
     private JSFunctionObject promiseResolveFunctionObject;
     private Object unhandledPromiseRejectionHandler;
@@ -1838,6 +1841,18 @@ public class JSRealm {
         return promiseAllFunctionObject;
     }
 
+    public final JSFunctionObject getPromiseAllSettledFunctionObject() {
+        return promiseAllSettledFunctionObject;
+    }
+
+    public final JSFunctionObject getPromiseAllKeyedFunctionObject() {
+        return promiseAllKeyedFunctionObject;
+    }
+
+    public final JSFunctionObject getPromiseAllSettledKeyedFunctionObject() {
+        return promiseAllSettledKeyedFunctionObject;
+    }
+
     public final JSFunctionObject getPromiseResolveFunctionObject() {
         return promiseResolveFunctionObject;
     }
@@ -2101,6 +2116,13 @@ public class JSRealm {
             putGlobalProperty(JSProxy.CLASS_NAME, getProxyConstructor());
             putGlobalProperty(JSPromise.CLASS_NAME, getPromiseConstructor());
             this.promiseAllFunctionObject = (JSFunctionObject) JSObject.get(getPromiseConstructor(), Strings.ALL);
+            if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2020) {
+                this.promiseAllSettledFunctionObject = (JSFunctionObject) JSObject.get(getPromiseConstructor(), Strings.ALL_SETTLED);
+            }
+            if (context.getEcmaScriptVersion() >= JSConfig.StagingECMAScriptVersion) {
+                this.promiseAllKeyedFunctionObject = (JSFunctionObject) JSObject.get(getPromiseConstructor(), Strings.ALL_KEYED);
+                this.promiseAllSettledKeyedFunctionObject = (JSFunctionObject) JSObject.get(getPromiseConstructor(), Strings.ALL_SETTLED_KEYED);
+            }
             this.promiseResolveFunctionObject = (JSFunctionObject) JSObject.get(getPromiseConstructor(), Strings.RESOLVE);
         }
         if (getContextOptions().isIteratorHelpers()) {

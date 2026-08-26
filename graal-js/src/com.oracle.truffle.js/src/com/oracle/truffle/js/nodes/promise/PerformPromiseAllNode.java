@@ -50,6 +50,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -190,6 +191,10 @@ public abstract class PerformPromiseAllNode extends PerformPromiseCombinatorNode
             @Child private PropertyGetNode getArgs = PropertyGetNode.createGetHidden(RESOLVE_ELEMENT_ARGS_KEY, context);
             @Child private JSFunctionCallNode callResolve = JSFunctionCallNode.createCall();
 
+            PromiseAllResolveElementRootNode() {
+                super(context.getLanguage());
+            }
+
             @Override
             public Object execute(VirtualFrame frame) {
                 JSDynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
@@ -214,7 +219,7 @@ public abstract class PerformPromiseAllNode extends PerformPromiseCombinatorNode
                 ResolveElementArgs resolveArgs = (ResolveElementArgs) JSObjectUtil.getHiddenProperty(handlerFunction, PerformPromiseAllNode.RESOLVE_ELEMENT_ARGS_KEY);
                 int promiseIndex = resolveArgs.index;
                 JSRealm realm = JSFunction.getRealm(handlerFunction);
-                TruffleStackTraceElement asyncStackTraceElement = createPromiseAllStackTraceElement(promiseIndex, realm);
+                TruffleStackTraceElement asyncStackTraceElement = createPromiseAllStackTraceElement(promiseIndex, realm, realm.getPromiseAllFunctionObject());
                 JSDynamicObject resultPromise = resolveArgs.capability.getPromise();
                 return new AsyncStackTraceInfo(resultPromise, asyncStackTraceElement);
             }
@@ -222,15 +227,19 @@ public abstract class PerformPromiseAllNode extends PerformPromiseCombinatorNode
         return JSFunctionData.createCallOnly(context, new PromiseAllResolveElementRootNode().getCallTarget(), 1, Strings.EMPTY_STRING);
     }
 
-    static TruffleStackTraceElement createPromiseAllStackTraceElement(int promiseIndex, JSRealm realm) {
-        return TruffleStackTraceElement.create(new PromiseAllMarkerRootNode(null, JSBuiltin.createSourceSection()),
-                        (RootCallTarget) JSFunction.getFunctionData(realm.getPromiseAllFunctionObject()).getCallTarget(),
-                        Truffle.getRuntime().createMaterializedFrame(JSArguments.createOneArg(realm.getPromiseConstructor(), realm.getPromiseAllFunctionObject(), promiseIndex)));
+    static TruffleStackTraceElement createPromiseAllStackTraceElement(int promiseIndex, JSRealm realm, JSFunctionObject combinatorFunction) {
+        JSFunctionData functionData = JSFunction.getFunctionData(combinatorFunction);
+        return TruffleStackTraceElement.create(new PromiseAllMarkerRootNode(realm.getContext().getLanguage(), JSBuiltin.createSourceSection(), functionData.getName()),
+                        (RootCallTarget) functionData.getCallTarget(),
+                        Truffle.getRuntime().createMaterializedFrame(JSArguments.createOneArg(realm.getPromiseConstructor(), combinatorFunction, promiseIndex)));
     }
 
     public static final class PromiseAllMarkerRootNode extends JavaScriptRootNode {
-        PromiseAllMarkerRootNode(JavaScriptLanguage lang, SourceSection sourceSection) {
+        private final TruffleString functionName;
+
+        PromiseAllMarkerRootNode(JavaScriptLanguage lang, SourceSection sourceSection, TruffleString functionName) {
             super(lang, sourceSection, null);
+            this.functionName = functionName;
         }
 
         @Override
@@ -250,7 +259,7 @@ public abstract class PerformPromiseAllNode extends PerformPromiseCombinatorNode
 
         @Override
         public String getName() {
-            return "Promise.all";
+            return "Promise." + functionName;
         }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.promise;
 
+import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -63,6 +64,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
@@ -101,7 +103,7 @@ public abstract class PerformPromiseAllSettledNode extends PerformPromiseAllNode
     }
 
     private static JSFunctionData createResolveElementFunctionImpl(JSContext context) {
-        class PromiseAllSettledResolveElementRootNode extends JavaScriptRootNode {
+        class PromiseAllSettledResolveElementRootNode extends JavaScriptRootNode implements AsyncHandlerRootNode {
             @Child private JavaScriptNode valueNode = AccessIndexedArgumentNode.create(0);
             @Child private PropertyGetNode getArgs = PropertyGetNode.createGetHidden(RESOLVE_ELEMENT_ARGS_KEY, context);
             @Child private JSFunctionCallNode callResolve = JSFunctionCallNode.createCall();
@@ -132,12 +134,20 @@ public abstract class PerformPromiseAllSettledNode extends PerformPromiseAllNode
                 }
                 return Undefined.instance;
             }
+
+            @Override
+            public AsyncStackTraceInfo getAsyncStackTraceInfo(JSFunctionObject handlerFunction) {
+                ResolveElementArgs args = (ResolveElementArgs) JSObjectUtil.getHiddenProperty(handlerFunction, RESOLVE_ELEMENT_ARGS_KEY);
+                JSRealm realm = JSFunction.getRealm(handlerFunction);
+                TruffleStackTraceElement stackTraceElement = createPromiseAllStackTraceElement(args.index, realm, realm.getPromiseAllSettledFunctionObject());
+                return new AsyncStackTraceInfo(args.capability.getPromise(), stackTraceElement);
+            }
         }
         return JSFunctionData.createCallOnly(context, new PromiseAllSettledResolveElementRootNode().getCallTarget(), 1, Strings.EMPTY_STRING);
     }
 
     private static JSFunctionData createRejectElementFunctionImpl(JSContext context) {
-        class PromiseAllSettledRejectElementRootNode extends JavaScriptRootNode {
+        class PromiseAllSettledRejectElementRootNode extends JavaScriptRootNode implements AsyncHandlerRootNode {
             @Child private JavaScriptNode valueNode = AccessIndexedArgumentNode.create(0);
             @Child private PropertyGetNode getArgs = PropertyGetNode.createGetHidden(RESOLVE_ELEMENT_ARGS_KEY, context);
             @Child private JSFunctionCallNode callResolve = JSFunctionCallNode.createCall();
@@ -167,6 +177,14 @@ public abstract class PerformPromiseAllSettledNode extends PerformPromiseAllNode
                     return callResolve.executeCall(JSArguments.createOneArg(Undefined.instance, args.capability.getResolve(), valuesArray));
                 }
                 return Undefined.instance;
+            }
+
+            @Override
+            public AsyncStackTraceInfo getAsyncStackTraceInfo(JSFunctionObject handlerFunction) {
+                ResolveElementArgs args = (ResolveElementArgs) JSObjectUtil.getHiddenProperty(handlerFunction, RESOLVE_ELEMENT_ARGS_KEY);
+                JSRealm realm = JSFunction.getRealm(handlerFunction);
+                TruffleStackTraceElement stackTraceElement = createPromiseAllStackTraceElement(args.index, realm, realm.getPromiseAllSettledFunctionObject());
+                return new AsyncStackTraceInfo(args.capability.getPromise(), stackTraceElement);
             }
         }
         return JSFunctionData.createCallOnly(context, new PromiseAllSettledRejectElementRootNode().getCallTarget(), 1, Strings.EMPTY_STRING);
