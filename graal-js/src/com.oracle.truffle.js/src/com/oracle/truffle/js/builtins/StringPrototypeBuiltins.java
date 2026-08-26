@@ -482,6 +482,12 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
             return toIntegerNode.executeInt(target);
         }
+
+        protected final void validateStringLength(String string) {
+            if (string.length() > getContext().getStringLengthLimit()) {
+                throw Errors.createRangeErrorInvalidStringLength(this);
+            }
+        }
     }
 
     public abstract static class JSStringOperationWithRegExpArgument extends JSStringOperation {
@@ -1982,7 +1988,9 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         TruffleString.FromJavaStringNode fromJavaString,
                         TruffleString.ToJavaStringNode toJavaString) {
             Locale usingLocale = locale ? getContext().getLocale() : Locale.US;
-            return fromJavaString.execute(Strings.javaStringToLowerCase(toJavaString.execute(str), usingLocale), TruffleString.Encoding.UTF_16);
+            String resultJStr = Strings.javaStringToLowerCase(toJavaString.execute(str), usingLocale);
+            validateStringLength(resultJStr);
+            return fromJavaString.execute(resultJStr, TruffleString.Encoding.UTF_16);
         }
     }
 
@@ -2016,6 +2024,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             String resultJStr = toUpperCase
                             ? IntlUtil.toUpperCase(thisJStr, locale)
                             : IntlUtil.toLowerCase(thisJStr, locale);
+            validateStringLength(resultJStr);
             return Strings.fromJavaString(fromJavaStringNode, resultJStr);
         }
 
@@ -2031,6 +2040,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             String resultJStr = toUpperCase
                             ? IntlUtil.toUpperCase(getContext(), thisJStr, locales)
                             : IntlUtil.toLowerCase(getContext(), thisJStr, locales);
+            validateStringLength(resultJStr);
             return Strings.fromJavaString(fromJavaStringNode, resultJStr);
         }
 
@@ -2113,7 +2123,9 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         TruffleString.FromJavaStringNode fromJavaString,
                         TruffleString.ToJavaStringNode toJavaString) {
             Locale usingLocale = locale ? getContext().getLocale() : Locale.US;
-            return fromJavaString.execute(Strings.javaStringToUpperCase(toJavaString.execute(str), usingLocale), TruffleString.Encoding.UTF_16);
+            String resultJStr = Strings.javaStringToUpperCase(toJavaString.execute(str), usingLocale);
+            validateStringLength(resultJStr);
+            return fromJavaString.execute(resultJStr, TruffleString.Encoding.UTF_16);
         }
     }
 
