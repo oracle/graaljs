@@ -76,8 +76,8 @@ public class TestV8 extends TestSuite {
     private static final String TESTS_CONFIG_FILE = "testV8.json";
     private static final String FAILED_TESTS_FILE = "testv8.failed";
 
-    /** An arbitrary limit high enough to pass mjsunit/regress/regress-crbug-160010.js. */
-    private static final int STRING_LENGTH_LIMIT = (1 << 28) + 16;
+    /** Match V8's 32-bit maximum string length while limiting memory use. */
+    private static final int STRING_LENGTH_LIMIT = (1 << 28) - 16;
 
     private final Source mockupSource;
     private final Map<String, String> commonOptions;

@@ -404,10 +404,6 @@
     "runInIsolation" : true,
     "comment" : "Takes too long (several minutes) in shareengine mode (where arrayPrototypeNoElementsAssumption is invalid)."
   }, {
-    "filePath" : "mjsunit/compiler/regress-461531853.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-02-12"
-  }, {
     "filePath" : "mjsunit/compiler/regress-801097.js",
     "status" : "FAIL",
     "comment" : "needs larger stack, at least 21m is needed"
@@ -1170,8 +1166,8 @@
     "comment" : "fails due to byte order (LE required)"
   }, {
     "filePath" : "mjsunit/regress/regress-331074427.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "runInIsolation" : true,
+    "comment" : "Tests V8-specific maximum string lengths and allocates strings with hundreds of millions of characters"
   }, {
     "filePath" : "mjsunit/regress/regress-336820.js",
     "runInIsolation" : true,
