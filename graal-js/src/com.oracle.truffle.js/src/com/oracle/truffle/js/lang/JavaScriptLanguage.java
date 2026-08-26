@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.lang;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -561,33 +563,57 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
 
     public void interopBoundaryExit(JSRealm realm) {
         JSAgent agent = realm.getAgent();
-        if (agent.interopBoundaryExit()) {
-            if (!promiseJobsQueueEmptyAssumption.isValid()) {
-                agent.processAllPromises(true);
-            }
+        if (agent.interopBoundaryExit() && !promiseJobsQueueEmptyAssumption.isValid()) {
             if (getJSContext().getLanguageOptions().testV8Mode()) {
-                processTimeoutCallbacks(realm);
+                processTestV8TaskQueue(realm);
+            } else {
+                agent.processAllPromises(true);
             }
         }
     }
 
     @TruffleBoundary
-    @SuppressWarnings("unchecked")
-    private static void processTimeoutCallbacks(JSRealm realm) {
+    private static void processTestV8TaskQueue(JSRealm realm) {
         JSAgent agent = realm.getAgent();
-        List<JobCallback> callbackList;
-        while ((callbackList = (List<JobCallback>) realm.getEmbedderData()) != null && !callbackList.isEmpty()) {
-            realm.setEmbedderData(null);
-            for (JobCallback callback : callbackList) {
-                AsyncContext previousContextMapping = agent.asyncContextSwap(callback.asyncContextSnapshot());
-                try {
-                    JSRuntime.call(callback.callback(), Undefined.instance, JSArguments.EMPTY_ARGUMENTS_ARRAY);
-                } finally {
-                    agent.asyncContextSwap(previousContextMapping);
-                }
+        Deque<JobCallback> taskQueue = getTestV8TaskQueue(realm);
+        int tasksUntilCleanup = agent.hasPendingFinalizers() ? taskQueue.size() : -1;
+        while (true) {
+            agent.processAllPromises(false);
+            agent.clearKeptObjects();
+
+            if (tasksUntilCleanup == 0) {
+                agent.cleanupFinalizers();
+                tasksUntilCleanup = -1;
+                continue;
             }
-            agent.processAllPromises(true);
+
+            JobCallback callback = taskQueue.pollFirst();
+            if (callback == null) {
+                break;
+            }
+            AsyncContext previousContextMapping = agent.asyncContextSwap(callback.asyncContextSnapshot());
+            try {
+                JSRuntime.call(callback.callback(), Undefined.instance, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+            } finally {
+                agent.asyncContextSwap(previousContextMapping);
+            }
+            if (tasksUntilCleanup > 0) {
+                tasksUntilCleanup--;
+            } else if (agent.hasPendingFinalizers()) {
+                assert tasksUntilCleanup == -1;
+                tasksUntilCleanup = taskQueue.size();
+            }
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Deque<JobCallback> getTestV8TaskQueue(JSRealm realm) {
+        Deque<JobCallback> taskQueue = (Deque<JobCallback>) realm.getEmbedderData();
+        if (taskQueue == null) {
+            taskQueue = new ArrayDeque<>();
+            realm.setEmbedderData(taskQueue);
+        }
+        return taskQueue;
     }
 
     public Assumption getPromiseJobsQueueEmptyAssumption() {

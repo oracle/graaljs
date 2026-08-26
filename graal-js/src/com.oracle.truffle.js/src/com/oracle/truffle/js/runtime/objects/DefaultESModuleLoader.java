@@ -296,6 +296,10 @@ public class DefaultESModuleLoader implements JSModuleLoader {
     }
 
     private AbstractModuleRecord loadModuleFromSource(ScriptOrModule referrer, ModuleRequest moduleRequest, Source source, String mimeType, String canonicalPath) {
+        return loadModuleFromSource(referrer, moduleRequest, source, mimeType, canonicalPath, null);
+    }
+
+    private AbstractModuleRecord loadModuleFromSource(ScriptOrModule referrer, ModuleRequest moduleRequest, Source source, String mimeType, String canonicalPath, String moduleURL) {
         Map<TruffleString, TruffleString> attributes = moduleRequest.attributes();
         TruffleString typeAttribute = attributes.get(Strings.TYPE);
         if (!doesModuleTypeMatchAttributeType(typeAttribute, mimeType)) {
@@ -318,7 +322,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
                 }
                 default -> {
                     JSModuleData parsedModule = realm.getContext().getEvaluator().envParseModule(realm, source);
-                    yield new JSModuleRecord(parsedModule, this);
+                    yield new JSModuleRecord(parsedModule, this, null, moduleURL);
                 }
             };
         }
@@ -342,8 +346,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
             return existingModule;
         }
 
-        // Validate URI syntax (RFC 2396).
-        URI uri = URI.create(input);
+        URI uri = createDataURI(input);
 
         // Drop any fragment part.
         int fragmentPos = specifier.indexOf('#', startPos);
@@ -419,7 +422,28 @@ public class DefaultESModuleLoader implements JSModuleLoader {
                 source = Source.newBuilder(language, decoded, sourceName).uri(uri).mimeType(mimeType).build();
             }
         }
-        return loadModuleFromSource(referrer, moduleRequest, source, mimeType, specifier);
+        return loadModuleFromSource(referrer, moduleRequest, source, mimeType, specifier, specifier);
+    }
+
+    private static URI createDataURI(String specifier) {
+        try {
+            // Validate URI syntax (RFC 2396).
+            return URI.create(specifier);
+        } catch (IllegalArgumentException ex) {
+            /*
+             * Accept unescaped JavaScript source in data URLs. Use the component constructor to
+             * quote characters that are not allowed in a strict URI while preserving the original
+             * specifier for decoding, module identity, and import.meta.url.
+             */
+            int fragmentPos = specifier.indexOf('#', "data:".length());
+            String schemeSpecificPart = specifier.substring("data:".length(), fragmentPos < 0 ? specifier.length() : fragmentPos);
+            String fragment = fragmentPos < 0 ? null : specifier.substring(fragmentPos + 1);
+            try {
+                return new URI("data", schemeSpecificPart, fragment);
+            } catch (URISyntaxException x) {
+                throw new IllegalArgumentException(x.getMessage(), x);
+            }
+        }
     }
 
     private static String makeDataURISourceName(TruffleString typeAttribute, String mimeType) {

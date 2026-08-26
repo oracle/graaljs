@@ -73,6 +73,7 @@ public class TestV8Runnable extends TestRunnable {
     private static final String HARMONY_SHADOW_REALM = "--harmony-shadow-realm";
     private static final String NO_JS_SOURCE_PHASE_IMPORTS = "--no-js-source-phase-imports";
     private static final String NO_ASYNC_STACK_TRACES = "--noasync-stack-traces";
+    private static final String IGNORE_UNHANDLED_PROMISES = "--ignore-unhandled-promises";
     private static final String NO_EXPOSE_WASM = "--noexpose-wasm";
     private static final String NO_EXPERIMENTAL_SIMD = "--no-experimental-wasm-simd";
     private static final String EXPERIMENTAL_WASM_MEMORY64 = "--experimental-wasm-memory64";
@@ -106,9 +107,9 @@ public class TestV8Runnable extends TestRunnable {
                     "--js-staging",
     });
 
-    private static final String FLAGS_PREFIX = "// Flags: ";
+    private static final String FLAGS_PREFIX = "// Flags:";
     private static final String FILES_PREFIX = "// Files: ";
-    private static final Pattern FLAGS_FIND_PATTERN = Pattern.compile("// Flags: (.*)");
+    private static final Pattern FLAGS_FIND_PATTERN = Pattern.compile("// Flags:\\s*(.*)");
     private static final Pattern FILES_FIND_PATTERN = Pattern.compile("// Files: (.*)");
     private static final Pattern SPLIT_PATTERN = Pattern.compile("\\s+");
     private static final String MODULE_FILE_EXT = ".mjs";
@@ -131,6 +132,9 @@ public class TestV8Runnable extends TestRunnable {
         List<String> setupFiles = getFiles(code, getConfig().getSuiteLoc());
 
         Map<String, String> extraOptions = new HashMap<>(2);
+        if (flags.contains(IGNORE_UNHANDLED_PROMISES)) {
+            extraOptions.put(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "none");
+        }
         boolean isPolyglot = suite.getConfig().isPolyglot();
         if (isPolyglot) {
             extraOptions.put(JSContextOptions.WEBASSEMBLY_NAME, Boolean.toString(!flags.contains(NO_EXPOSE_WASM)));

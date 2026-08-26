@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
@@ -102,6 +102,9 @@ Worker = (function() {
     };
 })();
 
+performance.measureMemory ??= function() {
+};
+
 // Ignore `assertTrue(Number.isInteger(e_runtime_id));` in exceptions-utils.js
 Number.isInteger = (function() {
     let originalIsInteger = Number.isInteger;
@@ -174,8 +177,13 @@ var d8 = {
             return o._serializationMockup;
         }
     },
-    terminate: function() {},
-    terminateNow: function() {}
+    // Approximate V8's uncatchable execution termination with a clean shell exit.
+    terminate: function() {
+        quit(0);
+    },
+    terminateNow: function() {
+        quit(0);
+    }
 };
 
 // The following stuff should be enabled by --expose-externalize-string,
@@ -351,10 +359,15 @@ globalThis['%HasFixedUint8ClampedElements'] = function(ob) {
 
 //watch out: this might be modified by TestV8Runnable, see GR-29754.
 function gc(options) {
-    TestV8.gc();
     if (typeof options === 'object' && options.execution === 'async') {
-        return Promise.resolve();
+        return new Promise(resolve => {
+            TestV8.setTimeout(() => {
+                TestV8.gc();
+                resolve();
+            });
+        });
     }
+    TestV8.gc();
 }
 
 globalThis['%IsMinusZero'] = function(a) {

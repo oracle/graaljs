@@ -1373,9 +1373,10 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
     }
 
     /**
-     * Non-standard print()/printErr() method to write to the console.
+     * This node is used for methods of the global {@code console} object and the non-standard
+     * print() and printErr() functions to write to the console.
      */
-    public abstract static class JSGlobalPrintNode extends JSGlobalOperation {
+    public abstract static class JSGlobalPrintNode extends JSBuiltinNode {
 
         private final boolean useErr;
         private final boolean noNewLine;
@@ -1394,8 +1395,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                         @Cached(parameters = "getContext().getStringLengthLimit()") StringBuilderProfile builderProfile,
                         @Cached TruffleStringBuilder.AppendCodePointNode appendCodePointNode,
                         @Cached TruffleStringBuilder.AppendStringNode appendStringNode,
-                        @Cached TruffleStringBuilder.ToStringNode toStringNode) {
-            // without a StringBuilder, synchronization fails testnashorn JDK-8041998.js
+                        @Cached TruffleStringBuilder.ToStringNode builderToStringNode,
+                        @Cached("createSymbolToString()") JSToStringNode valueToStringNode) {
             JSRealm realm = getRealm();
             TruffleStringBuilderUTF16 sb = builderProfile.newStringBuilder();
             JSConsoleUtil consoleUtil = realm.getConsoleUtil();
@@ -1403,19 +1404,19 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 builderProfile.repeat(appendCodePointNode, sb, ' ', consoleUtil.getConsoleIndentation() * 2);
             }
             if (argumentsCount.profile(this, arguments.length == 1)) {
-                builderProfile.append(appendStringNode, sb, toString1(arguments[0]));
+                builderProfile.append(appendStringNode, sb, valueToStringNode.executeString(arguments[0]));
             } else {
                 for (int i = 0; i < arguments.length; i++) {
                     if (i != 0) {
                         builderProfile.append(appendCodePointNode, sb, ' ');
                     }
-                    builderProfile.append(appendStringNode, sb, toString1(arguments[i]));
+                    builderProfile.append(appendStringNode, sb, valueToStringNode.executeString(arguments[i]));
                 }
             }
             if (!noNewLine) {
                 builderProfile.append(appendStringNode, sb, Strings.LINE_SEPARATOR);
             }
-            TruffleString string = StringBuilderProfile.toString(toStringNode, sb);
+            TruffleString string = StringBuilderProfile.toString(builderToStringNode, sb);
             return printString(string, realm);
         }
 

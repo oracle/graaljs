@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,8 +76,8 @@ public class TestV8 extends TestSuite {
     private static final String TESTS_CONFIG_FILE = "testV8.json";
     private static final String FAILED_TESTS_FILE = "testv8.failed";
 
-    /** An arbitrary limit high enough to pass mjsunit/regress/regress-crbug-160010.js. */
-    private static final int STRING_LENGTH_LIMIT = (1 << 28) + 16;
+    /** Match V8's 32-bit maximum string length while limiting memory use. */
+    private static final int STRING_LENGTH_LIMIT = (1 << 28) - 16;
 
     private final Source mockupSource;
     private final Map<String, String> commonOptions;
@@ -92,7 +92,7 @@ public class TestV8 extends TestSuite {
         options.put(JSContextOptions.V8_COMPATIBILITY_MODE_NAME, "true");
         options.put(JSContextOptions.V8_REALM_BUILTIN_NAME, "true");
         options.put(JSContextOptions.INTL_402_NAME, "true");
-        options.put(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "none");
+        options.put(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw");
         options.put(JSContextOptions.SHELL_NAME, "true"); // readbuffer, quit
         // Reduce string length limit in order to avoid transient out of memory errors.
         options.put(JSContextOptions.STRING_LENGTH_LIMIT_NAME, String.valueOf(STRING_LENGTH_LIMIT));

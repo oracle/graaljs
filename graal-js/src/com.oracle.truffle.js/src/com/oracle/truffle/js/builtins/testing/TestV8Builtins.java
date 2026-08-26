@@ -41,7 +41,9 @@
 package com.oracle.truffle.js.builtins.testing;
 
 import java.nio.ByteOrder;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -443,13 +445,14 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         @SuppressWarnings("unchecked")
         protected Object setTimeout(Object callback) {
             assert JSRuntime.isCallable(callback);
+            getContext().signalAsyncTaskUsage();
             JSRealm realm = getRealm();
-            List<JobCallback> embedderData = (List<JobCallback>) realm.getEmbedderData();
-            if (embedderData == null) {
-                embedderData = new ArrayList<>();
-                realm.setEmbedderData(embedderData);
+            Deque<JobCallback> taskQueue = (Deque<JobCallback>) realm.getEmbedderData();
+            if (taskQueue == null) {
+                taskQueue = new ArrayDeque<>();
+                realm.setEmbedderData(taskQueue);
             }
-            embedderData.add(realm.getAgent().hostMakeJobCallback(callback));
+            taskQueue.addLast(realm.getAgent().hostMakeJobCallback(callback));
             return Undefined.instance;
         }
     }

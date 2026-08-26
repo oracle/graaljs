@@ -72,18 +72,25 @@ public class JSModuleRecord extends CyclicModuleRecord {
 
     private final JSModuleData parsedModule;
     private final JSModuleLoader moduleLoader;
+    /** URL exposed through the default import.meta initializer; derived from the source if null. */
+    private final String moduleURL;
 
     /** Lazily initialized import.meta object ({@code [[ImportMeta]]}). */
     private JSObject importMeta;
 
     public JSModuleRecord(JSModuleData parsedModule, JSModuleLoader moduleLoader) {
-        this(parsedModule, moduleLoader, null);
+        this(parsedModule, moduleLoader, null, null);
     }
 
     public JSModuleRecord(JSModuleData parsedModule, JSModuleLoader moduleLoader, Object hostDefined) {
+        this(parsedModule, moduleLoader, hostDefined, null);
+    }
+
+    public JSModuleRecord(JSModuleData parsedModule, JSModuleLoader moduleLoader, Object hostDefined, String moduleURL) {
         super(parsedModule.getContext(), parsedModule.getSource(), hostDefined, parsedModule.getFrameDescriptor(), parsedModule.isTopLevelAsync());
         this.parsedModule = parsedModule;
         this.moduleLoader = moduleLoader;
+        this.moduleURL = moduleURL;
     }
 
     public com.oracle.js.parser.ir.Module getModule() {
@@ -116,7 +123,7 @@ public class JSModuleRecord extends CyclicModuleRecord {
 
     @TruffleBoundary
     public String getURL() {
-        return getSource().getURI().toString();
+        return moduleURL != null ? moduleURL : getSource().getURI().toString();
     }
 
     @Override

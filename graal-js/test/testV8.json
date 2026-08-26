@@ -296,6 +296,14 @@
     "status" : "FAIL",
     "comment" : "Different stack traces"
   }, {
+    "filePath" : "mjsunit/baseline/flush-baseline-code.js",
+    "status" : "FAIL",
+    "comment" : "Tests V8-specific Sparkplug and bytecode flushing"
+  }, {
+    "filePath" : "mjsunit/baseline/flush-only-baseline-code.js",
+    "status" : "FAIL",
+    "comment" : "Tests V8-specific Sparkplug and bytecode flushing"
+  }, {
     "filePath" : "mjsunit/baseline/verify-bytecode-offsets.js",
     "status" : "FAIL",
     "comment" : "test for fuzzer"
@@ -339,6 +347,10 @@
     "status" : "SKIP",
     "comment" : "code coverage support (GR-6539)"
   }, {
+    "filePath" : "mjsunit/code-coverage-block-async.js",
+    "status" : "FAIL",
+    "comment" : "code coverage support (GR-6539)"
+  }, {
     "filePath" : "mjsunit/code-coverage-block-noopt.js",
     "status" : "SKIP",
     "comment" : "code coverage support (GR-6539)"
@@ -349,6 +361,10 @@
   }, {
     "filePath" : "mjsunit/code-coverage-block.js",
     "status" : "SKIP",
+    "comment" : "code coverage support (GR-6539)"
+  }, {
+    "filePath" : "mjsunit/code-coverage-class-fields.js",
+    "status" : "FAIL",
     "comment" : "code coverage support (GR-6539)"
   }, {
     "filePath" : "mjsunit/code-coverage-precise.js",
@@ -387,10 +403,6 @@
     "status" : "SKIP",
     "runInIsolation" : true,
     "comment" : "Takes too long (several minutes) in shareengine mode (where arrayPrototypeNoElementsAssumption is invalid)."
-  }, {
-    "filePath" : "mjsunit/compiler/regress-461531853.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-02-12"
   }, {
     "filePath" : "mjsunit/compiler/regress-801097.js",
     "status" : "FAIL",
@@ -478,10 +490,6 @@
     "filePath" : "mjsunit/d8/flush-denormals-worker.js",
     "status" : "FAIL",
     "comment" : "Test of V8-specific functionality (flushDenormals option of Worker)"
-  }, {
-    "filePath" : "mjsunit/d8/modules-data-url.mjs",
-    "status" : "FAIL",
-    "comment" : "Relaxed parsing of data URIs"
   }, {
     "filePath" : "mjsunit/d8/performance-mark.js",
     "status" : "FAIL",
@@ -933,6 +941,14 @@
     "status" : "FAIL",
     "comment" : "Uses %GetUndetectable"
   }, {
+    "filePath" : "mjsunit/measure-memory-multiple-realms.js",
+    "status" : "FAIL",
+    "comment" : "The performance.measureMemory() mock does not provide memory measurement results"
+  }, {
+    "filePath" : "mjsunit/measure-memory.js",
+    "status" : "FAIL",
+    "comment" : "The performance.measureMemory() mock does not provide memory measurement results"
+  }, {
     "filePath" : "mjsunit/messages.js",
     "status" : "FAIL"
   }, {
@@ -1122,21 +1138,20 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
+    "filePath" : "mjsunit/regress/regress-13652.js",
+    "status" : "FAIL",
+    "comment" : "Tests promise behavior while the V8 debugger is enabled"
+  }, {
     "filePath" : "mjsunit/regress/regress-1394663.js",
     "status" : "FAIL",
     "comment" : "Uses console.profile(), console.profileEnd(), and d8.profiler.setOnProfileEndListener()"
   }, {
     "filePath" : "mjsunit/regress/regress-148378.js",
     "status" : "SKIP",
-    "comment" : "NOW: Fails consistently with NoClassDefFoundError. Uses infinite recursion, expects to run out of stack and catch the exception. BEFORE: spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
-  }, {
-    "filePath" : "mjsunit/regress/regress-1494164.js",
-    "status" : "FAIL",
-    "comment" : "Uses performance.measureMemory()"
-  }, {
-    "filePath" : "mjsunit/regress/regress-1502014.js",
-    "status" : "SKIP",
-    "comment" : "Uses performance.measureMemory() in worker code"
+    "statusOverrides" : {
+      "SVM" : "PASS"
+    },
+    "comment" : "Transiently fails with NoClassDefFoundError. Uses infinite recursion, expects to run out of stack and catch the exception."
   }, {
     "filePath" : "mjsunit/regress/regress-233.js",
     "runInIsolation" : true,
@@ -1151,8 +1166,8 @@
     "comment" : "fails due to byte order (LE required)"
   }, {
     "filePath" : "mjsunit/regress/regress-331074427.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "runInIsolation" : true,
+    "comment" : "Tests V8-specific maximum string lengths and allocates strings with hundreds of millions of characters"
   }, {
     "filePath" : "mjsunit/regress/regress-336820.js",
     "runInIsolation" : true,
@@ -1168,7 +1183,10 @@
   }, {
     "filePath" : "mjsunit/regress/regress-350865.js",
     "status" : "SKIP",
-    "comment" : "NOW: Consistently fails with NoClassDefFoundError. Sets stack size and uses infinite recursion. BEFORE: spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
+    "statusOverrides" : {
+      "SVM" : "PASS"
+    },
+    "comment" : "Transiently fails with NoClassDefFoundError. Sets stack size and uses infinite recursion."
   }, {
     "filePath" : "mjsunit/regress/regress-351926098.js",
     "status" : "FAIL",
@@ -1201,14 +1219,6 @@
     "filePath" : "mjsunit/regress/regress-366783816.js",
     "status" : "FAIL",
     "comment" : "Uses d8.dom.Div"
-  }, {
-    "filePath" : "mjsunit/regress/regress-368467195.js",
-    "status" : "SKIP",
-    "comment" : "Uses performance.measureMemory()"
-  }, {
-    "filePath" : "mjsunit/regress/regress-371237560.js",
-    "status" : "FAIL",
-    "comment" : "Uses performance.measureMemory()"
   }, {
     "filePath" : "mjsunit/regress/regress-380416869.js",
     "status" : "FAIL",
@@ -1265,6 +1275,10 @@
       "SHARED_ENGINE" : "FAIL"
     },
     "comment" : "new failures 2023-10-09"
+  }, {
+    "filePath" : "mjsunit/regress/regress-4578.js",
+    "status" : "SKIP",
+    "comment" : "Tests V8-specific optimization, inlining, deoptimization, and GC behavior"
   }, {
     "filePath" : "mjsunit/regress/regress-458987.js",
     "runInIsolation" : true,
@@ -1604,10 +1618,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
-    "filePath" : "mjsunit/regress/regress-crbug-1443133.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
     "filePath" : "mjsunit/regress/regress-crbug-1459172.js",
     "status" : "FAIL",
     "comment" : "Expects an error for an unclear reason. Incorrect/off-spec test?"
@@ -1723,7 +1733,10 @@
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-595657.js",
     "status" : "SKIP",
-    "comment" : "NOW: Consistently fails with NoClassDefFoundError. Uses infinite recursion to hit the stack limit and then tries to do some regexp work. spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
+    "statusOverrides" : {
+      "SVM" : "PASS"
+    },
+    "comment" : "Transiently fails with NoClassDefFoundError. Uses infinite recursion to hit the stack limit and then tries to do some regexp work."
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-600257.js",
     "status" : "SKIP",
@@ -1949,17 +1962,9 @@
     "status" : "FAIL",
     "comment" : "Uses return_call instruction (opcode 0x12) from the tail call proposal."
   }, {
-    "filePath" : "mjsunit/regress/wasm/regress-1500804.js",
-    "status" : "SKIP",
-    "comment" : "Uses performance.measureMemory()."
-  }, {
     "filePath" : "mjsunit/regress/wasm/regress-1500812.js",
     "status" : "FAIL",
     "comment" : "Different error message for out-of-bounds memory access."
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-1517559.js",
-    "status" : "SKIP",
-    "comment" : "Uses performance.measureMemory()."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1523740.js",
     "status" : "FAIL",
@@ -2105,6 +2110,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
   }, {
+    "filePath" : "mjsunit/regress/wasm/regress-370191716.js",
+    "status" : "SKIP",
+    "comment" : "The performance.measureMemory() mock does not trigger the worker callback, causing worker.getMessage() to block indefinitely"
+  }, {
     "filePath" : "mjsunit/regress/wasm/regress-371565065.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
@@ -2160,6 +2169,10 @@
     "filePath" : "mjsunit/regress/wasm/regress-40258436.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-403308742.js",
+    "status" : "FAIL",
+    "comment" : "Relies on unimplemented WebAssembly compile options to be processed before the binary is validated"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-413633038.js",
     "status" : "FAIL",
@@ -3140,18 +3153,18 @@
   }, {
     "filePath" : "mjsunit/weakrefs/minor-gc-finalizationregistry-independent-lifetime-multiple.js",
     "status" : "SKIP",
-    "comment" : "GC-based test"
+    "comment" : "Relies on deterministic V8 minor GC to collect one FinalizationRegistry before cleanup while retaining another for cleanup"
   }, {
     "filePath" : "mjsunit/weakrefs/minor-gc-finalizationregistry-independent-lifetime.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-02-12"
-  }, {
-    "filePath" : "mjsunit/weakrefs/minor-gc-reclaims-unreachable-weak-cell-target.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-02-12"
+    "status" : "SKIP",
+    "comment" : "Relies on deterministic V8 minor GC to collect the FinalizationRegistry before its scheduled cleanup"
   }, {
     "filePath" : "mjsunit/weakrefs/minor-gc-two-weakrefs.js",
     "status" : "SKIP",
     "comment" : "Unstable on native-image / when compiled (GR-23663)"
+  }, {
+    "filePath" : "mjsunit/weakrefs/minor-gc-weakref-deref-keeps-alive.js",
+    "status" : "SKIP",
+    "comment" : "Relies on V8-specific minor GC promotion semantics"
   } ]
 }

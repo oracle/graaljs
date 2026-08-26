@@ -997,6 +997,10 @@ public class JSContext {
         invalidatePromiseQueueNotUsedAssumption();
     }
 
+    public final void signalAsyncTaskUsage() {
+        invalidatePromiseQueueNotUsedAssumption();
+    }
+
     private void invalidatePromiseQueueNotUsedAssumption() {
         Assumption promiseJobsQueueEmptyAssumption = language.getPromiseJobsQueueEmptyAssumption();
         if (promiseJobsQueueEmptyAssumption.isValid()) {

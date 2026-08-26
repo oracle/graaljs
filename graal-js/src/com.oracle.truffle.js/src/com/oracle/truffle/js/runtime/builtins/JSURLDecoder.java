@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -241,33 +241,21 @@ public class JSURLDecoder {
         dec.onMalformedInput(CodingErrorAction.REPLACE);
         dec.onUnmappableCharacter(CodingErrorAction.REPLACE);
 
-        char c = input.charAt(0);
         for (int i = 0; i < n;) {
-            assert c == input.charAt(i);
-            if (c != '%') {
-                sb.append(c);
-                if (++i >= n) {
-                    break;
-                }
-                c = input.charAt(i);
+            int encodedByte = percentEncodedByteAt(input, i);
+            if (encodedByte < 0) {
+                // WHATWG percent-decoding leaves malformed percent-encoded sequences unchanged.
+                sb.append(input.charAt(i));
+                i++;
                 continue;
             }
-            // decode percent-encoded sequence
+            // Decode a sequence of percent-encoded bytes.
             bb.clear();
-            for (;;) {
-                assert (n - i >= 2);
-                char c1 = input.charAt(++i);
-                char c2 = input.charAt(++i);
-                bb.put((byte) ((getHexValue(c1) << 4) |
-                                getHexValue(c2)));
-                if (++i >= n) {
-                    break;
-                }
-                c = input.charAt(i);
-                if (c != '%') {
-                    break;
-                }
-            }
+            do {
+                bb.put((byte) encodedByte);
+                i += 3;
+                encodedByte = percentEncodedByteAt(input, i);
+            } while (encodedByte >= 0);
             bb.flip();
             cb.clear();
             dec.reset();
@@ -279,5 +267,20 @@ public class JSURLDecoder {
         }
 
         return sb.toString();
+    }
+
+    private static int percentEncodedByteAt(String input, int index) {
+        if (index >= input.length() - 2 || input.charAt(index) != '%') {
+            return -1;
+        }
+        int high = JSRuntime.valueInHex(input.charAt(index + 1));
+        if (high < 0) {
+            return -1;
+        }
+        int low = JSRuntime.valueInHex(input.charAt(index + 2));
+        if (low < 0) {
+            return -1;
+        }
+        return (high << 4) | low;
     }
 }
