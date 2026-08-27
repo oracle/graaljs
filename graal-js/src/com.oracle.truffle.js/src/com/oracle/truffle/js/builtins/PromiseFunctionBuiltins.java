@@ -74,7 +74,6 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
@@ -177,7 +176,6 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         protected final Object getPromiseResolve(Object constructor) {
-            assert JSRuntime.isConstructor(constructor);
             Object promiseResolve = getResolve.getValue(constructor);
             if (!isCallable.executeBoolean(promiseResolve)) {
                 throw Errors.createTypeErrorNotAFunction(promiseResolve);

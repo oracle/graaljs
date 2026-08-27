@@ -137,7 +137,6 @@ public final class PerformPromiseAllKeyedNode extends JavaScriptBaseNode {
     }
 
     public JSDynamicObject execute(Object promises, Object constructor, PromiseCapabilityRecord resultCapability, Object promiseResolve) {
-        assert JSRuntime.isConstructor(constructor);
         assert JSRuntime.isCallable(promiseResolve);
 
         List<Object> allKeys = ownPropertyKeysNode.execute(promises);
