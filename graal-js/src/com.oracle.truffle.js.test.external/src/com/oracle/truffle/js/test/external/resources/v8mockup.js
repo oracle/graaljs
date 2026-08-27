@@ -367,6 +367,10 @@ globalThis['%HasFixedFloat64Elements'] = function(ob) {
     return true;
 };
 
+globalThis['%HasFixedFloat16Elements'] = function(ob) {
+    return true;
+};
+
 globalThis['%HasFixedUint8ClampedElements'] = function(ob) {
     return true;
 };
@@ -544,7 +548,7 @@ globalThis['%CreatePrivateSymbol'] = function(sym) {
     return TestV8.createPrivateSymbol(sym);
 };
 
-globalThis['%ArrayBufferDetach'] = function(arr) {
+globalThis['%ArrayBufferDetach'] = globalThis['%ArrayBufferDetachForceWasm'] = function(arr) {
     TestV8.typedArrayDetachBuffer(arr);
 };
 
@@ -613,6 +617,10 @@ globalThis['%MakeError'] = function(i,msg) {
 
 globalThis['%AllocateHeapNumber'] = function() {
     return 0;
+};
+
+globalThis['%AllocateHeapNumberWithValue'] = function(value) {
+    return Number(value);
 };
 
 globalThis['%DeoptimizeNow'] = globalThis['%_DeoptimizeNow'] = function() {
@@ -1515,4 +1523,35 @@ globalThis['%InstallBytecode'] = function(fn, bytecode) {
     if (bytecode.bytecode !== fn) {
         quit(0);
     }
+};
+
+globalThis['%CheckIsOnCentralStack'] = function() {
+};
+
+globalThis['%GenerateWasmCompilationHints'] = function() {
+};
+
+globalThis['%GetPrivateMember'] = function() {
+    throw new Error('Private member not found');
+};
+
+globalThis['%IsWasmPartialOOBWriteNoop'] = function() {
+    return v8IgnoreResult;
+};
+
+globalThis['%RegexpQuickCheckRejects'] = function() {
+    return v8IgnoreResult;
+};
+
+globalThis['%SerializeDeserializeNow'] = function() {
+};
+
+globalThis['%TakeHeapSnapshot'] = function() {
+};
+
+globalThis['%WasmTriggerTierUpForTesting'] = function() {
+};
+
+globalThis['%_GeneratorClose'] = function(generator) {
+    generator.return();
 };

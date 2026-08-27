@@ -946,21 +946,9 @@
     "status" : "FAIL",
     "comment" : "Floating-point result differs from V8 by one ULP."
   }, {
-    "filePath" : "mjsunit/maglev/regress-494492520.js",
-    "status" : "FAIL",
-    "comment" : "Uses V8-specific %AllocateHeapNumberWithValue intrinsic."
-  }, {
-    "filePath" : "mjsunit/maglev/regress-497112471.js",
-    "status" : "FAIL",
-    "comment" : "Uses V8-specific %AllocateHeapNumberWithValue intrinsic."
-  }, {
     "filePath" : "mjsunit/maglev/regress-498816446-3.js",
     "status" : "FAIL",
     "comment" : "Requires ArrayBuffer or typed-array lengths beyond the GraalJS implementation limit."
-  }, {
-    "filePath" : "mjsunit/maglev/regress-503197484.js",
-    "status" : "FAIL",
-    "comment" : "Uses V8-specific %AllocateHeapNumberWithValue intrinsic."
   }, {
     "filePath" : "mjsunit/maglev/regress-521604719.js",
     "status" : "FAIL",
@@ -1069,10 +1057,6 @@
     "filePath" : "mjsunit/regexp-tier-up.js",
     "status" : "SKIP",
     "comment" : "Tests specificities of V8's RegExp implementation (the use of different tiers)."
-  }, {
-    "filePath" : "mjsunit/regexp/first-character-reject-bitset.js",
-    "status" : "FAIL",
-    "comment" : "Uses V8-specific %RegexpQuickCheckRejects intrinsic."
   }, {
     "filePath" : "mjsunit/regress-1065094.js",
     "status" : "FAIL",
@@ -2059,10 +2043,6 @@
     },
     "comment" : "fails due to byte order (LE required)\nfails atm on SPARC GR-1672\nmore fails on SPARC"
   }, {
-    "filePath" : "mjsunit/regress/regress-double-toStringTag.js",
-    "status" : "FAIL",
-    "comment" : "Uses V8-specific %TakeHeapSnapshot intrinsic."
-  }, {
     "filePath" : "mjsunit/regress/regress-inline-getter-near-stack-limit.js",
     "status" : "SKIP",
     "comment" : "spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
@@ -2687,10 +2667,6 @@
     "status" : "FAIL",
     "comment" : "Uses Sandbox"
   }, {
-    "filePath" : "mjsunit/serialize-deserialize-now.js",
-    "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
-  }, {
     "filePath" : "mjsunit/stack-overflow-arity-catch-noinline.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
@@ -2814,10 +2790,6 @@
     "filePath" : "mjsunit/turbolev/regress-443254910.js",
     "status" : "SKIP",
     "comment" : "Triggers stack overflow"
-  }, {
-    "filePath" : "mjsunit/turbolev/regress-493534950.js",
-    "status" : "FAIL",
-    "comment" : "Uses V8-specific %AllocateHeapNumberWithValue intrinsic."
   }, {
     "filePath" : "mjsunit/turboshaft/extras-cped.js",
     "status" : "FAIL",
