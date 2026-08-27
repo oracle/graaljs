@@ -945,10 +945,6 @@
     "status" : "FAIL",
     "comment" : "The performance.measureMemory() mock does not provide memory measurement results"
   }, {
-    "filePath" : "mjsunit/measure-memory.js",
-    "status" : "FAIL",
-    "comment" : "The performance.measureMemory() mock does not provide memory measurement results"
-  }, {
     "filePath" : "mjsunit/messages.js",
     "status" : "FAIL"
   }, {
@@ -2110,10 +2106,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
   }, {
-    "filePath" : "mjsunit/regress/wasm/regress-370191716.js",
-    "status" : "SKIP",
-    "comment" : "The performance.measureMemory() mock does not trigger the worker callback, causing worker.getMessage() to block indefinitely"
-  }, {
     "filePath" : "mjsunit/regress/wasm/regress-371565065.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
@@ -3032,43 +3024,7 @@
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
   }, {
-    "filePath" : "mjsunit/wasm/table64-copy.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/wasm/table64-fill.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/wasm/table64-get.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/wasm/table64-grow.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/wasm/table64-import.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/wasm/table64-init.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/wasm/table64-js-api.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
     "filePath" : "mjsunit/wasm/table64-limits.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/wasm/table64-set.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/wasm/table64-size.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
   }, {
