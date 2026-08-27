@@ -2094,14 +2094,6 @@
     "status" : "FAIL",
     "comment" : "V8 throws an implementation-specific RangeError when encountering a Table that is too large. We throw a LinkerError that is appropriate according to the spec."
   }, {
-    "filePath" : "mjsunit/regress/wasm/regress-1137608.js",
-    "status" : "FAIL",
-    "comment" : "Uses the return_call_indirect instruction (opcode 0x13) from the tail call proposal."
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-1196837.js",
-    "status" : "FAIL",
-    "comment" : "Uses return_call instruction (opcode 0x12) from the tail call proposal."
-  }, {
     "filePath" : "mjsunit/regress/wasm/regress-1237024.js",
     "status" : "FAIL",
     "comment" : "Creates a v128 array whose byte length is exactly 1 << 30; GraalWasm currently permits this boundary, while V8 expects a RuntimeError for arrays at this size."
@@ -2113,10 +2105,6 @@
     "filePath" : "mjsunit/regress/wasm/regress-1403398.js",
     "status" : "FAIL",
     "comment" : "Different wording of error message relating to out-of-bounds memory access."
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-1447367.js",
-    "status" : "FAIL",
-    "comment" : "Uses return_call instruction (opcode 0x12) from the tail call proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1500812.js",
     "status" : "FAIL",
@@ -2174,10 +2162,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
   }, {
-    "filePath" : "mjsunit/regress/wasm/regress-334687959.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
     "filePath" : "mjsunit/regress/wasm/regress-336007398.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
@@ -2198,10 +2182,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
   }, {
-    "filePath" : "mjsunit/regress/wasm/regress-343633071.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
     "filePath" : "mjsunit/regress/wasm/regress-346197738.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
@@ -2211,26 +2191,6 @@
     "comment" : "new failures 2025-02-10"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-349640002.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-353582136.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-354324155-2.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-354324155.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-360044696.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-360052650.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
   }, {
@@ -2291,10 +2251,6 @@
     "comment" : "new failures 2025-02-10"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-381917890.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-02-12"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-384565015.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-02-12"
   }, {
@@ -2615,17 +2571,9 @@
     "status" : "FAIL",
     "comment" : "GC proposal."
   }, {
-    "filePath" : "mjsunit/regress/wasm/regress-crbug-1465386.js",
-    "status" : "FAIL",
-    "comment" : "GC proposal."
-  }, {
     "filePath" : "mjsunit/regress/wasm/regress-crbug-1502180.js",
     "status" : "FAIL",
     "comment" : "Missing console.profile."
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-crbug-1507751.js",
-    "status" : "FAIL",
-    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-crbug-408253898.js",
     "status" : "FAIL",
@@ -2642,10 +2590,6 @@
     "filePath" : "mjsunit/regress/wasm/regress-simd-458024245.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-02-12"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-simd-516833325.js",
-    "status" : "FAIL",
-    "comment" : "GraalWasm does not support the return_call used by this large-SIMD-signature test."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-simd-518058891.js",
     "status" : "FAIL",
@@ -2883,10 +2827,6 @@
     "status" : "FAIL",
     "comment" : "Fails with LinkError instead of RuntimeError. The failure occurs in module instantiation and the spec for the WebAssembly JS interface states that errors from instantiation are to be signalled using LinkError (except for when the error originates from the start function, which should use RuntimeError). In this case, the error does not originate from the start function, but from the memory initialization using an active data segment. Apart from this and one different error message, we pass all tests in the file."
   }, {
-    "filePath" : "mjsunit/wasm/call_indirect.js",
-    "status" : "FAIL",
-    "comment" : "Uses return_call_indirect from the tail calls proposal."
-  }, {
     "filePath" : "mjsunit/wasm/compare-exchange64-stress.js",
     "status" : "SKIP",
     "comment" : "Sometimes gets stuck."
@@ -2911,10 +2851,6 @@
     "status" : "FAIL",
     "comment" : "Different wording of divide-by-zero trap ('integer divide by zero' vs 'divide by zero')."
   }, {
-    "filePath" : "mjsunit/wasm/deopt/deopt-inlined.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
     "filePath" : "mjsunit/wasm/deopt/deopt-large-frames-jspi.js",
     "status" : "FAIL",
     "comment" : "GraalWasm does not implement WebAssembly JS Promise Integration (promising and Suspending)."
@@ -2922,10 +2858,6 @@
     "filePath" : "mjsunit/wasm/deopt/deopt-serialized-module.js",
     "status" : "FAIL",
     "comment" : "Uses V8-specific wasm module serialization APIs (serializeModule/deserializeModule)."
-  }, {
-    "filePath" : "mjsunit/wasm/deopt/deopt-tail-call-parent-frame.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
   }, {
     "filePath" : "mjsunit/wasm/disallow-codegen.js",
     "status" : "FAIL",
@@ -3062,18 +2994,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-01-19"
   }, {
-    "filePath" : "mjsunit/wasm/indirect-call-non-zero-table.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-01-19"
-  }, {
-    "filePath" : "mjsunit/wasm/inlining-multi-instance.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/wasm/inlining-mutable-instance-fields.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
     "filePath" : "mjsunit/wasm/inlining.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-01-19"
@@ -3116,10 +3036,6 @@
     "filePath" : "mjsunit/wasm/log-wasm-to-js-wrapper-indirect.js",
     "status" : "FAIL",
     "comment" : "Uses V8-specific d8.profiler APIs and expects profiling samples for wasm-to-js/js-to-wasm wrappers."
-  }, {
-    "filePath" : "mjsunit/wasm/loop-unrolling.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-01-19"
   }, {
     "filePath" : "mjsunit/wasm/max-module-size-flag.js",
     "status" : "FAIL",
@@ -3246,21 +3162,9 @@
     "status" : "FAIL",
     "comment" : "GraalWasm does not accept the stringref value type encoding used by V8."
   }, {
-    "filePath" : "mjsunit/wasm/regress-529842414.js",
-    "status" : "FAIL",
-    "comment" : "GraalWasm does not support return_call to an imported function inside a try block."
-  }, {
     "filePath" : "mjsunit/wasm/return-call-wki.js",
     "status" : "FAIL",
     "comment" : "GraalWasm does not recognize the return_call opcode used with the imported string builtin."
-  }, {
-    "filePath" : "mjsunit/wasm/return-calls-eh.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-01-19"
-  }, {
-    "filePath" : "mjsunit/wasm/return-calls.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-01-19"
   }, {
     "filePath" : "mjsunit/wasm/runtime-gc-objects.js",
     "status" : "FAIL",
@@ -3397,10 +3301,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
   }, {
-    "filePath" : "mjsunit/wasm/speculative-inlining.js",
-    "status" : "FAIL",
-    "comment" : "GraalWasm does not support the return_call_ref used by this speculative-inlining test."
-  }, {
     "filePath" : "mjsunit/wasm/stack.js",
     "status" : "FAIL"
   }, {
@@ -3454,10 +3354,6 @@
     "status" : "FAIL",
     "comment" : "V8 does not stick to the WASM API spec of having a maximum table size of 10000000"
   }, {
-    "filePath" : "mjsunit/wasm/table64-callindirect.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
     "filePath" : "mjsunit/wasm/table64-limits.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
@@ -3477,17 +3373,9 @@
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
   }, {
-    "filePath" : "mjsunit/wasm/turboshaft/int64-lowering.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
     "filePath" : "mjsunit/wasm/turboshaft/regress-crbug-1513580.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-01-19"
-  }, {
-    "filePath" : "mjsunit/wasm/turboshaft/regress-crbug-533179188.js",
-    "status" : "FAIL",
-    "comment" : "GraalWasm rejects the exnref result type accepted by V8 in this exception-handling module."
   }, {
     "filePath" : "mjsunit/wasm/wasm-code-coverage.js",
     "status" : "FAIL",
