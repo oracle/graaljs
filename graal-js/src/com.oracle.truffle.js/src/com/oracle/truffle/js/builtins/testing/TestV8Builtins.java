@@ -47,6 +47,7 @@ import java.util.Deque;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -59,6 +60,7 @@ import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugClassNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugContinueInInterpreterNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugStringCompareNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugTypedArrayDetachBufferNodeGen;
+import com.oracle.truffle.js.builtins.GlobalBuiltins;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.helper.GCNodeGen;
 import com.oracle.truffle.js.builtins.helper.SharedMemorySync;
@@ -68,6 +70,7 @@ import com.oracle.truffle.js.builtins.testing.TestV8BuiltinsFactory.TestV8Create
 import com.oracle.truffle.js.builtins.testing.TestV8BuiltinsFactory.TestV8CreatePrivateSymbolNodeGen;
 import com.oracle.truffle.js.builtins.testing.TestV8BuiltinsFactory.TestV8DoublePartNodeGen;
 import com.oracle.truffle.js.builtins.testing.TestV8BuiltinsFactory.TestV8EnqueueJobNodeGen;
+import com.oracle.truffle.js.builtins.testing.TestV8BuiltinsFactory.TestV8FileExistsNodeGen;
 import com.oracle.truffle.js.builtins.testing.TestV8BuiltinsFactory.TestV8ReferenceEqualNodeGen;
 import com.oracle.truffle.js.builtins.testing.TestV8BuiltinsFactory.TestV8RunMicrotasksNodeGen;
 import com.oracle.truffle.js.builtins.testing.TestV8BuiltinsFactory.TestV8SetAllowAtomicsWaitNodeGen;
@@ -133,6 +136,7 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         createAsyncFromSyncIterator(1),
         runMicrotasks(0),
         enqueueJob(1),
+        fileExists(1),
         setTimeout(1),
         stringCompare(2),
         typedArrayDetachBuffer(1),
@@ -185,6 +189,8 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
                 return TestV8RunMicrotasksNodeGen.create(context, builtin, args().createArgumentNodes(context));
             case enqueueJob:
                 return TestV8EnqueueJobNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            case fileExists:
+                return TestV8FileExistsNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case setTimeout:
                 return TestV8SetTimeoutNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case stringCompare:
@@ -368,10 +374,30 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
 
         @Specialization
         protected Object enqueueJob(Object function) {
-            if (JSFunction.isJSFunction(function)) {
-                getContext().enqueuePromiseJob(getRealm(), (JSFunctionObject) function);
+            if (!JSFunction.isJSFunction(function)) {
+                throw Errors.createTypeError("callback is not a function", this);
             }
-            return 0;
+            getContext().enqueuePromiseJob(getRealm(), (JSFunctionObject) function);
+            return Undefined.instance;
+        }
+    }
+
+    public abstract static class TestV8FileExistsNode extends JSBuiltinNode {
+
+        public TestV8FileExistsNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected boolean fileExists(Object path,
+                        @Cached JSToStringNode toStringNode) {
+            return fileExists(Strings.toJavaString(toStringNode.executeString(path)), getRealm());
+        }
+
+        @TruffleBoundary
+        private static boolean fileExists(String path, JSRealm realm) {
+            TruffleFile file = GlobalBuiltins.resolveRelativeFilePath(path, realm.getEnv());
+            return file.exists();
         }
     }
 

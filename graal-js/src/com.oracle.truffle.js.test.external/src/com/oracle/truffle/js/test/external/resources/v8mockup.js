@@ -9,6 +9,9 @@
  * This script provides functions for the execution of the V8 test suite.
  */
 
+const {TestV8} = globalThis;
+delete globalThis.TestV8;
+
 // v8IgnoreResult is a special value returned by methods that we cannot
 // mock-up properly (like %HasFastProperties()). This value is accepted
 // by both assertTrue() and assertFalse()
@@ -145,6 +148,10 @@ var d8 = {
         maxFixedArrayCapacity: 128 * 1024 * 1024
     },
     file: {
+        exists: function(path) {
+            path = `${path}`;
+            return TestV8.fileExists(path) || TestV8.fileExists(`lib/testv8/${path}`);
+        },
         execute: function(path) {
             d8_file_execute_load(path);
             // Ensures that assertTraps() checks just the error type
@@ -244,8 +251,8 @@ globalThis['%PerformMicrotaskCheckpoint'] = function() {
     return TestV8.runMicrotasks();
 };
 
-globalThis['%EnqueueMicrotask'] = function(a) {
-    return undefined;
+globalThis.queueMicrotask = globalThis['%EnqueueMicrotask'] = function(callback) {
+    TestV8.enqueueJob(callback);
 };
 
 globalThis['%DebugPrint'] = function() {
