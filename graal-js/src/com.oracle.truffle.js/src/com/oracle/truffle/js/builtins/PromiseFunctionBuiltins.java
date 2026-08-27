@@ -205,7 +205,7 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        protected Object doObject(JSObject constructor, Object iterable,
+        protected Object doObject(Object constructor, Object iterable,
                         @Cached(inline = true) GetIteratorNode getIteratorNode) {
             PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.execute(constructor);
             Object promiseResolve;
@@ -234,11 +234,6 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
             iteratorCloseNode.executeAbrupt(iteratorRecord);
         }
 
-        @SuppressWarnings("unused")
-        @Specialization(guards = "!isJSObject(thisObj)")
-        protected JSDynamicObject doNotObject(Object thisObj, Object iterable) {
-            throw Errors.createTypeError("Cannot create promise from this type");
-        }
     }
 
     public abstract static class PromiseCombinatorKeyedNode extends AbstractPromiseCombinatorNode {
@@ -277,16 +272,10 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        protected JSDynamicObject doObject(JSObject constructor, Object reason) {
+        protected JSDynamicObject doObject(Object constructor, Object reason) {
             PromiseCapabilityRecord promiseCapability = newPromiseCapability.execute(constructor);
             callReject.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), reason));
             return promiseCapability.getPromise();
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = "!isJSObject(thisObj)")
-        protected JSDynamicObject doNotObject(Object thisObj, Object iterable) {
-            throw Errors.createTypeError("Cannot reject promise from this type");
         }
     }
 
@@ -299,14 +288,17 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        protected JSDynamicObject doObject(JSObject constructor, Object value) {
+        protected JSDynamicObject doJSObject(JSObject constructor, Object value) {
             return promiseResolve.execute(constructor, value);
         }
 
-        @SuppressWarnings("unused")
-        @Specialization(guards = "!isJSObject(thisObj)")
-        protected JSDynamicObject doNotObject(Object thisObj, Object iterable) {
-            throw Errors.createTypeError("Cannot resolve promise from this type");
+        @Specialization(guards = "!isJSObject(constructor)")
+        protected JSDynamicObject doOther(Object constructor, Object value,
+                        @Cached IsObjectNode isObjectNode) {
+            if (!isObjectNode.executeBoolean(constructor)) {
+                throw Errors.createTypeError("Cannot resolve promise from this type");
+            }
+            return promiseResolve.execute(constructor, value);
         }
     }
 
@@ -354,7 +346,7 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        protected final Object doObject(JSObject constructor, Object callbackfn, Object[] args) {
+        protected final Object doObject(Object constructor, Object callbackfn, Object[] args) {
             PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.execute(constructor);
             try {
                 Object status = callCallbackFnNode.executeCall(JSArguments.create(Undefined.instance, callbackfn, args));
@@ -373,12 +365,6 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
             Object error = getErrorObjectNode.execute(ex);
             callRejectNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), error));
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = "!isJSObject(thisObj)")
-        protected static Object doNotObject(Object thisObj, Object callbackfn, Object[] args) {
-            throw Errors.createTypeError("Cannot create promise from this type");
         }
     }
 }

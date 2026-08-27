@@ -68,7 +68,7 @@ public class PerformPromiseRaceNode extends PerformPromiseCombinatorNode {
     }
 
     @Override
-    public JSDynamicObject execute(IteratorRecord iteratorRecord, JSDynamicObject constructor, PromiseCapabilityRecord resultCapability, Object promiseResolve) {
+    public JSDynamicObject execute(IteratorRecord iteratorRecord, Object constructor, PromiseCapabilityRecord resultCapability, Object promiseResolve) {
         assert JSRuntime.isCallable(promiseResolve);
         for (;;) {
             Object next = iteratorStepOrSetDone(iteratorRecord);

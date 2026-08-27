@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,8 +46,10 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyInstantiable;
+import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.Test;
 
+import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.test.JSTest;
 
 public class GR62870 {
@@ -80,6 +82,55 @@ public class GR62870 {
                             """;
             ctx.eval("js", code);
             assertTrue(ctx.getBindings("js").getMember("called").asBoolean());
+        }
+    }
+
+    @Test
+    public void testForeignPromiseStaticMethodConstructor() {
+        try (Context ctx = JSTest.newContextBuilder().option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "staging").build()) {
+            Value promiseConstructor = ctx.getBindings("js").getMember("Promise");
+            class ForeignPromiseConstructor implements ProxyInstantiable, ProxyObject {
+                private final ProxyExecutable resolve = args -> promiseConstructor.invokeMember("resolve", args[0]);
+
+                @Override
+                public Object newInstance(Value... arguments) {
+                    return promiseConstructor.newInstance(arguments[0]);
+                }
+
+                @Override
+                public Object getMember(String key) {
+                    return key.equals("resolve") ? resolve : null;
+                }
+
+                @Override
+                public Object getMemberKeys() {
+                    return new String[]{"resolve"};
+                }
+
+                @Override
+                public boolean hasMember(String key) {
+                    return key.equals("resolve");
+                }
+
+                @Override
+                public void putMember(String key, Value value) {
+                    throw new UnsupportedOperationException();
+                }
+            }
+            ctx.getBindings("js").putMember("foreignConstructor", new ForeignPromiseConstructor());
+            assertTrue(ctx.eval("js", """
+                            [
+                                Promise.all.call(foreignConstructor, []),
+                                Promise.allSettled.call(foreignConstructor, []),
+                                Promise.allKeyed.call(foreignConstructor, {}),
+                                Promise.allSettledKeyed.call(foreignConstructor, {}),
+                                Promise.any.call(foreignConstructor, [1]),
+                                Promise.race.call(foreignConstructor, [1]),
+                                Promise.reject.call(foreignConstructor, 1),
+                                Promise.resolve.call(foreignConstructor, 1),
+                                Promise.try.call(foreignConstructor, () => 1),
+                            ].every(promise => promise instanceof Promise)
+                            """).asBoolean());
         }
     }
 

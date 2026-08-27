@@ -81,7 +81,7 @@ public abstract class PerformPromiseAllSettledNode extends PerformPromiseAllNode
 
     @Specialization
     @Override
-    protected JSDynamicObject promiseAll(IteratorRecord iteratorRecord, JSDynamicObject constructor, PromiseCapabilityRecord resultCapability, Object promiseResolve,
+    protected JSDynamicObject promiseAll(IteratorRecord iteratorRecord, Object constructor, PromiseCapabilityRecord resultCapability, Object promiseResolve,
                     @Cached InlinedBranchProfile growProfile) {
         return super.promiseAll(iteratorRecord, constructor, resultCapability, promiseResolve, growProfile);
     }

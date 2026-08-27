@@ -118,7 +118,7 @@ public abstract class PerformPromiseAllNode extends PerformPromiseCombinatorNode
     }
 
     @Specialization
-    protected JSDynamicObject promiseAll(IteratorRecord iteratorRecord, JSDynamicObject constructor, PromiseCapabilityRecord resultCapability, Object promiseResolve,
+    protected JSDynamicObject promiseAll(IteratorRecord iteratorRecord, Object constructor, PromiseCapabilityRecord resultCapability, Object promiseResolve,
                     @Cached InlinedBranchProfile growProfile) {
         assert JSRuntime.isCallable(promiseResolve);
         SimpleArrayList<Object> values = new SimpleArrayList<>(10);
