@@ -99,17 +99,21 @@ public class JSWebAssemblyTable extends JSNonProxy implements JSConstructorFacto
     }
 
     public static JSWebAssemblyTableObject create(JSContext context, JSRealm realm, Object wasmTable, WebAssemblyType elementKind) {
-        return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm), wasmTable, elementKind);
+        return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm), wasmTable, elementKind, false);
     }
 
-    public static JSWebAssemblyTableObject create(JSContext context, JSRealm realm, JSDynamicObject proto, Object wasmTable, WebAssemblyType elementKind) {
+    public static JSWebAssemblyTableObject create(JSContext context, JSRealm realm, Object wasmTable, WebAssemblyType elementKind, boolean indexType64) {
+        return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm), wasmTable, elementKind, indexType64);
+    }
+
+    public static JSWebAssemblyTableObject create(JSContext context, JSRealm realm, JSDynamicObject proto, Object wasmTable, WebAssemblyType elementKind, boolean indexType64) {
         Object embedderData = JSWebAssembly.getEmbedderData(realm, wasmTable);
         if (embedderData instanceof JSWebAssemblyTableObject) {
             return (JSWebAssemblyTableObject) embedderData;
         }
         JSObjectFactory factory = context.getWebAssemblyTableFactory();
         var shape = factory.getShape(realm, proto);
-        var object = factory.initProto(new JSWebAssemblyTableObject(shape, proto, wasmTable, elementKind), realm, proto);
+        var object = factory.initProto(new JSWebAssemblyTableObject(shape, proto, wasmTable, elementKind, indexType64), realm, proto);
         JSWebAssembly.setEmbedderData(realm, wasmTable, object);
         return factory.trackAllocation(object);
     }

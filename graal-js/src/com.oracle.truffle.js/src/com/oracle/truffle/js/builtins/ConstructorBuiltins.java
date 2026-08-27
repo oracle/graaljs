@@ -199,6 +199,7 @@ import com.oracle.truffle.js.nodes.intl.InitializeRelativeTimeFormatNode;
 import com.oracle.truffle.js.nodes.intl.InitializeSegmenterNode;
 import com.oracle.truffle.js.nodes.promise.PromiseResolveThenableNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
+import com.oracle.truffle.js.nodes.wasm.AddressValueToU64Node;
 import com.oracle.truffle.js.nodes.wasm.ExportByteSourceNode;
 import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyIndexOrSizeNode;
 import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyValueNode;
@@ -3512,15 +3513,17 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
     }
 
+    @ImportStatic(JSConfig.class)
     public abstract static class ConstructWebAssemblyTableNode extends ConstructWithNewTargetNode {
+        protected static final TruffleString ADDRESS = Strings.constant("address");
 
         @Child IsObjectNode isObjectNode;
         @Child PropertyGetNode getElementNode;
         @Child PropertyGetNode getInitialNode;
         @Child PropertyGetNode getMaximumNode;
-        @Child ToWebAssemblyIndexOrSizeNode toInitialSizeNode;
-        @Child ToWebAssemblyIndexOrSizeNode toMaximumSizeNode;
-        @Child InteropLibrary tableAllocLib;
+        @Child PropertyGetNode getAddressNode;
+        @Child AddressValueToU64Node toInitialSizeNode;
+        @Child AddressValueToU64Node toMaximumSizeNode;
 
         public ConstructWebAssemblyTableNode(JSContext context, JSBuiltin builtin, boolean newTargetCase) {
             super(context, builtin, newTargetCase);
@@ -3528,16 +3531,17 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             this.getElementNode = PropertyGetNode.create(Strings.ELEMENT, context);
             this.getInitialNode = PropertyGetNode.create(Strings.INITIAL, context);
             this.getMaximumNode = PropertyGetNode.create(Strings.MAXIMUM, context);
-            this.toInitialSizeNode = ToWebAssemblyIndexOrSizeNode.create("WebAssembly.Table(): Property 'initial'");
-            this.toMaximumSizeNode = ToWebAssemblyIndexOrSizeNode.create("WebAssembly.Table(): Property 'maximum'");
-            this.tableAllocLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
+            this.getAddressNode = PropertyGetNode.create(ADDRESS, context);
+            this.toInitialSizeNode = AddressValueToU64Node.create("WebAssembly.Table(): Property 'initial'");
+            this.toMaximumSizeNode = AddressValueToU64Node.create("WebAssembly.Table(): Property 'maximum'");
         }
 
         @Specialization
         protected JSObject constructTable(JSDynamicObject newTarget, Object descriptor, Object[] args,
                         @Cached JSToStringNode toStringNode,
                         @Cached TruffleString.ToJavaStringNode toJavaString,
-                        @Cached ToWebAssemblyValueNode toWebAssemblyValueNode) {
+                        @Cached ToWebAssemblyValueNode toWebAssemblyValueNode,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary tableAllocLib) {
             if (!isObjectNode.executeBoolean(descriptor)) {
                 throw Errors.createTypeError("WebAssembly.Table(): Argument 0 must be a table descriptor", this);
             }
@@ -3546,25 +3550,41 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             if (elementKind == null) {
                 throw Errors.createTypeError("WebAssembly.Table(): Descriptor property 'element' must be 'anyfunc' or 'externref'", this);
             }
+            Object address = getAddressNode.getValue(descriptor);
+            String addressType = address == Undefined.instance ? "i32" : toJavaString.execute(toStringNode.executeString(address));
+            boolean indexType64;
+            if ("i32".equals(addressType)) {
+                indexType64 = false;
+            } else if ("i64".equals(addressType)) {
+                indexType64 = true;
+            } else {
+                throw Errors.createTypeError("WebAssembly.Table(): Descriptor property 'address' must be 'i32' or 'i64'", this);
+            }
             Object initial = getInitialNode.getValue(descriptor);
             if (initial == Undefined.instance) {
                 throw Errors.createTypeError("WebAssembly.Table(): Property 'initial' is required", this);
             }
-            int initialInt = toInitialSizeNode.executeInt(initial);
-            if (initialInt > JSWebAssemblyTable.MAX_TABLE_SIZE) {
-                throw Errors.createRangeErrorFormat("WebAssembly.Table(): Property 'initial': value %d is above the upper bound %d", this, initialInt, JSWebAssemblyTable.MAX_TABLE_SIZE);
+            Number initialSize = toInitialSizeNode.executeNumber(initial, indexType64);
+            long initialSizeAsLong = JSRuntime.longValue(initialSize);
+            if (Long.compareUnsigned(initialSizeAsLong, JSWebAssemblyTable.MAX_TABLE_SIZE) > 0) {
+                throw Errors.createRangeErrorFormat("WebAssembly.Table(): Property 'initial': value %d is above the upper bound %d", this, initialSizeAsLong, JSWebAssemblyTable.MAX_TABLE_SIZE);
             }
-            int maximumInt;
+            Number maximumSize;
             Object maximum = getMaximumNode.getValue(descriptor);
             if (maximum == Undefined.instance) {
-                maximumInt = JSWebAssemblyTable.MAX_TABLE_SIZE;
-            } else {
-                maximumInt = toMaximumSizeNode.executeInt(maximum);
-                if (initialInt > maximumInt) {
-                    throw Errors.createRangeErrorFormat("WebAssembly.Table(): Property 'maximum': value %d is below the lower bound %d", this, maximumInt, initialInt);
+                if (indexType64) {
+                    maximumSize = (long) JSWebAssemblyTable.MAX_TABLE_SIZE;
+                } else {
+                    maximumSize = JSWebAssemblyTable.MAX_TABLE_SIZE;
                 }
-                if (maximumInt > JSWebAssemblyTable.MAX_TABLE_SIZE) {
-                    throw Errors.createRangeErrorFormat("WebAssembly.Table(): Property 'maximum': value %d is above the upper bound %d", this, maximumInt, JSWebAssemblyTable.MAX_TABLE_SIZE);
+            } else {
+                maximumSize = toMaximumSizeNode.executeNumber(maximum, indexType64);
+                long maximumSizeAsLong = JSRuntime.longValue(maximumSize);
+                if (Long.compareUnsigned(initialSizeAsLong, maximumSizeAsLong) > 0) {
+                    throw Errors.createRangeErrorFormat("WebAssembly.Table(): Property 'maximum': value %d is below the lower bound %d", this, maximumSizeAsLong, initialSizeAsLong);
+                }
+                if (Long.compareUnsigned(maximumSizeAsLong, JSWebAssemblyTable.MAX_TABLE_SIZE) > 0) {
+                    throw Errors.createRangeErrorFormat("WebAssembly.Table(): Property 'maximum': value %d is above the upper bound %d", this, maximumSizeAsLong, JSWebAssemblyTable.MAX_TABLE_SIZE);
                 }
             }
             final JSRealm realm = getRealm();
@@ -3577,12 +3597,12 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             Object wasmTable;
             try {
                 Object createTable = realm.getWASMTableAlloc();
-                wasmTable = tableAllocLib.execute(createTable, initialInt, maximumInt, elementKind.toString(), wasmValue);
+                wasmTable = tableAllocLib.execute(createTable, initialSize, maximumSize, elementKind.toString(), wasmValue, indexType64);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             }
             JSDynamicObject proto = getPrototype(realm, newTarget);
-            return JSWebAssemblyTable.create(getContext(), realm, proto, wasmTable, elementKind);
+            return JSWebAssemblyTable.create(getContext(), realm, proto, wasmTable, elementKind, indexType64);
         }
 
         @Override
