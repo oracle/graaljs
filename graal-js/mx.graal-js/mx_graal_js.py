@@ -263,7 +263,7 @@ def parse_js_args(args, runtime_jvm_args=None, useDoubleDash=False):
     return vm_args, remainder
 
 def _default_stacksize():
-    if mx.get_arch() in ('aarch64', 'sparcv9'):
+    if mx.get_arch() == 'aarch64':
         return '24m'
     return '16m'
 
@@ -363,7 +363,7 @@ def _run_test_suite(custom_args, default_vm_args, max_heap, stack_size, main_cla
 def test262(args, nonZeroIsFatal=True):
     """run the test262 conformance suite"""
     _default_vm_args = []
-    _stack_size = '2m' if mx.get_arch() in ('aarch64', 'sparcv9') else '1m'
+    _stack_size = '2m' if mx.get_arch() == 'aarch64' else '1m'
     _fetch_test262()
     return _run_test_suite(
         custom_args=args,
@@ -451,7 +451,7 @@ def testnashorn(args, nonZeroIsFatal=True):
     """run the testNashorn conformance suite"""
     _location = join(_suite.dir, 'lib', 'testnashorn')
     _default_vm_args = []
-    _stack_size = '2m' if mx.get_arch() in ('aarch64', 'sparcv9') else '1m'
+    _stack_size = '2m' if mx.get_arch() == 'aarch64' else '1m'
     _fetch_test_suite(_location, ['TESTNASHORN', 'TESTNASHORN_EXTERNAL'])
     _run_test_suite(
         custom_args=args,
@@ -466,7 +466,7 @@ def testnashorn(args, nonZeroIsFatal=True):
 def testv8(args, nonZeroIsFatal=True):
     """run the testV8 conformance suite"""
     _fetch_testv8()
-    _stack_size = '3m' if mx.get_arch() in ('aarch64', 'sparcv9') else '1m'
+    _stack_size = '3m' if mx.get_arch() == 'aarch64' else '1m'
     _run_test_suite(
         custom_args=args,
         default_vm_args=['--add-modules=jdk.incubator.vector'],
