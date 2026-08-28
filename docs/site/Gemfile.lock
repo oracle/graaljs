@@ -21,8 +21,12 @@ GEM
       http_parser.rb (~> 0)
     eventmachine (1.2.7)
     ffi (1.17.4-arm64-darwin)
+    ffi (1.17.4-x86_64-linux-gnu)
     forwardable-extended (2.6.0)
     google-protobuf (4.35.1-arm64-darwin)
+      bigdecimal
+      rake (~> 13.3)
+    google-protobuf (4.35.1-x86_64-linux-gnu)
       bigdecimal
       rake (~> 13.3)
     http_parser.rb (0.8.1)
@@ -77,7 +81,7 @@ GEM
       coderay (~> 1.1)
       method_source (~> 1.0)
     public_suffix (7.0.5)
-    rack (3.1.8)
+    rack (3.1.21)
     rake (13.4.2)
     rb-fsevent (0.11.2)
     rb-inotify (0.11.1)
@@ -86,6 +90,8 @@ GEM
     rouge (4.7.0)
     safe_yaml (1.0.5)
     sass-embedded (1.103.0-arm64-darwin)
+      google-protobuf (~> 4.31)
+    sass-embedded (1.103.0-x86_64-linux-gnu)
       google-protobuf (~> 4.31)
     siteleaf (2.3.0)
       httparty (>= 0.16.0)
@@ -98,6 +104,7 @@ GEM
 
 PLATFORMS
   arm64-darwin
+  x86_64-linux
 
 DEPENDENCIES
   graal-languages-jekyll-theme!
