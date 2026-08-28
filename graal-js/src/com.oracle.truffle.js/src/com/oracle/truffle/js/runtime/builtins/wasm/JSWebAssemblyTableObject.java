@@ -47,13 +47,14 @@ import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public final class JSWebAssemblyTableObject extends JSNonProxyObject {
     private final Object wasmTable;
-
     private final WebAssemblyType elementKind;
+    private final boolean indexType64;
 
-    protected JSWebAssemblyTableObject(Shape shape, JSDynamicObject proto, Object wasmTable, WebAssemblyType elementKind) {
+    protected JSWebAssemblyTableObject(Shape shape, JSDynamicObject proto, Object wasmTable, WebAssemblyType elementKind, boolean indexType64) {
         super(shape, proto);
         this.wasmTable = wasmTable;
         this.elementKind = elementKind;
+        this.indexType64 = indexType64;
     }
 
     public Object getWASMTable() {
@@ -62,6 +63,10 @@ public final class JSWebAssemblyTableObject extends JSNonProxyObject {
 
     public WebAssemblyType getElementKind() {
         return elementKind;
+    }
+
+    public boolean hasIndexType64() {
+        return indexType64;
     }
 
     @Override

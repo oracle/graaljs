@@ -175,8 +175,10 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                     value = JSWebAssemblyMemory.create(context, realm, externval, shared);
                 } else if (Strings.TABLE.equals(externtype)) {
                     TruffleString typeStr = asTString(exportInterop.readMember(exportInfo, "type"));
-                    WebAssemblyType type = WebAssemblyType.lookup(typeStr.toJavaStringUncached());
-                    value = JSWebAssemblyTable.create(context, realm, externval, type);
+                    String tableType = typeStr.toJavaStringUncached();
+                    boolean indexType64 = tableType.startsWith("i64 ");
+                    WebAssemblyType type = WebAssemblyType.lookup(tableType.substring(4));
+                    value = JSWebAssemblyTable.create(context, realm, externval, type, indexType64);
                 } else if (Strings.TAG.equals(externtype)) {
                     TruffleString typeStr = asTString(exportInterop.readMember(exportInfo, "type"));
                     WebAssemblyType[] tagType = parseWasmFunctionTypeInfo(context, typeStr).paramTypes();

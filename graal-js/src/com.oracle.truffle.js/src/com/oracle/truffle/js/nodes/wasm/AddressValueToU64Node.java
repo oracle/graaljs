@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,65 +40,51 @@
  */
 package com.oracle.truffle.js.nodes.wasm;
 
-import com.oracle.truffle.api.ExactMath;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
+import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSRuntime;
 
 /**
- * Performs a conversion of the argument to non-negative {@code int} common to various parts of
- * WebAssembly implementation.
+ * Performs the AddressValueToU64 conversion used by WebAssembly tables.
  */
-public abstract class ToWebAssemblyIndexOrSizeNode extends JavaScriptBaseNode {
+public abstract class AddressValueToU64Node extends JavaScriptBaseNode {
     private final String errorMessagePrefix;
-    private final BranchProfile errorBranch;
-    @Child JSToNumberNode toNumberNode;
 
-    protected ToWebAssemblyIndexOrSizeNode(String errorMessagePrefix) {
+    protected AddressValueToU64Node(String errorMessagePrefix) {
         this.errorMessagePrefix = errorMessagePrefix;
-        this.errorBranch = BranchProfile.create();
-        this.toNumberNode = JSToNumberNode.create();
     }
 
-    public static ToWebAssemblyIndexOrSizeNode create(String errorMessagePrefix) {
-        return ToWebAssemblyIndexOrSizeNodeGen.create(errorMessagePrefix);
+    public static AddressValueToU64Node create(String errorMessagePrefix) {
+        return AddressValueToU64NodeGen.create(errorMessagePrefix);
     }
 
-    public abstract int executeInt(Object value);
+    public abstract long execute(Object value, boolean indexType64);
 
-    @Specialization
-    protected int convertInt(int intValue) {
-        if (intValue < 0) {
-            errorBranch.enter();
-            throw Errors.createTypeErrorFormat("%s must be non-negative", errorMessagePrefix);
-        }
-        return intValue;
+    @Specialization(guards = "!indexType64")
+    protected long convertI32(Object value, @SuppressWarnings("unused") boolean indexType64,
+                    @Cached("createToWebAssemblyIndexOrSizeNode()") ToWebAssemblyIndexOrSizeNode toIndexOrSizeNode) {
+        return toIndexOrSizeNode.executeInt(value);
     }
 
-    @Specialization(replaces = "convertInt")
-    protected int convert(Object value) {
-        Number valueNumber = toNumberNode.executeNumber(value);
-        double valueDouble = JSRuntime.doubleValue(valueNumber);
-        if (!Double.isFinite(valueDouble)) {
-            errorBranch.enter();
-            throw Errors.createTypeErrorFormat("%s must be convertible to a valid number", errorMessagePrefix);
+    @NeverDefault
+    protected final ToWebAssemblyIndexOrSizeNode createToWebAssemblyIndexOrSizeNode() {
+        return ToWebAssemblyIndexOrSizeNode.create(errorMessagePrefix);
+    }
+
+    @Specialization(guards = "indexType64")
+    protected long convertI64(Object value, @SuppressWarnings("unused") boolean indexType64,
+                    @Cached JSToBigIntNode toBigIntNode,
+                    @Cached InlinedBranchProfile errorBranch) {
+        BigInt valueBigInt = toBigIntNode.executeBigInteger(value);
+        if (valueBigInt.signum() < 0 || valueBigInt.bitLength() > Long.SIZE) {
+            errorBranch.enter(this);
+            throw Errors.createTypeErrorFormat("%s must be a non-negative unsigned 64-bit integer", errorMessagePrefix);
         }
-        valueDouble = ExactMath.truncate(valueDouble);
-        if (valueDouble < 0) {
-            errorBranch.enter();
-            throw Errors.createTypeErrorFormat("%s must be non-negative", errorMessagePrefix);
-        }
-        if (valueDouble > 0xFFFF_FFFFL) {
-            errorBranch.enter();
-            throw Errors.createTypeErrorFormat("%s must be in the unsigned long range", errorMessagePrefix);
-        }
-        if (valueDouble > Integer.MAX_VALUE) {
-            errorBranch.enter();
-            throw Errors.createRangeErrorFormat("%s must be in the int range", this, errorMessagePrefix);
-        }
-        return (int) valueDouble;
+        return valueBigInt.longValue();
     }
 }

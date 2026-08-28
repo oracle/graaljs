@@ -102,7 +102,14 @@ Worker = (function() {
     };
 })();
 
-performance.measureMemory ??= function() {
+performance.measureMemory ??= function(options = {}) {
+    const field = () => ({jsMemoryEstimate: 0, jsMemoryRange: [0, 0]});
+    const result = {total: field()};
+    if (options?.detailed === true) {
+      result.current = field();
+      result.other = [];
+    }
+    return Promise.resolve().then(() => result);
 };
 
 // Ignore `assertTrue(Number.isInteger(e_runtime_id));` in exceptions-utils.js
