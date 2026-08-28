@@ -2,3 +2,7 @@
 /graal-js/mxbuild
 # Intellij project files
 *.iml
+# microsite
+docs/site/_site
+docs/site/.jekyll-cache
+docs/site/.jekyll-metadata

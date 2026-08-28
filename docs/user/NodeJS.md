@@ -161,7 +161,7 @@ The most notable examples show how:
 2. [Java objects can be shared between Node.js worker threads](https://github.com/graalvm/graaljs/blob/master/graal-nodejs/test/graal/unit/javaMessages.js).
 3. [JavaScript `Promise` objects can be used to `await` on messages from workers, using Java objects to bind promises to worker messages](https://github.com/graalvm/graaljs/blob/master/graal-nodejs/test/graal/unit/workerInteropPromises.js).
 
-## Frequently Asked Questions
+## Node.js FAQ
 
 ### Is GraalVM's Node.js runtime compatible with the original Node implementation?
 GraalVM's Node.js runtime is largely compatible with the original Node.js (based on the V8 engine).
@@ -207,4 +207,3 @@ For more details, see [Installing `npm` Packages Globally](NodeJS.md#installing-
 ### Related Documentation
 
 * [Differences Between `node` Native Launcher and a Java `Context`](NodeJSVSJavaScriptContext.md)
-
