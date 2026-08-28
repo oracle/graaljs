@@ -142,7 +142,7 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
                 throw Errors.createTypeError("WebAssembly.Table.grow(): Receiver is not a WebAssembly.Table");
             }
             JSWebAssemblyTableObject table = (JSWebAssemblyTableObject) thiz;
-            Number deltaSize = toDeltaNode.executeNumber(delta, table.hasIndexType64());
+            long deltaSize = toDeltaNode.execute(delta, table.hasIndexType64());
             Object wasmTable = table.getWASMTable();
             WebAssemblyType elementKind = table.getElementKind();
 
@@ -191,7 +191,7 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
             }
             JSRealm realm = getRealm();
             JSWebAssemblyTableObject table = (JSWebAssemblyTableObject) thiz;
-            Number tableIndex = toIndexNode.executeNumber(index, table.hasIndexType64());
+            long tableIndex = toIndexNode.execute(index, table.hasIndexType64());
             Object wasmTable = table.getWASMTable();
             try {
                 Object getFn = realm.getWASMTableRead();
@@ -229,7 +229,7 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
                 throw Errors.createTypeError("WebAssembly.Table.set(): Receiver is not a WebAssembly.Table");
             }
             JSWebAssemblyTableObject table = (JSWebAssemblyTableObject) thiz;
-            Number tableIndex = toIndexNode.executeNumber(index, table.hasIndexType64());
+            long tableIndex = toIndexNode.execute(index, table.hasIndexType64());
             Object wasmTable = table.getWASMTable();
             WebAssemblyType elementKind = table.getElementKind();
             final JSRealm realm = getRealm();

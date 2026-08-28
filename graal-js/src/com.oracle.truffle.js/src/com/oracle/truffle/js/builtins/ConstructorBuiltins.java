@@ -3564,27 +3564,21 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             if (initial == Undefined.instance) {
                 throw Errors.createTypeError("WebAssembly.Table(): Property 'initial' is required", this);
             }
-            Number initialSize = toInitialSizeNode.executeNumber(initial, indexType64);
-            long initialSizeAsLong = JSRuntime.longValue(initialSize);
-            if (Long.compareUnsigned(initialSizeAsLong, JSWebAssemblyTable.MAX_TABLE_SIZE) > 0) {
-                throw Errors.createRangeErrorFormat("WebAssembly.Table(): Property 'initial': value %d is above the upper bound %d", this, initialSizeAsLong, JSWebAssemblyTable.MAX_TABLE_SIZE);
+            long initialSize = toInitialSizeNode.execute(initial, indexType64);
+            if (Long.compareUnsigned(initialSize, JSWebAssemblyTable.MAX_TABLE_SIZE) > 0) {
+                throw Errors.createRangeErrorFormat("WebAssembly.Table(): Property 'initial': value %d is above the upper bound %d", this, initialSize, JSWebAssemblyTable.MAX_TABLE_SIZE);
             }
-            Number maximumSize;
+            long maximumSize;
             Object maximum = getMaximumNode.getValue(descriptor);
             if (maximum == Undefined.instance) {
-                if (indexType64) {
-                    maximumSize = (long) JSWebAssemblyTable.MAX_TABLE_SIZE;
-                } else {
-                    maximumSize = JSWebAssemblyTable.MAX_TABLE_SIZE;
-                }
+                maximumSize = JSWebAssemblyTable.MAX_TABLE_SIZE;
             } else {
-                maximumSize = toMaximumSizeNode.executeNumber(maximum, indexType64);
-                long maximumSizeAsLong = JSRuntime.longValue(maximumSize);
-                if (Long.compareUnsigned(initialSizeAsLong, maximumSizeAsLong) > 0) {
-                    throw Errors.createRangeErrorFormat("WebAssembly.Table(): Property 'maximum': value %d is below the lower bound %d", this, maximumSizeAsLong, initialSizeAsLong);
+                maximumSize = toMaximumSizeNode.execute(maximum, indexType64);
+                if (Long.compareUnsigned(initialSize, maximumSize) > 0) {
+                    throw Errors.createRangeErrorFormat("WebAssembly.Table(): Property 'maximum': value %d is below the lower bound %d", this, maximumSize, initialSize);
                 }
-                if (Long.compareUnsigned(maximumSizeAsLong, JSWebAssemblyTable.MAX_TABLE_SIZE) > 0) {
-                    throw Errors.createRangeErrorFormat("WebAssembly.Table(): Property 'maximum': value %d is above the upper bound %d", this, maximumSizeAsLong, JSWebAssemblyTable.MAX_TABLE_SIZE);
+                if (Long.compareUnsigned(maximumSize, JSWebAssemblyTable.MAX_TABLE_SIZE) > 0) {
+                    throw Errors.createRangeErrorFormat("WebAssembly.Table(): Property 'maximum': value %d is above the upper bound %d", this, maximumSize, JSWebAssemblyTable.MAX_TABLE_SIZE);
                 }
             }
             final JSRealm realm = getRealm();

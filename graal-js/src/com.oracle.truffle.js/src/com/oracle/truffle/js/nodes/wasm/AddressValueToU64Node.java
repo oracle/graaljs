@@ -63,14 +63,10 @@ public abstract class AddressValueToU64Node extends JavaScriptBaseNode {
         return AddressValueToU64NodeGen.create(errorMessagePrefix);
     }
 
-    public final Number executeNumber(Object value, boolean indexType64) {
-        return (Number) execute(value, indexType64);
-    }
-
-    protected abstract Object execute(Object value, boolean indexType64);
+    public abstract long execute(Object value, boolean indexType64);
 
     @Specialization(guards = "!indexType64")
-    protected int convertI32(Object value, @SuppressWarnings("unused") boolean indexType64,
+    protected long convertI32(Object value, @SuppressWarnings("unused") boolean indexType64,
                     @Cached("createToWebAssemblyIndexOrSizeNode()") ToWebAssemblyIndexOrSizeNode toIndexOrSizeNode) {
         return toIndexOrSizeNode.executeInt(value);
     }
