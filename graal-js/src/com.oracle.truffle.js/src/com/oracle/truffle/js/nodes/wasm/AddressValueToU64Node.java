@@ -83,7 +83,7 @@ public abstract class AddressValueToU64Node extends JavaScriptBaseNode {
         BigInt valueBigInt = toBigIntNode.executeBigInteger(value);
         if (valueBigInt.signum() < 0 || valueBigInt.bitLength() > Long.SIZE) {
             errorBranch.enter(this);
-            throw Errors.createTypeErrorFormat("%s must be a non-negative unsigned 64-bit integer", this, errorMessagePrefix);
+            throw Errors.createTypeErrorFormat("%s must be a non-negative unsigned 64-bit integer", errorMessagePrefix);
         }
         return valueBigInt.longValue();
     }

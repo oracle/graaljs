@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -73,7 +73,7 @@ public abstract class ToWebAssemblyIndexOrSizeNode extends JavaScriptBaseNode {
     protected int convertInt(int intValue) {
         if (intValue < 0) {
             errorBranch.enter();
-            throw Errors.createTypeErrorFormat("%s must be non-negative", this, errorMessagePrefix);
+            throw Errors.createTypeErrorFormat("%s must be non-negative", errorMessagePrefix);
         }
         return intValue;
     }
@@ -84,16 +84,16 @@ public abstract class ToWebAssemblyIndexOrSizeNode extends JavaScriptBaseNode {
         double valueDouble = JSRuntime.doubleValue(valueNumber);
         if (!Double.isFinite(valueDouble)) {
             errorBranch.enter();
-            throw Errors.createTypeErrorFormat("%s must be convertible to a valid number", this, errorMessagePrefix);
+            throw Errors.createTypeErrorFormat("%s must be convertible to a valid number", errorMessagePrefix);
         }
         valueDouble = ExactMath.truncate(valueDouble);
         if (valueDouble < 0) {
             errorBranch.enter();
-            throw Errors.createTypeErrorFormat("%s must be non-negative", this, errorMessagePrefix);
+            throw Errors.createTypeErrorFormat("%s must be non-negative", errorMessagePrefix);
         }
         if (valueDouble > 0xFFFF_FFFFL) {
             errorBranch.enter();
-            throw Errors.createTypeErrorFormat("%s must be in the unsigned long range", this, errorMessagePrefix);
+            throw Errors.createTypeErrorFormat("%s must be in the unsigned long range", errorMessagePrefix);
         }
         if (valueDouble > Integer.MAX_VALUE) {
             errorBranch.enter();
