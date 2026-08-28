@@ -1107,6 +1107,9 @@ globalThis['%EnableCodeLoggingForTesting'] = function() {
 globalThis['%TurbofanStaticAssert'] = function() {
 };
 
+globalThis['%AssertEscapeAnalysisElided'] = globalThis['%AssertNotPeeled'] = globalThis['%AssertPeeled'] = function() {
+};
+
 function setTimeout(callback) {
     TestV8.setTimeout(callback);
 }

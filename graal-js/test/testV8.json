@@ -2735,6 +2735,18 @@
     "status" : "SKIP",
     "comment" : "Triggers stack overflow"
   }, {
+    "filePath" : "mjsunit/turbolev/regress-488090094.js",
+    "status" : "FAIL",
+    "comment" : "The requested 2 GiB TypedArray exceeds the GraalJS implementation limit."
+  }, {
+    "filePath" : "mjsunit/turbolev/regress-537951967.js",
+    "status" : "FAIL",
+    "comment" : "TestV8 Realm.navigate does not install the V8 intrinsic mocks in the destination realm."
+  }, {
+    "filePath" : "mjsunit/turbolev/regress-552783942.js",
+    "status" : "FAIL",
+    "comment" : "GraalJS preserves the signaling NaN payload through Math.min; V8 quiets the NaN."
+  }, {
     "filePath" : "mjsunit/turboshaft/extras-cped.js",
     "status" : "FAIL",
     "comment" : "Test of V8-specific functionality (d8.getExtrasBindingObject)"
@@ -2742,6 +2754,10 @@
     "filePath" : "mjsunit/turboshaft/regress-539984773.js",
     "status" : "FAIL",
     "comment" : "Uses V8-specific %BlockAt intrinsic."
+  }, {
+    "filePath" : "mjsunit/turboshaft/strict-equals-receiver-or-null-or-undefined.js",
+    "status" : "FAIL",
+    "comment" : "%GetUndetectable is mocked as undefined and cannot model V8's undetectable object."
   }, {
     "filePath" : "mjsunit/typedarray-growablesharedarraybuffer-array-methods.js",
     "status" : "SKIP",

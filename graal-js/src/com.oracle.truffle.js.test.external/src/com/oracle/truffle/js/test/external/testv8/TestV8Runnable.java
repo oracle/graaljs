@@ -101,8 +101,6 @@ public class TestV8Runnable extends TestRunnable {
                     "--quiet-load",
                     "--sandbox-fuzzing",
                     "--sandbox-testing",
-                    "--turbolev",
-                    "--turbolev-future",
                     "--wasm-acquire-release",
                     "--wasm-compact-imports",
                     "--wasm-custom-descriptors",
