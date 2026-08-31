@@ -197,6 +197,7 @@ public class Test262Runnable extends TestRunnable {
                     "arrow-function",
                     "async-functions",
                     "async-iteration",
+                    "await-dictionary",
                     "caller",
                     "canonical-tz",
                     "change-array-by-copy",
@@ -286,7 +287,6 @@ public class Test262Runnable extends TestRunnable {
     private static final Set<String> UNSUPPORTED_FEATURES = featureSet(new String[]{
                     "Intl.Era-monthcode",
                     "IsHTMLDDA",
-                    "await-dictionary",
                     "tail-call-optimization",
     });
     private static final Set<String> STAGING_FEATURES = featureSet(new String[]{
@@ -295,6 +295,7 @@ public class Test262Runnable extends TestRunnable {
                     "Intl.Locale-info",
                     "Iterator.prototype.join",
                     "ShadowRealm",
+                    "await-dictionary",
                     "decorators",
                     "immutable-arraybuffer",
                     "import-bytes",

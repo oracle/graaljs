@@ -5,7 +5,10 @@ The main focus is on user-observable behavior of the engine.
 Changelog may include unreleased versions.
 See [release calendar](https://www.graalvm.org/release-calendar/) for release dates.
 
-## Version 25.3.4.1
+## Version 25.4.4
+* Implemented the [`Await Dictionary`](https://github.com/tc39/proposal-await-dictionary) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
+
+## Version 25.3.4
 * Implemented the [`Iterator Includes`](https://github.com/tc39/proposal-iterator-includes) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Implemented the [`Iterator Join`](https://github.com/tc39/proposal-iterator-join) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Implemented the [`Iterator Chunking`](https://github.com/tc39/proposal-iterator-chunking) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).

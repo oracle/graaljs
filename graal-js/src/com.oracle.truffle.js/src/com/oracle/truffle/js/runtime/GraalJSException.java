@@ -916,6 +916,10 @@ public abstract class GraalJSException extends AbstractTruffleException {
         }
 
         public boolean isPromiseAll() {
+            return promiseIndex >= 0 && Strings.equals(functionName, Strings.ALL);
+        }
+
+        private boolean isPromiseCombinator() {
             return promiseIndex >= 0;
         }
 
@@ -937,8 +941,10 @@ public abstract class GraalJSException extends AbstractTruffleException {
         @TruffleBoundary
         public TruffleString toString(JSContext context) {
             var sb = Strings.builderCreate();
-            if (isPromiseAll()) {
-                Strings.builderAppend(sb, Strings.ASYNC_PROMISE_ALL_BEGIN);
+            if (isPromiseCombinator()) {
+                Strings.builderAppend(sb, Strings.ASYNC_PROMISE_DOT);
+                Strings.builderAppend(sb, functionName);
+                Strings.builderAppend(sb, Strings.SPACE_PAREN_OPEN_INDEX);
                 Strings.builderAppend(sb, promiseIndex);
                 Strings.builderAppend(sb, Strings.PAREN_CLOSE);
                 return Strings.builderToString(sb);

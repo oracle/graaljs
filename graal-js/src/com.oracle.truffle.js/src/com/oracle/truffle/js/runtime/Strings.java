@@ -144,6 +144,9 @@ public final class Strings {
     public static final TruffleString ACCESSOR = constant("accessor");
     public static final TruffleString ADD = constant("add");
     public static final TruffleString ALL = Strings.constant("all");
+    public static final TruffleString ALL_KEYED = Strings.constant("allKeyed");
+    public static final TruffleString ALL_SETTLED = Strings.constant("allSettled");
+    public static final TruffleString ALL_SETTLED_KEYED = Strings.constant("allSettledKeyed");
     public static final TruffleString ALPHABET = constant("alphabet");
     public static final TruffleString ANY = Strings.constant("any");
     public static final TruffleString APPLY = Strings.constant("apply");
@@ -344,8 +347,8 @@ public final class Strings {
     public static final TruffleString PROXY_PAREN = constant("Proxy(");
 
     public static final TruffleString ASYNC_SPC = constant("async ");
-    public static final TruffleString ASYNC_PROMISE_ALL_BEGIN = constant("async Promise.all (index ");
-
+    public static final TruffleString ASYNC_PROMISE_DOT = constant("async Promise.");
+    public static final TruffleString SPACE_PAREN_OPEN_INDEX = constant(" (index ");
     public static final TruffleString SPACE_PAREN_OPEN = constant(" (");
     public static final TruffleString NEW_SPACE = constant("new ");
 

@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.PromiseCombinatorKeyedNodeGen;
 import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.PromiseCombinatorNodeGen;
 import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.PromiseTryNodeGen;
 import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.RejectNodeGen;
@@ -52,6 +53,7 @@ import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.WithResolve
 import com.oracle.truffle.js.nodes.access.CreateDataPropertyNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
@@ -59,6 +61,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.promise.NewPromiseCapabilityNode;
+import com.oracle.truffle.js.nodes.promise.PerformPromiseAllKeyedNode;
 import com.oracle.truffle.js.nodes.promise.PerformPromiseAllNode;
 import com.oracle.truffle.js.nodes.promise.PerformPromiseAllSettledNode;
 import com.oracle.truffle.js.nodes.promise.PerformPromiseAnyNode;
@@ -71,7 +74,6 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
@@ -103,7 +105,10 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         withResolvers(0),
 
-        try_(1);
+        try_(1),
+
+        allKeyed(1),
+        allSettledKeyed(1);
 
         private final int length;
 
@@ -123,6 +128,7 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
                 case allSettled -> JSConfig.ECMAScript2020;
                 case withResolvers -> JSConfig.ECMAScript2024;
                 case try_ -> JSConfig.ECMAScript2025;
+                case allKeyed, allSettledKeyed -> JSConfig.StagingECMAScriptVersion;
                 default -> JSConfig.ECMAScript2015;
             };
         }
@@ -135,6 +141,10 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return PromiseCombinatorNodeGen.create(context, builtin, PerformPromiseAllNode.create(context), args().withThis().fixedArgs(1).createArgumentNodes(context));
             case allSettled:
                 return PromiseCombinatorNodeGen.create(context, builtin, PerformPromiseAllSettledNode.create(context), args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case allKeyed:
+                return PromiseCombinatorKeyedNodeGen.create(context, builtin, PerformPromiseAllKeyedNode.create(context, false), args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case allSettledKeyed:
+                return PromiseCombinatorKeyedNodeGen.create(context, builtin, PerformPromiseAllKeyedNode.create(context, true), args().withThis().fixedArgs(1).createArgumentNodes(context));
             case any:
                 return PromiseCombinatorNodeGen.create(context, builtin, PerformPromiseAnyNode.create(context), args().withThis().fixedArgs(1).createArgumentNodes(context));
             case race:
@@ -151,25 +161,51 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
         return null;
     }
 
-    public abstract static class PromiseCombinatorNode extends JSBuiltinNode {
-        @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
+    public abstract static class AbstractPromiseCombinatorNode extends JSBuiltinNode {
+        @Child protected NewPromiseCapabilityNode newPromiseCapabilityNode;
         @Child private PropertyGetNode getResolve;
         @Child private IsCallableNode isCallable;
-        @Child private PerformPromiseCombinatorNode performPromiseOpNode;
         @Child private JSFunctionCallNode callRejectNode;
-        @Child private IteratorCloseNode iteratorCloseNode;
         @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
 
-        protected PromiseCombinatorNode(JSContext context, JSBuiltin builtin, PerformPromiseCombinatorNode performPromiseOp) {
+        protected AbstractPromiseCombinatorNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
             this.getResolve = PropertyGetNode.create(JSPromise.RESOLVE, context);
             this.isCallable = IsCallableNode.create();
+        }
+
+        protected final Object getPromiseResolve(Object constructor) {
+            Object promiseResolve = getResolve.getValue(constructor);
+            if (!isCallable.executeBoolean(promiseResolve)) {
+                throw Errors.createTypeErrorNotAFunction(promiseResolve);
+            }
+            return promiseResolve;
+        }
+
+        protected final JSDynamicObject rejectPromise(AbstractTruffleException ex, PromiseCapabilityRecord promiseCapability) {
+            if (callRejectNode == null || getErrorObjectNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                callRejectNode = insert(JSFunctionCallNode.createCall());
+                getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create());
+            }
+            Object error = getErrorObjectNode.execute(ex);
+            callRejectNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), error));
+            return promiseCapability.getPromise();
+        }
+    }
+
+    public abstract static class PromiseCombinatorNode extends AbstractPromiseCombinatorNode {
+        @Child private PerformPromiseCombinatorNode performPromiseOpNode;
+        @Child private IteratorCloseNode iteratorCloseNode;
+
+        protected PromiseCombinatorNode(JSContext context, JSBuiltin builtin, PerformPromiseCombinatorNode performPromiseOp) {
+            super(context, builtin);
             this.performPromiseOpNode = performPromiseOp;
         }
 
         @Specialization
-        protected Object doObject(JSObject constructor, Object iterable,
+        protected Object doObject(Object constructor, Object iterable,
                         @Cached(inline = true) GetIteratorNode getIteratorNode) {
             PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.execute(constructor);
             Object promiseResolve;
@@ -190,26 +226,6 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
         }
 
-        private Object getPromiseResolve(JSDynamicObject constructor) {
-            assert JSRuntime.isConstructor(constructor);
-            Object promiseResolve = getResolve.getValue(constructor);
-            if (!isCallable.executeBoolean(promiseResolve)) {
-                throw Errors.createTypeErrorNotAFunction(promiseResolve);
-            }
-            return promiseResolve;
-        }
-
-        protected JSDynamicObject rejectPromise(AbstractTruffleException ex, PromiseCapabilityRecord promiseCapability) {
-            if (callRejectNode == null || getErrorObjectNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                callRejectNode = insert(JSFunctionCallNode.createCall());
-                getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create());
-            }
-            Object error = getErrorObjectNode.execute(ex);
-            callRejectNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), error));
-            return promiseCapability.getPromise();
-        }
-
         private void iteratorClose(IteratorRecord iteratorRecord) {
             if (iteratorCloseNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -218,10 +234,30 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
             iteratorCloseNode.executeAbrupt(iteratorRecord);
         }
 
-        @SuppressWarnings("unused")
-        @Specialization(guards = "!isJSObject(thisObj)")
-        protected JSDynamicObject doNotObject(Object thisObj, Object iterable) {
-            throw Errors.createTypeError("Cannot create promise from this type");
+    }
+
+    public abstract static class PromiseCombinatorKeyedNode extends AbstractPromiseCombinatorNode {
+        @Child private IsObjectNode isObjectNode;
+        @Child private PerformPromiseAllKeyedNode performPromiseAllKeyedNode;
+
+        protected PromiseCombinatorKeyedNode(JSContext context, JSBuiltin builtin, PerformPromiseAllKeyedNode performPromiseAllKeyedNode) {
+            super(context, builtin);
+            this.isObjectNode = IsObjectNode.create();
+            this.performPromiseAllKeyedNode = performPromiseAllKeyedNode;
+        }
+
+        @Specialization
+        protected JSDynamicObject allKeyed(Object constructor, Object promises) {
+            PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.execute(constructor);
+            try {
+                Object promiseResolve = getPromiseResolve(constructor);
+                if (!isObjectNode.executeBoolean(promises)) {
+                    throw Errors.createTypeErrorNotAnObject(promises, this);
+                }
+                return performPromiseAllKeyedNode.execute(promises, constructor, promiseCapability, promiseResolve);
+            } catch (AbstractTruffleException ex) {
+                return rejectPromise(ex, promiseCapability);
+            }
         }
     }
 
@@ -236,16 +272,10 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        protected JSDynamicObject doObject(JSObject constructor, Object reason) {
+        protected JSDynamicObject doObject(Object constructor, Object reason) {
             PromiseCapabilityRecord promiseCapability = newPromiseCapability.execute(constructor);
             callReject.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), reason));
             return promiseCapability.getPromise();
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = "!isJSObject(thisObj)")
-        protected JSDynamicObject doNotObject(Object thisObj, Object iterable) {
-            throw Errors.createTypeError("Cannot reject promise from this type");
         }
     }
 
@@ -258,14 +288,17 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        protected JSDynamicObject doObject(JSObject constructor, Object value) {
+        protected JSDynamicObject doJSObject(JSObject constructor, Object value) {
             return promiseResolve.execute(constructor, value);
         }
 
-        @SuppressWarnings("unused")
-        @Specialization(guards = "!isJSObject(thisObj)")
-        protected JSDynamicObject doNotObject(Object thisObj, Object iterable) {
-            throw Errors.createTypeError("Cannot resolve promise from this type");
+        @Specialization(guards = "!isJSObject(constructor)")
+        protected JSDynamicObject doOther(Object constructor, Object value,
+                        @Cached IsObjectNode isObjectNode) {
+            if (!isObjectNode.executeBoolean(constructor)) {
+                throw Errors.createTypeError("Cannot resolve promise from this type");
+            }
+            return promiseResolve.execute(constructor, value);
         }
     }
 
@@ -313,7 +346,7 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        protected final Object doObject(JSObject constructor, Object callbackfn, Object[] args) {
+        protected final Object doObject(Object constructor, Object callbackfn, Object[] args) {
             PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.execute(constructor);
             try {
                 Object status = callCallbackFnNode.executeCall(JSArguments.create(Undefined.instance, callbackfn, args));
@@ -332,12 +365,6 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
             Object error = getErrorObjectNode.execute(ex);
             callRejectNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), error));
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = "!isJSObject(thisObj)")
-        protected static Object doNotObject(Object thisObj, Object callbackfn, Object[] args) {
-            throw Errors.createTypeError("Cannot create promise from this type");
         }
     }
 }
