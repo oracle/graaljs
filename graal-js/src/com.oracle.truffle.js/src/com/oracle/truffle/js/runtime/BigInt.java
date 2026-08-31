@@ -123,33 +123,37 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
             return BigInteger.ZERO;
         }
 
-        if (trimmedString.charAt(0) == '0') {
-            if (trimmedString.length() > 2) {
-                switch (trimmedString.charAt(1)) {
-                    case 'x', 'X' -> {
-                        if (JSRuntime.isHex(trimmedString.charAt(2))) {
-                            return new BigInteger(trimmedString.substring(2), 16);
-                        }
-                    }
-                    case 'o', 'O' -> {
-                        if (JSRuntime.valueInRadix(trimmedString.charAt(2), 8) != -1) {
-                            return new BigInteger(trimmedString.substring(2), 8);
-                        }
-                    }
-                    case 'b', 'B' -> {
-                        if (JSRuntime.valueInRadix(trimmedString.charAt(2), 2) != -1) {
-                            return new BigInteger(trimmedString.substring(2), 2);
-                        }
-                    }
-                    default -> {
-                        return new BigInteger(trimmedString, 10);
-                    }
-                }
-            } else if (trimmedString.length() == 1) {
-                return BigInteger.ZERO;
+        int firstDigitIndex = 0;
+        int radix = 10;
+        char firstChar = trimmedString.charAt(0);
+        if (firstChar == '+' || firstChar == '-') {
+            firstDigitIndex = 1;
+        } else if (firstChar == '0' && trimmedString.length() > 2) {
+            radix = switch (trimmedString.charAt(1)) {
+                case 'x', 'X' -> 16;
+                case 'o', 'O' -> 8;
+                case 'b', 'B' -> 2;
+                default -> 10;
+            };
+            if (radix != 10) {
+                firstDigitIndex = 2;
             }
         }
-        return new BigInteger(trimmedString, 10);
+
+        validateAsciiDigits(trimmedString, firstDigitIndex, radix);
+        String digits = radix == 10 ? trimmedString : trimmedString.substring(firstDigitIndex);
+        return new BigInteger(digits, radix);
+    }
+
+    private static void validateAsciiDigits(String string, int firstDigitIndex, int radix) {
+        if (firstDigitIndex >= string.length()) {
+            throw new NumberFormatException();
+        }
+        for (int i = firstDigitIndex; i < string.length(); i++) {
+            if (JSRuntime.valueInRadix(string.charAt(i), radix) == -1) {
+                throw new NumberFormatException();
+            }
+        }
     }
 
     @TruffleBoundary
