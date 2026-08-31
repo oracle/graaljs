@@ -36,7 +36,11 @@
   }, {
     "filePath" : "intl/date-format/en-format-range-to-parts.js",
     "status" : "FAIL",
-    "comment" : "new failures 2026-02-12"
+    "comment" : "Date range separator spacing differs from V8/ICU output."
+  }, {
+    "filePath" : "intl/date-format/format-range.js",
+    "status" : "FAIL",
+    "comment" : "Date range separator spacing differs from V8/ICU output."
   }, {
     "filePath" : "intl/date-format/timezone.js",
     "status" : "FAIL",
@@ -73,14 +77,6 @@
     "filePath" : "intl/localematcher/bestfit-supplemental-files.js",
     "status" : "FAIL",
     "comment" : "localeMatcher best fit"
-  }, {
-    "filePath" : "intl/number-format/comma-compat-on.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-02-12"
-  }, {
-    "filePath" : "intl/number-format/italian-compat-on.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-02-12"
   }, {
     "filePath" : "intl/overrides/caching.js",
     "status" : "SKIP",
@@ -125,9 +121,9 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
   }, {
-    "filePath" : "intl/regress-992694.js",
+    "filePath" : "intl/regress-9912.js",
     "status" : "FAIL",
-    "comment" : "ICU4J 78.2 update"
+    "comment" : "Date range separator spacing differs from V8/ICU output."
   }, {
     "filePath" : "intl/relative-time-format/default-locale-fr-CA.js",
     "status" : "FAIL",
@@ -181,81 +177,6 @@
     "runInIsolation" : true,
     "comment" : "GR-73546: Excepted stack overflow may not happen on SVM depending on the stack size"
   }, {
-    "filePath" : "mjsunit/asm/asm-heap.js",
-    "runInIsolation" : true,
-    "comment" : "test with (expected) high memory usage that might influence other tests"
-  }, {
-    "filePath" : "mjsunit/asm/embenchen/box2d.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "INSTRUMENT" : "SKIP"
-    },
-    "comment" : "Time-consuming when instrumented"
-  }, {
-    "filePath" : "mjsunit/asm/embenchen/copy.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "INSTRUMENT" : "SKIP"
-    },
-    "comment" : "Time-consuming when instrumented"
-  }, {
-    "filePath" : "mjsunit/asm/embenchen/corrections.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "INSTRUMENT" : "SKIP"
-    },
-    "comment" : "Time-consuming when instrumented"
-  }, {
-    "filePath" : "mjsunit/asm/embenchen/fannkuch.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "INSTRUMENT" : "SKIP"
-    },
-    "comment" : "Time-consuming when instrumented"
-  }, {
-    "filePath" : "mjsunit/asm/embenchen/fasta.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "INSTRUMENT" : "SKIP"
-    },
-    "comment" : "Time-consuming when instrumented"
-  }, {
-    "filePath" : "mjsunit/asm/embenchen/lua_binarytrees.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "INSTRUMENT" : "SKIP"
-    },
-    "comment" : "Time-consuming when instrumented"
-  }, {
-    "filePath" : "mjsunit/asm/embenchen/memops.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "INSTRUMENT" : "SKIP"
-    },
-    "comment" : "Time-consuming when instrumented"
-  }, {
-    "filePath" : "mjsunit/asm/embenchen/primes.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "INSTRUMENT" : "SKIP"
-    },
-    "comment" : "Time-consuming when instrumented"
-  }, {
-    "filePath" : "mjsunit/asm/embenchen/zlib.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "INSTRUMENT" : "SKIP"
-    },
-    "comment" : "Time-consuming when instrumented"
-  }, {
-    "filePath" : "mjsunit/asm/log-lazy-code.js",
-    "status" : "FAIL",
-    "comment" : "Uses d8.profiler"
-  }, {
-    "filePath" : "mjsunit/asm/regress-1395401.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
     "filePath" : "mjsunit/async-hooks/api-methods.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
@@ -283,10 +204,6 @@
     "filePath" : "mjsunit/async-hooks/regress-crbug-1433521.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "mjsunit/async-stack-traces-promise-all-settled.js",
-    "status" : "FAIL",
-    "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "mjsunit/async-stack-traces-promise-any.js",
     "status" : "FAIL",
@@ -337,7 +254,7 @@
   }, {
     "filePath" : "mjsunit/call-intrinsic-fuzzing.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+    "comment" : "Uses deliberately invalid V8-specific %FooBar intrinsic."
   }, {
     "filePath" : "mjsunit/clone-ic-regressions.js",
     "status" : "FAIL",
@@ -377,7 +294,7 @@
   }, {
     "filePath" : "mjsunit/compiler/bigint-add-no-deopt-loop.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
+    "comment" : "Uses V8-specific %BigIntMaxBits intrinsic."
   }, {
     "filePath" : "mjsunit/compiler/bigint-shift-left.js",
     "status" : "FAIL",
@@ -386,6 +303,10 @@
     "filePath" : "mjsunit/compiler/bigint-shift-right.js",
     "status" : "FAIL",
     "comment" : "Test of V8-specific limits and optimizations"
+  }, {
+    "filePath" : "mjsunit/compiler/concurrent-string-ext-seq.js",
+    "status" : "FAIL",
+    "comment" : "Uses V8-specific %BlockAt intrinsic."
   }, {
     "filePath" : "mjsunit/compiler/conditional-chain.js",
     "status" : "FAIL",
@@ -403,6 +324,10 @@
     "status" : "SKIP",
     "runInIsolation" : true,
     "comment" : "Takes too long (several minutes) in shareengine mode (where arrayPrototypeNoElementsAssumption is invalid)."
+  }, {
+    "filePath" : "mjsunit/compiler/regress-519664497.js",
+    "status" : "FAIL",
+    "comment" : "Uses V8-specific %BlockAt intrinsic."
   }, {
     "filePath" : "mjsunit/compiler/regress-801097.js",
     "status" : "FAIL",
@@ -441,9 +366,13 @@
     "runInIsolation" : true,
     "comment" : "memory intensive test"
   }, {
+    "filePath" : "mjsunit/compiler/super-dictionary-load-receiver.js",
+    "status" : "SKIP",
+    "comment" : "The %HasFastProperties mock returns a truthy sentinel, so the property-adding loop never terminates and eventually exhausts the Java heap."
+  }, {
     "filePath" : "mjsunit/console.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "comment" : "GraalJS console.assert reports failures instead of throwing Error like d8."
   }, {
     "filePath" : "mjsunit/const-tracking-let-repl-initialize.js",
     "status" : "FAIL",
@@ -457,6 +386,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
   }, {
+    "filePath" : "mjsunit/cross-realm-callsite.js",
+    "status" : "FAIL",
+    "comment" : "Error.captureStackTrace exposes a cross-realm function where V8 reports undefined."
+  }, {
     "filePath" : "mjsunit/cross-realm-filtering.js",
     "status" : "FAIL"
   }, {
@@ -466,6 +399,10 @@
     "filePath" : "mjsunit/cyclic-array-to-string.js",
     "status" : "SKIP",
     "comment" : "stack overflow, recursion"
+  }, {
+    "filePath" : "mjsunit/d8-builtins-not-constructors.js",
+    "status" : "FAIL",
+    "comment" : "TestV8 mock d8 builtins are constructible, unlike the corresponding V8 d8 builtins."
   }, {
     "filePath" : "mjsunit/d8/d8-arguments.js",
     "status" : "FAIL",
@@ -478,6 +415,14 @@
     "filePath" : "mjsunit/d8/d8-performance-now.js",
     "status" : "SKIP",
     "comment" : "transiently fails, skipping because test not really useful (GR-14954)"
+  }, {
+    "filePath" : "mjsunit/d8/d8-realm-microtask-queue.js",
+    "status" : "FAIL",
+    "comment" : "TestV8 Realm mock does not support realm-specific microtask queues."
+  }, {
+    "filePath" : "mjsunit/d8/d8-realm-onerror.js",
+    "status" : "FAIL",
+    "comment" : "TestV8 Realm.eval does not expose setTimeout in the created realm."
   }, {
     "filePath" : "mjsunit/d8/flush-denormals-flag.js",
     "status" : "FAIL",
@@ -495,6 +440,14 @@
     "status" : "FAIL",
     "comment" : "Uses performance.mark() and performance.measure()"
   }, {
+    "filePath" : "mjsunit/d8/regress-516209551.js",
+    "status" : "FAIL",
+    "comment" : "TestV8 Realm.dispose does not reject disposal of the active parent realm."
+  }, {
+    "filePath" : "mjsunit/d8/regress-517967108.js",
+    "status" : "FAIL",
+    "comment" : "TestV8 Worker mock does not implement worker.switch()."
+  }, {
     "filePath" : "mjsunit/date-parse.js",
     "status" : "FAIL"
   }, {
@@ -507,7 +460,10 @@
   }, {
     "filePath" : "mjsunit/div-mod.js",
     "status" : "FAIL",
-    "comment" : "needs larger stack, at least 3m is needed"
+    "statusOverrides" : {
+      "AARCH64" : "PASS"
+    },
+    "comment" : "Requires a stack of at least 3 MiB; TestV8 uses a smaller stack on non-AArch64 platforms."
   }, {
     "filePath" : "mjsunit/duplicate-parameters.js",
     "status" : "FAIL",
@@ -528,8 +484,14 @@
     "filePath" : "mjsunit/error-tostring-omit.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "mjsunit/es6/big-weakmap.js",
+    "status" : "PASS",
+    "runInIsolation" : true,
+    "comment" : "Runs in isolation because creating and checking 2^21 objects and WeakMap entries causes severe contention with concurrent tests."
+  }, {
     "filePath" : "mjsunit/es6/block-eval-var-over-let.js",
-    "status" : "FAIL"
+    "status" : "FAIL",
+    "comment" : "Eval var/lexical redeclaration behavior differs from V8."
   }, {
     "filePath" : "mjsunit/es6/block-let-semantics-sloppy.js",
     "status" : "FAIL"
@@ -550,15 +512,20 @@
     "filePath" : "mjsunit/es6/destructuring.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "mjsunit/es6/for-of-iterator-protocol-integrity.js",
+    "status" : "FAIL",
+    "comment" : "For-of reads iterator value even when done is true."
+  }, {
     "filePath" : "mjsunit/es6/generator-destructuring.js",
     "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/es6/iterator-prototype.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "STAGING" : "FAIL"
-    },
-    "comment" : "Staging Iterator.prototype methods change the expected property count."
+    "status" : "FAIL",
+    "comment" : "V8 enables Iterator.prototype.includes and join by default; GraalJS staging also enables chunks and windows, so the expected own-property count differs."
+  }, {
+    "filePath" : "mjsunit/es6/math-expm1.js",
+    "status" : "FAIL",
+    "comment" : "Math.expm1 rounding differs from V8 for Math.expm1(1)."
   }, {
     "filePath" : "mjsunit/es6/math-log2-log10.js",
     "status" : "PASS",
@@ -611,7 +578,8 @@
     "comment" : "spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
   }, {
     "filePath" : "mjsunit/es6/sloppy-restrictive-block-function.js",
-    "status" : "FAIL"
+    "status" : "FAIL",
+    "comment" : "GraalJS rejects a sloppy-mode block function declaration accepted by V8."
   }, {
     "filePath" : "mjsunit/es6/typedarray-construct-offset-not-smi.js",
     "status" : "FAIL",
@@ -640,6 +608,11 @@
     "filePath" : "mjsunit/es7/exponentiation-operator.js",
     "status" : "SKIP",
     "comment" : "test should fail (V8 should report Early Error as we do)"
+  }, {
+    "filePath" : "mjsunit/es8/async-await-closure-reuse.js",
+    "status" : "PASS",
+    "runInIsolation" : true,
+    "comment" : "Runs in isolation to avoid contention from roughly 180 explicit full JVM GCs."
   }, {
     "filePath" : "mjsunit/es8/async-destructuring.js",
     "status" : "FAIL"
@@ -809,6 +782,10 @@
     },
     "comment" : "Test of Uint8Array to/from base64 and hex proposal"
   }, {
+    "filePath" : "mjsunit/harmony/regress/regress-511329274.js",
+    "status" : "FAIL",
+    "comment" : "GraalJS async stack traces do not include the V8 cross-realm Wasm frames expected by the test."
+  }, {
     "filePath" : "mjsunit/harmony/regress/regress-crbug-1422812.js",
     "ecmaVersion" : {
       "minVersion" : 17
@@ -825,7 +802,7 @@
   }, {
     "filePath" : "mjsunit/harmony/shadowrealm-callsite-throw.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
+    "comment" : "Structured CallSite getThis behavior differs for ShadowRealm frames."
   }, {
     "filePath" : "mjsunit/harmony/shadowrealm-type-error-copy.js",
     "status" : "FAIL",
@@ -843,10 +820,9 @@
     "runInIsolation" : true,
     "comment" : "GC stress test"
   }, {
-    "filePath" : "mjsunit/huge-typedarrays.js",
-    "status" : "FAIL",
-    "runInIsolation" : true,
-    "comment" : "Runs out of memory when allocating several 2GB TypedArrays."
+    "filePath" : "mjsunit/huge-typedarrays-helpers.js",
+    "status" : "SKIP",
+    "comment" : "Helper file; skipped by upstream mjsunit.status."
   }, {
     "filePath" : "mjsunit/ic-megadom-2.js",
     "status" : "FAIL",
@@ -909,9 +885,22 @@
     "filePath" : "mjsunit/lookup-behind-property.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "mjsunit/lower_limits_mode/regress/regress-513192886.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not provide V8's imported-string and text-decoder builtin modules."
+  }, {
+    "filePath" : "mjsunit/lower_limits_mode/regress/regress-519856906.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not provide V8's imported-string and text-decoder builtin modules."
+  }, {
+    "filePath" : "mjsunit/lower_limits_mode/regress/regress-525472599-2.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not accept the stringref value type encoding used by V8."
+  }, {
     "filePath" : "mjsunit/lower_limits_mode/regress/regress-crbug-400504688.js",
     "status" : "FAIL",
-    "comment" : "new failures 2026-02-12"
+    "runInIsolation" : true,
+    "comment" : "GraalJS does not take V8's fixed-array-capacity RangeError path; isolation avoids severe contention while filling more than 128 million elements."
   }, {
     "filePath" : "mjsunit/lower_limits_mode/regress/regress-crbug-405910175-map.js",
     "status" : "SKIP",
@@ -920,6 +909,22 @@
     "filePath" : "mjsunit/lower_limits_mode/regress/regress-crbug-405910175-set.js",
     "status" : "SKIP",
     "comment" : "Long running test"
+  }, {
+    "filePath" : "mjsunit/lower_limits_mode/regress/regress-crbug-437245082-properties-2.js",
+    "status" : "SKIP",
+    "comment" : "Tests V8 NameDictionary capacity overflow; GraalJS continues adding accessor properties until the Java heap is exhausted instead of throwing the expected RangeError."
+  }, {
+    "filePath" : "mjsunit/lower_limits_mode/regress/regress-crbug-437245082-properties.js",
+    "status" : "SKIP",
+    "comment" : "Tests V8 NameDictionary capacity overflow; GraalJS continues adding data properties until the Java heap is exhausted instead of throwing the expected RangeError."
+  }, {
+    "filePath" : "mjsunit/lower_limits_mode/regress/regress-crbug-437245082.js",
+    "status" : "SKIP",
+    "comment" : "Tests V8 NumberDictionary capacity overflow; GraalJS continues adding indexed properties until the Java heap is exhausted instead of throwing the expected RangeError."
+  }, {
+    "filePath" : "mjsunit/lower_limits_mode/string-to-lower-case-intl-throw.js",
+    "runInIsolation" : true,
+    "comment" : "Large string allocation; run separately to avoid overlapping other TestV8 allocations."
   }, {
     "filePath" : "mjsunit/maglev/extras-cped.js",
     "status" : "FAIL",
@@ -937,9 +942,45 @@
     "status" : "FAIL",
     "comment" : "Uses d8.dom.Div"
   }, {
+    "filePath" : "mjsunit/maglev/regress-466510900.js",
+    "status" : "FAIL",
+    "comment" : "Floating-point result differs from V8 by one ULP."
+  }, {
+    "filePath" : "mjsunit/maglev/regress-498816446-3.js",
+    "status" : "FAIL",
+    "comment" : "Requires ArrayBuffer or typed-array lengths beyond the GraalJS implementation limit."
+  }, {
+    "filePath" : "mjsunit/maglev/regress-521604719.js",
+    "status" : "FAIL",
+    "comment" : "Requires ArrayBuffer or typed-array lengths beyond the GraalJS implementation limit."
+  }, {
+    "filePath" : "mjsunit/maglev/regress-525732296.js",
+    "status" : "FAIL",
+    "comment" : "Requires ArrayBuffer or typed-array lengths beyond the GraalJS implementation limit."
+  }, {
+    "filePath" : "mjsunit/maglev/regress-538562119.js",
+    "status" : "FAIL",
+    "comment" : "V8 tiering-state intrinsics are mocked and do not model concurrent Maglev tiering."
+  }, {
+    "filePath" : "mjsunit/maglev/regress/regress-552783942.js",
+    "status" : "FAIL",
+    "comment" : "GraalJS preserves the signaling NaN payload through Math.min; V8 quiets the NaN."
+  }, {
     "filePath" : "mjsunit/maglev/strict-equals-receiver-or-null-or-undefined.js",
     "status" : "FAIL",
     "comment" : "Uses %GetUndetectable"
+  }, {
+    "filePath" : "mjsunit/math-random.js",
+    "status" : "FAIL",
+    "comment" : "The V8 --random-seed flag does not seed GraalJS Math.random()."
+  }, {
+    "filePath" : "mjsunit/math-sum-precise/iterator-clear-on-error.js",
+    "status" : "FAIL",
+    "comment" : "Math.sumPrecise iterator-close behavior differs from current V8."
+  }, {
+    "filePath" : "mjsunit/math-sum-precise/set-iterator-clear-on-error.js",
+    "status" : "FAIL",
+    "comment" : "Math.sumPrecise iterator-close behavior differs from current V8."
   }, {
     "filePath" : "mjsunit/measure-memory-multiple-realms.js",
     "status" : "FAIL",
@@ -970,6 +1011,10 @@
     "status" : "SKIP",
     "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
   }, {
+    "filePath" : "mjsunit/queue-microtask-cross-realm-callback-report-exception.js",
+    "status" : "FAIL",
+    "comment" : "TestV8 Realm mock does not install queueMicrotask in created realms."
+  }, {
     "filePath" : "mjsunit/random-bit-correlations.js",
     "status" : "SKIP",
     "comment" : "Statistical check of the quality of the random number generator. It is unstable unless a fixed seed is used."
@@ -996,6 +1041,10 @@
     "filePath" : "mjsunit/regexp-linear-flag.js",
     "status" : "FAIL",
     "comment" : "Uses --enable-experimental-regexp-engine"
+  }, {
+    "filePath" : "mjsunit/regexp-not-jetstream.js",
+    "status" : "FAIL",
+    "comment" : "RegExp matching result differs from V8 for upstream case 215."
   }, {
     "filePath" : "mjsunit/regexp-stack-overflow.js",
     "runInIsolation" : true,
@@ -1029,19 +1078,20 @@
     "status" : "FAIL",
     "comment" : "new failures 2026-02-12"
   }, {
-    "filePath" : "mjsunit/regress/asm/regress-1402270.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "mjsunit/regress/asm/regress-618608.js",
+    "filePath" : "mjsunit/regress-478205262.js",
     "status" : "SKIP",
-    "comment" : "does not terminate (V8 test update 2021-07-07)"
+    "comment" : "Stack-sensitive test whose result varies because TestV8 does not implement V8's stack-size flag."
+  }, {
+    "filePath" : "mjsunit/regress-class-initializer-eval.js",
+    "status" : "FAIL",
+    "comment" : "The TestV8 mock cannot implement the V8-only %GetInitializerFunction intrinsic and returns undefined."
   }, {
     "filePath" : "mjsunit/regress/cross-script-vars.js",
     "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/regress/redeclaration-error-types.js",
-    "status" : "FAIL"
+    "status" : "FAIL",
+    "comment" : "Eval redeclaration error behavior differs from V8."
   }, {
     "filePath" : "mjsunit/regress/regress-1006640.js",
     "status" : "FAIL",
@@ -1126,10 +1176,6 @@
     "status" : "FAIL",
     "comment" : "V8 test update 2022-08-10"
   }, {
-    "filePath" : "mjsunit/regress/regress-12657.js",
-    "status" : "FAIL",
-    "comment" : "V8 test update 2022-08-10"
-  }, {
     "filePath" : "mjsunit/regress/regress-1320641.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
@@ -1208,6 +1254,10 @@
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
   }, {
+    "filePath" : "mjsunit/regress/regress-3641.js",
+    "status" : "FAIL",
+    "comment" : "The upstream test calls assertAsync from its copied async assertion framework, but does not define that function."
+  }, {
     "filePath" : "mjsunit/regress/regress-366323504.js",
     "status" : "FAIL",
     "comment" : "Uses %WasmStruct and %WasmArray"
@@ -1240,12 +1290,16 @@
     "status" : "FAIL",
     "comment" : "new failures 2026-02-12"
   }, {
+    "filePath" : "mjsunit/regress/regress-42203224.js",
+    "status" : "FAIL",
+    "comment" : "TestV8 Realm mock does not expose the V8 Div helper expected by the test."
+  }, {
     "filePath" : "mjsunit/regress/regress-4266.js",
     "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/regress/regress-437956096.js",
     "status" : "FAIL",
-    "comment" : "new failures 2026-02-12"
+    "comment" : "TestV8 Worker mock does not enforce V8 worker argument string-size limits."
   }, {
     "filePath" : "mjsunit/regress/regress-438523582.js",
     "status" : "FAIL",
@@ -1293,6 +1347,14 @@
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
   }, {
+    "filePath" : "mjsunit/regress/regress-481519344.js",
+    "status" : "SKIP",
+    "comment" : "Requires V8's --stack-size=100; with the JVM stack limit, recursive overflow can re-enter an active generator."
+  }, {
+    "filePath" : "mjsunit/regress/regress-485267831.js",
+    "status" : "FAIL",
+    "comment" : "The requested TestV8 stack size does not trigger V8-compatible stack overflow behavior."
+  }, {
     "filePath" : "mjsunit/regress/regress-487981.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
@@ -1301,12 +1363,94 @@
     "runInIsolation" : true,
     "comment" : "test with (expected) high memory usage that might influence other tests"
   }, {
+    "filePath" : "mjsunit/regress/regress-490446682.js",
+    "status" : "FAIL",
+    "comment" : "V8 log.setOnProfileEndListener API is not implemented."
+  }, {
+    "filePath" : "mjsunit/regress/regress-493269623.js",
+    "status" : "FAIL",
+    "comment" : "TestV8 Realm.navigate does not preserve the Temporal global for a cross-realm function."
+  }, {
     "filePath" : "mjsunit/regress/regress-4970.js",
     "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-500174491.js",
+    "status" : "FAIL",
+    "comment" : "TestV8 Realm mock does not implement verifySourcePositions()."
   }, {
     "filePath" : "mjsunit/regress/regress-500980.js",
     "runInIsolation" : true,
     "comment" : "memory intensive test"
+  }, {
+    "filePath" : "mjsunit/regress/regress-503097371.js",
+    "status" : "FAIL",
+    "comment" : "GraalJS accepts a lookbehind regexp that V8 rejects as too large."
+  }, {
+    "filePath" : "mjsunit/regress/regress-505116710.js",
+    "status" : "FAIL",
+    "comment" : "Experimental V8 regexp fallback behavior differs from GraalJS."
+  }, {
+    "filePath" : "mjsunit/regress/regress-505481956.js",
+    "status" : "FAIL",
+    "comment" : "V8 optimization-state intrinsics are mocked and do not reproduce tier-dependent results."
+  }, {
+    "filePath" : "mjsunit/regress/regress-506499280-extended.js",
+    "status" : "FAIL",
+    "comment" : "GraalJS does not enforce V8's per-script eval-call count limit."
+  }, {
+    "filePath" : "mjsunit/regress/regress-506499280.js",
+    "status" : "FAIL",
+    "comment" : "GraalJS does not enforce V8's per-script eval-call count limit."
+  }, {
+    "filePath" : "mjsunit/regress/regress-508532603.js",
+    "status" : "FAIL",
+    "comment" : "V8 optimization-state intrinsics are mocked and do not reproduce trusted-space behavior."
+  }, {
+    "filePath" : "mjsunit/regress/regress-509312809.js",
+    "status" : "FAIL",
+    "comment" : "Requires ArrayBuffer or typed-array lengths beyond the GraalJS implementation limit."
+  }, {
+    "filePath" : "mjsunit/regress/regress-514071819.js",
+    "status" : "FAIL",
+    "comment" : "Async Promise.any stack frame count differs from V8."
+  }, {
+    "filePath" : "mjsunit/regress/regress-514732056.js",
+    "status" : "FAIL",
+    "comment" : "TestV8 Realm.eval does not reject a realm disposed while reading source options."
+  }, {
+    "filePath" : "mjsunit/regress/regress-523435063.js",
+    "status" : "FAIL",
+    "comment" : "Promise jobs run after the mocked TerminateExecution operation."
+  }, {
+    "filePath" : "mjsunit/regress/regress-524775988.js",
+    "status" : "FAIL",
+    "comment" : "V8 strict termination and report-exception behavior is not reproduced by the TestV8 host."
+  }, {
+    "filePath" : "mjsunit/regress/regress-524921880.js",
+    "status" : "FAIL",
+    "comment" : "TestV8 Realm mock does not implement navigateSameOrigin()."
+  }, {
+    "filePath" : "mjsunit/regress/regress-526362971.js",
+    "status" : "FAIL",
+    "comment" : "TestV8 mock does not implement getExtrasBindingObject()."
+  }, {
+    "filePath" : "mjsunit/regress/regress-531513399-1.js",
+    "status" : "FAIL",
+    "comment" : "V8 Error stack collection differs when lazy feedback allocation is disabled."
+  }, {
+    "filePath" : "mjsunit/regress/regress-539350801-long-chain-int32-operand.js",
+    "status" : "FAIL",
+    "statusOverrides" : {
+      "AARCH64" : "PASS"
+    },
+    "comment" : "Requires a stack of at least 3 MiB; TestV8 uses a smaller stack on non-AArch64 platforms."
+  }, {
+    "filePath" : "mjsunit/regress/regress-539350801-long-chain.js",
+    "status" : "FAIL",
+    "statusOverrides" : {
+      "AARCH64" : "PASS"
+    },
+    "comment" : "Requires a stack of at least 3 MiB; TestV8 uses a smaller stack on non-AArch64 platforms."
   }, {
     "filePath" : "mjsunit/regress/regress-5404.js",
     "runInIsolation" : true,
@@ -1315,6 +1459,10 @@
     "filePath" : "mjsunit/regress/regress-543994.js",
     "status" : "SKIP",
     "comment" : "spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-546815249.js",
+    "status" : "FAIL",
+    "comment" : "NaN quieting behavior differs from V8 for optimized double-array stores."
   }, {
     "filePath" : "mjsunit/regress/regress-5902.js",
     "status" : "FAIL"
@@ -1612,7 +1760,7 @@
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-1440685.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
+    "comment" : "GraalJS materializes Error.stack where V8 leaves it undefined."
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-1459172.js",
     "status" : "FAIL",
@@ -1656,6 +1804,10 @@
     "filePath" : "mjsunit/regress/regress-crbug-397662.js",
     "status" : "SKIP",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15). Set to skip as the test doesn't terminate in due time."
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-42213031.js",
+    "status" : "FAIL",
+    "comment" : "Full JVM GC does not reliably collect the settled Promise before WeakRef.deref()."
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-422638093.js",
     "status" : "FAIL",
@@ -1722,6 +1874,10 @@
     "filePath" : "mjsunit/regress/regress-crbug-527364.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-542403045.js",
+    "status" : "FAIL",
+    "comment" : "V8 optimization-state intrinsics are mocked and do not reproduce Maglev tiering state."
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-593282.js",
     "runInIsolation" : true,
@@ -1858,7 +2014,7 @@
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-909614.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
+    "comment" : "GraalJS BigInt exponentiation limit differs from V8."
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-913222.js",
     "status" : "SKIP",
@@ -1894,6 +2050,10 @@
     "filePath" : "mjsunit/regress/regress-put-prototype-transition.js",
     "status" : "SKIP",
     "comment" : "PrettyPrint"
+  }, {
+    "filePath" : "mjsunit/regress/regress-report-exception-terminate.js",
+    "status" : "FAIL",
+    "comment" : "V8 strict termination and report-exception behavior is not reproduced by the TestV8 host."
   }, {
     "filePath" : "mjsunit/regress/regress-trap-allocation-memento.js",
     "status" : "FAIL"
@@ -1934,14 +2094,6 @@
     "status" : "FAIL",
     "comment" : "V8 throws an implementation-specific RangeError when encountering a Table that is too large. We throw a LinkerError that is appropriate according to the spec."
   }, {
-    "filePath" : "mjsunit/regress/wasm/regress-1137608.js",
-    "status" : "FAIL",
-    "comment" : "Uses the return_call_indirect instruction (opcode 0x13) from the tail call proposal."
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-1196837.js",
-    "status" : "FAIL",
-    "comment" : "Uses return_call instruction (opcode 0x12) from the tail call proposal."
-  }, {
     "filePath" : "mjsunit/regress/wasm/regress-1237024.js",
     "status" : "FAIL",
     "comment" : "Creates a v128 array whose byte length is exactly 1 << 30; GraalWasm currently permits this boundary, while V8 expects a RuntimeError for arrays at this size."
@@ -1953,10 +2105,6 @@
     "filePath" : "mjsunit/regress/wasm/regress-1403398.js",
     "status" : "FAIL",
     "comment" : "Different wording of error message relating to out-of-bounds memory access."
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-1447367.js",
-    "status" : "FAIL",
-    "comment" : "Uses return_call instruction (opcode 0x12) from the tail call proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1500812.js",
     "status" : "FAIL",
@@ -2014,10 +2162,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
   }, {
-    "filePath" : "mjsunit/regress/wasm/regress-334687959.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
     "filePath" : "mjsunit/regress/wasm/regress-336007398.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
@@ -2038,10 +2182,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
   }, {
-    "filePath" : "mjsunit/regress/wasm/regress-343633071.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
     "filePath" : "mjsunit/regress/wasm/regress-346197738.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
@@ -2051,26 +2191,6 @@
     "comment" : "new failures 2025-02-10"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-349640002.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-353582136.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-354324155-2.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-354324155.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-360044696.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-360052650.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
   }, {
@@ -2098,10 +2218,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
   }, {
-    "filePath" : "mjsunit/regress/wasm/regress-366350766.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
     "filePath" : "mjsunit/regress/wasm/regress-366635354.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
@@ -2113,6 +2229,10 @@
     "filePath" : "mjsunit/regress/wasm/regress-372261626.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-372269618.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm returns 0 instead of 1 for ref.is_null after growing the externref table."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-375220562.js",
     "status" : "FAIL",
@@ -2131,10 +2251,6 @@
     "comment" : "new failures 2025-02-10"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-381917890.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-02-12"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-384565015.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-02-12"
   }, {
@@ -2166,6 +2282,22 @@
     "status" : "FAIL",
     "comment" : "Relies on unimplemented WebAssembly compile options to be processed before the binary is validated"
   }, {
+    "filePath" : "mjsunit/regress/wasm/regress-406043349.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly JS Promise Integration (promising and Suspending)."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-407298298.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly JS Promise Integration (promising and Suspending)."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-407797300.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not provide V8's imported-string and text-decoder builtin modules."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-408254017.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly JS Promise Integration (promising and Suspending)."
+  }, {
     "filePath" : "mjsunit/regress/wasm/regress-413633038.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-02-12"
@@ -2190,13 +2322,13 @@
     "status" : "FAIL",
     "comment" : "new failures 2026-02-12"
   }, {
-    "filePath" : "mjsunit/regress/wasm/regress-441844767.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-02-12"
-  }, {
     "filePath" : "mjsunit/regress/wasm/regress-449010912.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-02-12"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-451144692.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-452079540.js",
     "status" : "FAIL",
@@ -2237,6 +2369,166 @@
     "filePath" : "mjsunit/regress/wasm/regress-476461881.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-02-12"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-482759504.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm rejects the requested 4 GiB shared memory before the test can exercise worker transfer."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-483643012.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-487444465.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not accept BigInt memory64 limits in the WebAssembly.Memory constructor."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-488943662.js",
+    "status" : "FAIL",
+    "comment" : "TestV8 does not implement d8.test.serializeModule()."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-489029655.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-490877757.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement the shared-everything Wasm GC types and instructions used by the test."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-490877758.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement the shared-everything Wasm GC types and instructions used by the test."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-491696923.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not provide V8's wasm:js-prototypes builtin module."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-493088266.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement the shared-everything Wasm GC types and instructions used by the test."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-493099941.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not provide V8's imported-string and text-decoder builtin modules."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-493171989.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement the shared-everything Wasm GC types and instructions used by the test."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-493197128.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not accept a BigInt memory64 delta in WebAssembly.Memory.prototype.grow."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-493521807.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not provide V8's wasm:js-prototypes builtin module."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-498818401.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not provide V8's wasm:js-prototypes builtin module."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-500113958.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not provide V8's wasm:js-prototypes builtin module."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-500181839.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement the shared-everything Wasm GC types and instructions used by the test."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-504716006.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement the shared-everything Wasm GC types and instructions used by the test."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-505117973.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement the shared-everything Wasm GC types and instructions used by the test."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-508336493.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement the shared-everything Wasm GC types and instructions used by the test."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-508691168.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement the shared-everything Wasm GC types and instructions used by the test."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-509674461.js",
+    "status" : "FAIL",
+    "comment" : "TestV8 does not implement d8.test.serializeModule()."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-510448957.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm rejects the WebAssembly.Exception value accepted by V8 in this shared-type test."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-511160771.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not accept the stringref value type encoding used by V8."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-511772679.js",
+    "status" : "FAIL",
+    "comment" : "TestV8 does not implement d8.test.serializeModule()."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-513063392.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement the shared-everything Wasm GC types and instructions used by the test."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-513250424.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly JS Promise Integration (promising and Suspending)."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-513364114.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement the shared-everything Wasm GC types and instructions used by the test."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-514159794.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not provide V8's imported-string and text-decoder builtin modules."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-516109051.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not accept the stringref value type encoding used by V8."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-518064995.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm throws RuntimeError instead of TypeError for the invalid typed Wasm-to-JS return value."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-518229528.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement the shared-everything Wasm GC types and instructions used by the test."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-518872404.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement the shared-everything Wasm GC types and instructions used by the test."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-520777574.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly JS Promise Integration (promising and Suspending)."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-521064735.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement the shared-everything Wasm GC types and instructions used by the test."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-524830496.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement the shared-everything Wasm GC types and instructions used by the test."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-525437482.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement the shared-everything Wasm GC types and instructions used by the test."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-525472599.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not provide V8's imported-string and text-decoder builtin modules."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-536581698.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement the shared-everything Wasm GC types and instructions used by the test."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-538378084.js",
+    "status" : "FAIL",
+    "comment" : "TestV8 does not implement d8.test.serializeModule()."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-543901836.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not provide V8's imported-string and text-decoder builtin modules."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-647649.js",
     "status" : "PASS",
@@ -2279,21 +2571,9 @@
     "status" : "FAIL",
     "comment" : "GC proposal."
   }, {
-    "filePath" : "mjsunit/regress/wasm/regress-crbug-1465386.js",
-    "status" : "FAIL",
-    "comment" : "GC proposal."
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-crbug-1466312.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
     "filePath" : "mjsunit/regress/wasm/regress-crbug-1502180.js",
     "status" : "FAIL",
     "comment" : "Missing console.profile."
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-crbug-1507751.js",
-    "status" : "FAIL",
-    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-crbug-408253898.js",
     "status" : "FAIL",
@@ -2303,9 +2583,21 @@
     "status" : "SKIP",
     "comment" : "This v8 test seems to be wrong. It's motivated by an out-of-bounds memory access bug caused by TypedArray.of and TypedArray.from factory methods. In v8's implementation, these factory methods assumed that the newly constructed TypedArray was backed by a live ArrayBuffer. However, changing the constructor to a function that returns an existing TypedArray and then having one of the inputs detach the ArrayBuffer backing that TypedArray as a side-effect of its valueOf method, led v8 to write to invalid memory. As this was a security issue, this was promptly fixed by adding an isDetached check and throwing a TypeError if the ArrayBuffer backing the TypedArray is detached at the time of writing the value. This fixes the out-of-bounds memory access security issue, but it does not align with ECMAScript semantics, since the spec mandates that setting an element of a TypedArray that's backed by a detached ArrayBuffer is just a no-op (https://tc39.es/ecma262/multipage/ordinary-and-exotic-objects-behaviours.html#sec-typedarraysetelement)."
   }, {
+    "filePath" : "mjsunit/regress/wasm/regress-interpreter-failed-reentry.js",
+    "status" : "FAIL",
+    "comment" : "Nested GraalWasm re-entry does not overflow at the V8-specific depth expected by the test."
+  }, {
     "filePath" : "mjsunit/regress/wasm/regress-simd-458024245.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-02-12"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-simd-518058891.js",
+    "status" : "FAIL",
+    "comment" : "The requested Wasm buffer exceeds the GraalWasm implementation limit."
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-simd-520944504.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm WebAssembly.Tag does not accept exnref and eqref parameter types."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-v8-14471.js",
     "status" : "FAIL",
@@ -2315,17 +2607,9 @@
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
   }, {
-    "filePath" : "mjsunit/sandbox/bytecode-verifier-testing-api.js",
-    "status" : "FAIL",
-    "comment" : "Test of %GetBytecode and %InstallBytecode"
-  }, {
     "filePath" : "mjsunit/sandbox/wasm-jspi.js",
     "status" : "FAIL",
     "comment" : "Uses Sandbox"
-  }, {
-    "filePath" : "mjsunit/serialize-deserialize-now.js",
-    "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
   }, {
     "filePath" : "mjsunit/stack-overflow-arity-catch-noinline.js",
     "runInIsolation" : true,
@@ -2344,14 +2628,11 @@
     "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
   }, {
     "filePath" : "mjsunit/stack-traces-overflow.js",
-    "status" : "FAIL"
+    "status" : "FAIL",
+    "comment" : "Top stack-overflow frame source location differs from V8."
   }, {
     "filePath" : "mjsunit/stack-traces.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/statistics-extension.js",
-    "status" : "FAIL",
-    "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "mjsunit/string-oom-array-join.js",
     "status" : "SKIP",
@@ -2376,19 +2657,19 @@
   }, {
     "filePath" : "mjsunit/tools/codemap.mjs",
     "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
+    "comment" : "Sparse TestV8 checkout does not include the imported V8 tools/codemap.mjs."
   }, {
     "filePath" : "mjsunit/tools/consarray.mjs",
     "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
+    "comment" : "Sparse TestV8 checkout does not include the imported V8 tools/consarray.mjs."
   }, {
     "filePath" : "mjsunit/tools/csvparser.mjs",
     "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
+    "comment" : "Sparse TestV8 checkout does not include the imported V8 tools/csvparser.mjs."
   }, {
     "filePath" : "mjsunit/tools/dumpcpp.mjs",
     "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
+    "comment" : "Sparse TestV8 checkout does not include the imported V8 tools/dumpcpp.mjs."
   }, {
     "filePath" : "mjsunit/tools/foozzie.js",
     "status" : "FAIL",
@@ -2396,11 +2677,11 @@
   }, {
     "filePath" : "mjsunit/tools/foozzie_arch_specific.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Sparse TestV8 checkout does not include tools/clusterfuzz/foozzie setup files."
   }, {
     "filePath" : "mjsunit/tools/foozzie_printing.js",
     "status" : "FAIL",
-    "comment" : "new failures 2026-02-12"
+    "comment" : "Sparse TestV8 checkout does not include the tools/clusterfuzz differential-fuzz setup file."
   }, {
     "filePath" : "mjsunit/tools/foozzie_typed_arrays.js",
     "status" : "FAIL",
@@ -2428,15 +2709,15 @@
   }, {
     "filePath" : "mjsunit/tools/profile.mjs",
     "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
+    "comment" : "Sparse TestV8 checkout does not include the imported V8 tools/profile.mjs."
   }, {
     "filePath" : "mjsunit/tools/profile_view.mjs",
     "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
+    "comment" : "Sparse TestV8 checkout does not include the imported V8 tools/profile_view.mjs."
   }, {
     "filePath" : "mjsunit/tools/splaytree.mjs",
     "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
+    "comment" : "Sparse TestV8 checkout does not include the imported V8 tools/splaytree.mjs."
   }, {
     "filePath" : "mjsunit/tools/tickprocessor.mjs",
     "status" : "FAIL",
@@ -2444,19 +2725,39 @@
   }, {
     "filePath" : "mjsunit/tools/timeline.mjs",
     "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
+    "comment" : "Sparse TestV8 checkout does not include the imported V8 tools/system-analyzer modules."
+  }, {
+    "filePath" : "mjsunit/tools/v8-logviewer-args.mjs",
+    "status" : "FAIL",
+    "comment" : "Sparse TestV8 checkout does not include the imported V8 tools/system-analyzer/cli.mjs."
   }, {
     "filePath" : "mjsunit/turbolev/regress-443254910.js",
     "status" : "SKIP",
     "comment" : "Triggers stack overflow"
   }, {
+    "filePath" : "mjsunit/turbolev/regress-488090094.js",
+    "status" : "FAIL",
+    "comment" : "The requested 2 GiB TypedArray exceeds the GraalJS implementation limit."
+  }, {
+    "filePath" : "mjsunit/turbolev/regress-537951967.js",
+    "status" : "FAIL",
+    "comment" : "TestV8 Realm.navigate does not install the V8 intrinsic mocks in the destination realm."
+  }, {
+    "filePath" : "mjsunit/turbolev/regress-552783942.js",
+    "status" : "FAIL",
+    "comment" : "GraalJS preserves the signaling NaN payload through Math.min; V8 quiets the NaN."
+  }, {
     "filePath" : "mjsunit/turboshaft/extras-cped.js",
     "status" : "FAIL",
     "comment" : "Test of V8-specific functionality (d8.getExtrasBindingObject)"
   }, {
+    "filePath" : "mjsunit/turboshaft/regress-539984773.js",
+    "status" : "FAIL",
+    "comment" : "Uses V8-specific %BlockAt intrinsic."
+  }, {
     "filePath" : "mjsunit/turboshaft/strict-equals-receiver-or-null-or-undefined.js",
     "status" : "FAIL",
-    "comment" : "Tests properties of %GetUndetectable()"
+    "comment" : "%GetUndetectable is mocked as undefined and cannot model V8's undetectable object."
   }, {
     "filePath" : "mjsunit/typedarray-growablesharedarraybuffer-array-methods.js",
     "status" : "SKIP",
@@ -2522,26 +2823,6 @@
     "status" : "FAIL",
     "comment" : "V8 test update 2022-08-10"
   }, {
-    "filePath" : "mjsunit/wasm/asm-wasm-exception-in-tonumber.js",
-    "status" : "FAIL",
-    "comment" : "Different file path in error message."
-  }, {
-    "filePath" : "mjsunit/wasm/asm-wasm-heap.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "BIG_ENDIAN" : "SKIP"
-    }
-  }, {
-    "filePath" : "mjsunit/wasm/asm-wasm-stack.js",
-    "status" : "FAIL",
-    "comment" : "Different file path in error message."
-  }, {
-    "filePath" : "mjsunit/wasm/async-compile-non-async.js",
-    "status" : "SKIP",
-    "statusOverrides" : {
-      "POLYGLOT" : "PASS"
-    }
-  }, {
     "filePath" : "mjsunit/wasm/atomics-memory64.js",
     "status" : "SKIP",
     "comment" : "Memory instance size exceeded beyond 4GB. In the current spec, the JS WebAssembly API should not allow such large memory instances. Furthermore, GraalJS is limited to 2GB because of using signed 32-bit integers for indices."
@@ -2562,10 +2843,6 @@
     "status" : "FAIL",
     "comment" : "Fails with LinkError instead of RuntimeError. The failure occurs in module instantiation and the spec for the WebAssembly JS interface states that errors from instantiation are to be signalled using LinkError (except for when the error originates from the start function, which should use RuntimeError). In this case, the error does not originate from the start function, but from the memory initialization using an active data segment. Apart from this and one different error message, we pass all tests in the file."
   }, {
-    "filePath" : "mjsunit/wasm/call_indirect.js",
-    "status" : "FAIL",
-    "comment" : "Uses return_call_indirect from the tail calls proposal."
-  }, {
     "filePath" : "mjsunit/wasm/compare-exchange64-stress.js",
     "status" : "SKIP",
     "comment" : "Sometimes gets stuck."
@@ -2574,9 +2851,9 @@
     "status" : "FAIL",
     "comment" : "Tests implementation-specific compiler limits."
   }, {
-    "filePath" : "mjsunit/wasm/compiled-module-serialization.js",
+    "filePath" : "mjsunit/wasm/compile-time-builtins.js",
     "status" : "FAIL",
-    "comment" : "Tests %SerializeWasmModule and %DeserializeWasmModule."
+    "comment" : "GraalWasm does not provide V8's imported-string and text-decoder builtin modules."
   }, {
     "filePath" : "mjsunit/wasm/denormals.js",
     "status" : "FAIL",
@@ -2590,84 +2867,17 @@
     "status" : "FAIL",
     "comment" : "Different wording of divide-by-zero trap ('integer divide by zero' vs 'divide by zero')."
   }, {
-    "filePath" : "mjsunit/wasm/deopt/deopt-inlined.js",
+    "filePath" : "mjsunit/wasm/deopt/deopt-large-frames-jspi.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "GraalWasm does not implement WebAssembly JS Promise Integration (promising and Suspending)."
   }, {
     "filePath" : "mjsunit/wasm/deopt/deopt-serialized-module.js",
     "status" : "FAIL",
     "comment" : "Uses V8-specific wasm module serialization APIs (serializeModule/deserializeModule)."
   }, {
-    "filePath" : "mjsunit/wasm/deopt/deopt-tail-call-parent-frame.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
     "filePath" : "mjsunit/wasm/disallow-codegen.js",
     "status" : "FAIL",
     "comment" : "Tests that wasm module compilation can be disabled using implementation-specific switch."
-  }, {
-    "filePath" : "mjsunit/wasm/embenchen/box2d.js",
-    "status" : "SKIP",
-    "statusOverrides" : {
-      "BIG_ENDIAN" : "SKIP"
-    },
-    "comment" : "run time too high"
-  }, {
-    "filePath" : "mjsunit/wasm/embenchen/copy.js",
-    "status" : "SKIP",
-    "statusOverrides" : {
-      "BIG_ENDIAN" : "SKIP"
-    },
-    "comment" : "run time too high"
-  }, {
-    "filePath" : "mjsunit/wasm/embenchen/corrections.js",
-    "status" : "SKIP",
-    "statusOverrides" : {
-      "BIG_ENDIAN" : "SKIP"
-    },
-    "comment" : "run time too high"
-  }, {
-    "filePath" : "mjsunit/wasm/embenchen/fannkuch.js",
-    "status" : "SKIP",
-    "statusOverrides" : {
-      "BIG_ENDIAN" : "SKIP"
-    },
-    "comment" : "run time too high"
-  }, {
-    "filePath" : "mjsunit/wasm/embenchen/fasta.js",
-    "status" : "SKIP",
-    "statusOverrides" : {
-      "BIG_ENDIAN" : "SKIP"
-    },
-    "comment" : "run time too high"
-  }, {
-    "filePath" : "mjsunit/wasm/embenchen/lua_binarytrees.js",
-    "status" : "SKIP",
-    "statusOverrides" : {
-      "BIG_ENDIAN" : "SKIP"
-    },
-    "comment" : "run time too high"
-  }, {
-    "filePath" : "mjsunit/wasm/embenchen/memops.js",
-    "status" : "SKIP",
-    "statusOverrides" : {
-      "BIG_ENDIAN" : "SKIP"
-    },
-    "comment" : "run time too high"
-  }, {
-    "filePath" : "mjsunit/wasm/embenchen/primes.js",
-    "status" : "SKIP",
-    "statusOverrides" : {
-      "BIG_ENDIAN" : "SKIP"
-    },
-    "comment" : "run time too high"
-  }, {
-    "filePath" : "mjsunit/wasm/embenchen/zlib.js",
-    "status" : "SKIP",
-    "statusOverrides" : {
-      "BIG_ENDIAN" : "SKIP"
-    },
-    "comment" : "run time too high"
   }, {
     "filePath" : "mjsunit/wasm/empirical_max_memory.js",
     "status" : "SKIP",
@@ -2697,6 +2907,10 @@
     "status" : "FAIL",
     "comment" : "Stringref proposal."
   }, {
+    "filePath" : "mjsunit/wasm/gc-casts-invalid.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm reports a different validation failure for the invalid Wasm GC cast."
+  }, {
     "filePath" : "mjsunit/wasm/gc-experiments.js",
     "status" : "FAIL",
     "comment" : "GC proposal."
@@ -2721,10 +2935,42 @@
     "status" : "FAIL",
     "comment" : "V8 expects Reflect.defineProperty/Reflect.preventExtensions on exported Wasm GC objects to throw TypeError, but the Wasm JS API internal methods return false and Reflect exposes false."
   }, {
+    "filePath" : "mjsunit/wasm/grow-huge-memory-resizable-buffer.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
+  }, {
     "filePath" : "mjsunit/wasm/grow-huge-memory.js",
     "status" : "FAIL",
     "runInIsolation" : true,
     "comment" : "Memory instance size exceeded 2GB. GraalJS is limited to 2GB because of using signed 32-bit integers for indices."
+  }, {
+    "filePath" : "mjsunit/wasm/grow-memory-detaching-resizable-buffer.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
+  }, {
+    "filePath" : "mjsunit/wasm/grow-memory-in-branch-resizable-buffer.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
+  }, {
+    "filePath" : "mjsunit/wasm/grow-memory-in-call-resizable-buffer.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
+  }, {
+    "filePath" : "mjsunit/wasm/grow-memory-in-loop-resizable-buffer.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
+  }, {
+    "filePath" : "mjsunit/wasm/grow-memory-resizable-buffer.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
+  }, {
+    "filePath" : "mjsunit/wasm/grow-shared-memory-resizable-buffer.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
+  }, {
+    "filePath" : "mjsunit/wasm/grow-shared-memory.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm replaces the SharedArrayBuffer object when shared memory grows; V8 preserves its identity."
   }, {
     "filePath" : "mjsunit/wasm/growable-stacks.js",
     "status" : "FAIL",
@@ -2764,18 +3010,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-01-19"
   }, {
-    "filePath" : "mjsunit/wasm/indirect-call-non-zero-table.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-01-19"
-  }, {
-    "filePath" : "mjsunit/wasm/inlining-multi-instance.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/wasm/inlining-mutable-instance-fields.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
     "filePath" : "mjsunit/wasm/inlining.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-01-19"
@@ -2803,17 +3037,21 @@
     "status" : "FAIL",
     "comment" : "new failures 2026-02-12"
   }, {
+    "filePath" : "mjsunit/wasm/jspi.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly JS Promise Integration (promising and Suspending)."
+  }, {
     "filePath" : "mjsunit/wasm/log-code-after-post-message.js",
     "status" : "SKIP",
     "comment" : "Uses d8.profiler"
   }, {
+    "filePath" : "mjsunit/wasm/log-wasm-to-js-wrapper-callref.js",
+    "status" : "FAIL",
+    "comment" : "TestV8 does not implement V8 profiler setOnProfileEndListener support."
+  }, {
     "filePath" : "mjsunit/wasm/log-wasm-to-js-wrapper-indirect.js",
     "status" : "FAIL",
     "comment" : "Uses V8-specific d8.profiler APIs and expects profiling samples for wasm-to-js/js-to-wasm wrappers."
-  }, {
-    "filePath" : "mjsunit/wasm/loop-unrolling.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-01-19"
   }, {
     "filePath" : "mjsunit/wasm/max-module-size-flag.js",
     "status" : "FAIL",
@@ -2826,6 +3064,62 @@
     "filePath" : "mjsunit/wasm/memory-huge-constant-index.js",
     "status" : "FAIL",
     "comment" : "Test expects v8 to use the words 'Out of memory' when trying to instantiate a very large memory."
+  }, {
+    "filePath" : "mjsunit/wasm/memory-resizable-buffer-array-concat-dictionary-mode.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
+  }, {
+    "filePath" : "mjsunit/wasm/memory-resizable-buffer-array-concat.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
+  }, {
+    "filePath" : "mjsunit/wasm/memory-resizable-buffer-array-filter.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
+  }, {
+    "filePath" : "mjsunit/wasm/memory-resizable-buffer-array-flat-flatmap-from.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
+  }, {
+    "filePath" : "mjsunit/wasm/memory-resizable-buffer-array-flat-grows-detaches.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
+  }, {
+    "filePath" : "mjsunit/wasm/memory-resizable-buffer-array-flatmap-grows-detaches.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
+  }, {
+    "filePath" : "mjsunit/wasm/memory-resizable-buffer-array-foreach-reduce.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
+  }, {
+    "filePath" : "mjsunit/wasm/memory-resizable-buffer-array-from-grows-detaches.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
+  }, {
+    "filePath" : "mjsunit/wasm/memory-resizable-buffer-array-pop-shift.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
+  }, {
+    "filePath" : "mjsunit/wasm/memory-resizable-buffer-array-push-unshift-splice.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
+  }, {
+    "filePath" : "mjsunit/wasm/memory-resizable-buffer-array-slice.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
+  }, {
+    "filePath" : "mjsunit/wasm/memory-resizable-buffer-errors.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
+  }, {
+    "filePath" : "mjsunit/wasm/memory-toresizable-max-byte-length.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
+  }, {
+    "filePath" : "mjsunit/wasm/memory-toresizable-tofixedlength.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
   }, {
     "filePath" : "mjsunit/wasm/memory64.js",
     "status" : "FAIL",
@@ -2880,13 +3174,13 @@
     "status" : "FAIL",
     "comment" : "new failures 2026-02-12"
   }, {
-    "filePath" : "mjsunit/wasm/return-calls-eh.js",
+    "filePath" : "mjsunit/wasm/regress-467863659.js",
     "status" : "FAIL",
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GraalWasm does not accept the stringref value type encoding used by V8."
   }, {
-    "filePath" : "mjsunit/wasm/return-calls.js",
+    "filePath" : "mjsunit/wasm/return-call-wki.js",
     "status" : "FAIL",
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GraalWasm does not recognize the return_call opcode used with the imported string builtin."
   }, {
     "filePath" : "mjsunit/wasm/runtime-gc-objects.js",
     "status" : "FAIL",
@@ -2923,21 +3217,81 @@
     "status" : "FAIL",
     "comment" : "new failures 2026-02-12"
   }, {
+    "filePath" : "mjsunit/wasm/shared-everything/ref-cast-in-different-isolate.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement the shared-everything Wasm GC types and instructions used by the test."
+  }, {
     "filePath" : "mjsunit/wasm/shared-everything/shared-extended-instructions.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-02-12"
+  }, {
+    "filePath" : "mjsunit/wasm/shared-everything/shared-js-roundtrip.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement the shared-everything Wasm GC types and instructions used by the test."
   }, {
     "filePath" : "mjsunit/wasm/shared-everything/spin-lock.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-02-12"
   }, {
-    "filePath" : "mjsunit/wasm/shared-everything/test-acq-rel-instructions.js",
+    "filePath" : "mjsunit/wasm/shared-everything/string-builtins-utf8.js",
     "status" : "FAIL",
-    "comment" : "new failures 2026-02-12"
+    "comment" : "GraalWasm does not implement the shared-everything Wasm GC types and instructions used by the test."
+  }, {
+    "filePath" : "mjsunit/wasm/shared-everything/string-builtins.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement the shared-everything Wasm GC types and instructions used by the test."
+  }, {
+    "filePath" : "mjsunit/wasm/shared-everything/string-with-atomic-load.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement the shared-everything Wasm GC types and instructions used by the test."
+  }, {
+    "filePath" : "mjsunit/wasm/shared-everything/strings.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement the shared-everything Wasm GC types and instructions used by the test."
+  }, {
+    "filePath" : "mjsunit/wasm/shared-everything/wait-queue.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement the shared-everything Wasm GC types and instructions used by the test."
   }, {
     "filePath" : "mjsunit/wasm/shared-memory-gc-stress.js",
     "status" : "SKIP",
     "comment" : "long-running test, deactivated"
+  }, {
+    "filePath" : "mjsunit/wasm/shared-memory-resizable-buffer-array-concat.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
+  }, {
+    "filePath" : "mjsunit/wasm/shared-memory-resizable-buffer-array-flat-flatmap-from.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
+  }, {
+    "filePath" : "mjsunit/wasm/shared-memory-resizable-buffer-array-flat-grows.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
+  }, {
+    "filePath" : "mjsunit/wasm/shared-memory-resizable-buffer-array-flatmap-grows.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
+  }, {
+    "filePath" : "mjsunit/wasm/shared-memory-resizable-buffer-array-from-grows.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
+  }, {
+    "filePath" : "mjsunit/wasm/shared-memory-resizable-buffer-array-pop-shift.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
+  }, {
+    "filePath" : "mjsunit/wasm/shared-memory-resizable-buffer-array-push-unshift-splice.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
+  }, {
+    "filePath" : "mjsunit/wasm/shared-memory-resizable-buffer-array-slice.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
+  }, {
+    "filePath" : "mjsunit/wasm/shared-memory-resizable-buffer-errors.js",
+    "status" : "FAIL",
+    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
   }, {
     "filePath" : "mjsunit/wasm/shared-memory-worker-explicit-gc-stress.js",
     "status" : "SKIP",
@@ -2954,10 +3308,6 @@
     "filePath" : "mjsunit/wasm/shared-memory-worker-stress.js",
     "status" : "SKIP",
     "comment" : "long-running test, deactivated"
-  }, {
-    "filePath" : "mjsunit/wasm/simd-fp16.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
   }, {
     "filePath" : "mjsunit/wasm/simd-lane-memory64.js",
     "status" : "FAIL",
@@ -3020,10 +3370,6 @@
     "status" : "FAIL",
     "comment" : "V8 does not stick to the WASM API spec of having a maximum table size of 10000000"
   }, {
-    "filePath" : "mjsunit/wasm/table64-callindirect.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
     "filePath" : "mjsunit/wasm/table64-limits.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
@@ -3042,10 +3388,6 @@
     "filePath" : "mjsunit/wasm/turboshaft/instruction-selection.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/wasm/turboshaft/int64-lowering.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
   }, {
     "filePath" : "mjsunit/wasm/turboshaft/regress-crbug-1513580.js",
     "status" : "FAIL",
@@ -3079,9 +3421,9 @@
     "status" : "SKIP",
     "comment" : "Runs an infinite loop that is supposed to be terminated by a v8-specific switch"
   }, {
-    "filePath" : "mjsunit/wasm/wasm-interpreter-memory64.js",
+    "filePath" : "mjsunit/wasm/wasm-to-js-tierup.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "TestV8 does not implement the V8 Wasm-to-JS wrapper tiering counter intrinsics."
   }, {
     "filePath" : "mjsunit/wasm/worker-memory.js",
     "status" : "FAIL",
@@ -3096,8 +3438,8 @@
     "comment" : "Uses Realm.detachGlobal()"
   }, {
     "filePath" : "mjsunit/weakrefs/finalizationregistry-independent-lifetime-multiple.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-02-12"
+    "status" : "SKIP",
+    "comment" : "GC-sensitive FinalizationRegistry cleanup ordering is not reliably reproducible with full JVM GC."
   }, {
     "filePath" : "mjsunit/weakrefs/finalizationregistry-independent-lifetime.js",
     "status" : "FAIL",

@@ -69,8 +69,8 @@ import com.oracle.truffle.js.test.external.suite.TestSuite;
 public class TestV8Runnable extends TestRunnable {
     private static final String ALLOW_NATIVES_SYNTAX = "--allow-natives-syntax";
     private static final String ALLOW_NATIVES_FOR_DIFFERENTIAL_FUZZING = "--allow-natives-for-differential-fuzzing";
-    private static final String HARMONY_TEMPORAL = "--harmony-temporal";
     private static final String HARMONY_SHADOW_REALM = "--harmony-shadow-realm";
+    private static final String JS_IMPORT_TEXT = "--js-import-text";
     private static final String NO_JS_SOURCE_PHASE_IMPORTS = "--no-js-source-phase-imports";
     private static final String NO_ASYNC_STACK_TRACES = "--noasync-stack-traces";
     private static final String IGNORE_UNHANDLED_PROMISES = "--ignore-unhandled-promises";
@@ -78,8 +78,12 @@ public class TestV8Runnable extends TestRunnable {
     private static final String NO_EXPERIMENTAL_SIMD = "--no-experimental-wasm-simd";
     private static final String EXPERIMENTAL_WASM_MEMORY64 = "--experimental-wasm-memory64";
     private static final String EXPERIMENTAL_WASM_MULTIMEMORY = "--experimental-wasm-multi-memory";
+    private static final String WASM_WIDE_ARITHMETIC = "--wasm-wide-arithmetic";
 
     private static final Set<String> UNSUPPORTED_FLAGS = featureSet(new String[]{
+                    "--bundle",
+                    "--enable-inspector",
+                    "--enable-tracing",
                     "--experimental-wasm-compilation-hints",
                     "--experimental-wasm-custom-descriptors",
                     "--experimental-wasm-jspi",
@@ -90,11 +94,20 @@ public class TestV8Runnable extends TestRunnable {
                     "--experimental-wasm-wasmfx",
                     "--expose-fast-api",
                     "--expose-memory-corruption-api",
+                    "--expose-statistics",
                     "--harmony-struct",
+                    "--js-regexp-buffer-boundaries",
                     "--memory-corruption-via-watchpoints",
+                    "--quiet-load",
                     "--sandbox-fuzzing",
                     "--sandbox-testing",
-                    "--wasm-test-streaming"
+                    "--wasm-acquire-release",
+                    "--wasm-compact-imports",
+                    "--wasm-custom-descriptors",
+                    "--wasm-fp16",
+                    "--wasm-memory-control",
+                    "--wasm-test-streaming",
+                    "--wasm-wasmfx"
     });
     private static final Set<String> STAGING_FLAGS = featureSet(new String[]{
                     "--harmony",
@@ -104,6 +117,10 @@ public class TestV8Runnable extends TestRunnable {
                     "--js-decorators",
                     "--js-defer-import-eval",
                     "--js-immutable-arraybuffer",
+                    "--js-import-text",
+                    "--js-iterator-includes",
+                    "--js-iterator-join",
+                    "--js-joint-iteration",
                     "--js-staging",
     });
 
@@ -155,9 +172,15 @@ public class TestV8Runnable extends TestRunnable {
             if (flags.contains(EXPERIMENTAL_WASM_MULTIMEMORY)) {
                 extraOptions.put("wasm.MultiMemory", "true");
             }
+            if (flags.contains(WASM_WIDE_ARITHMETIC)) {
+                extraOptions.put("wasm.WideArithmetic", "true");
+            }
         }
         if (flags.contains(NO_JS_SOURCE_PHASE_IMPORTS)) {
             extraOptions.put(JSContextOptions.SOURCE_PHASE_IMPORTS_NAME, "false");
+        }
+        if (flags.contains(JS_IMPORT_TEXT)) {
+            extraOptions.put(JSContextOptions.IMPORT_TEXT_NAME, "true");
         }
 
         if (getConfig().isPrintScript()) {
@@ -191,9 +214,6 @@ public class TestV8Runnable extends TestRunnable {
         if (flags.contains(NO_ASYNC_STACK_TRACES)) {
             extraOptions.put(JSContextOptions.ASYNC_STACK_TRACES_NAME, "false");
         }
-        if (flags.contains(HARMONY_TEMPORAL)) {
-            extraOptions.put(JSContextOptions.TEMPORAL_NAME, "true");
-        }
         if (flags.contains(HARMONY_SHADOW_REALM)) {
             extraOptions.put(JSContextOptions.SHADOW_REALM_NAME, "true");
         }
@@ -213,7 +233,9 @@ public class TestV8Runnable extends TestRunnable {
     }
 
     private static boolean isWasmTest(List<String> code) {
-        return code.stream().anyMatch(line -> line.contains("WebAssembly") || line.contains("WasmModuleBuilder") || line.contains("CreateWasmObjects"));
+        return code.stream().anyMatch(line -> {
+            return line.contains("WebAssembly") || line.contains("WasmModuleBuilder") || line.contains("CreateWasmObjects") || line.contains("ViaWasm") || line.contains("mjsunit/wasm/");
+        });
     }
 
     private TestFile.Result runInternal(int ecmaVersion, File file, boolean negative, boolean shouldThrow, boolean module, Map<String, String> extraOptions, List<String> setupFiles) {
