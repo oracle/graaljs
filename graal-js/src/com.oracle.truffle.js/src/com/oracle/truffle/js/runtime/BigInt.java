@@ -117,7 +117,7 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
 
     @TruffleBoundary
     private static BigInteger parseBigInteger(String valueString) {
-        String trimmedString = valueString.trim();
+        String trimmedString = JSRuntime.trimJSWhiteSpace(valueString);
 
         if (trimmedString.isEmpty()) {
             return BigInteger.ZERO;

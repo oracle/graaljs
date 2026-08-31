@@ -1636,6 +1636,18 @@ public final class JSRuntime {
         return Strings.lazySubstring(string, firstIdx, lastIdx + 1 - firstIdx);
     }
 
+    public static String trimJSWhiteSpace(String string) {
+        int firstIdx = 0;
+        int lastIdx = string.length() - 1;
+        while (firstIdx <= lastIdx && isWhiteSpaceOrLineTerminator(string.charAt(firstIdx))) {
+            firstIdx++;
+        }
+        while (lastIdx >= firstIdx && isWhiteSpaceOrLineTerminator(string.charAt(lastIdx))) {
+            lastIdx--;
+        }
+        return string.substring(firstIdx, lastIdx + 1);
+    }
+
     public static int firstNonWhitespaceIndex(TruffleString string, TruffleString.ReadCharUTF16Node charAtNode) {
         int idx = 0;
         int len = Strings.length(string);
