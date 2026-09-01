@@ -17,6 +17,15 @@ assertThrows(function() {
     sealedArray[0] = undefined;
 }, TypeError);
 
+const frozenArray = Object.freeze([42]);
+assertFalse(Reflect.set(frozenArray, 0, 43));
+assertSame(42, frozenArray[0]);
+
+const arrayWithNonWritableLength = [42];
+Object.defineProperty(arrayWithNonWritableLength, "length", {writable: false});
+assertFalse(Reflect.set(arrayWithNonWritableLength, 1, 43));
+assertFalse(Object.hasOwn(arrayWithNonWritableLength, 1));
+
 // A non-writable inherited indexed property likewise makes [[Set]] fail.
 const prototype = Object.defineProperty({}, "0", {
     value: undefined,
