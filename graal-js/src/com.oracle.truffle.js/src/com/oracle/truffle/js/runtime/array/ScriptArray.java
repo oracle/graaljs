@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -79,19 +79,24 @@ public abstract class ScriptArray {
 
     public abstract ScriptArray setElementImpl(JSDynamicObject object, long index, Object value, boolean strict);
 
-    public final ScriptArray setElement(JSDynamicObject object, long index, Object value, boolean strict) {
+    public final boolean checkSetElement(JSDynamicObject object, long index, boolean strict) {
         if (isFrozen()) {
             if (strict) {
                 setElementFrozenStrict(index);
             }
-            return this;
-        } else if (isLengthNotWritable()) {
-            if (index >= length(object)) {
-                if (strict) {
-                    throw Errors.createTypeErrorLengthNotWritable();
-                }
-                return this;
+            return false;
+        } else if (isLengthNotWritable() && index >= length(object)) {
+            if (strict) {
+                throw Errors.createTypeErrorLengthNotWritable();
             }
+            return false;
+        }
+        return true;
+    }
+
+    public final ScriptArray setElement(JSDynamicObject object, long index, Object value, boolean strict) {
+        if (!checkSetElement(object, index, strict)) {
+            return this;
         }
         return setElementImpl(object, index, value, strict);
     }

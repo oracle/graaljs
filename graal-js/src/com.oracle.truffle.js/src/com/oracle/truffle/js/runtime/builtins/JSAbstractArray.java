@@ -368,7 +368,11 @@ public abstract class JSAbstractArray extends JSNonProxy {
     }
 
     private static boolean setElement(JSDynamicObject thisObj, long index, Object value, boolean isStrict) {
-        arraySetArrayType(thisObj, arrayGetArrayType(thisObj).setElement(thisObj, index, value, isStrict));
+        ScriptArray array = arrayGetArrayType(thisObj);
+        if (!array.checkSetElement(thisObj, index, isStrict)) {
+            return false;
+        }
+        arraySetArrayType(thisObj, array.setElementImpl(thisObj, index, value, isStrict));
         return true;
     }
 
