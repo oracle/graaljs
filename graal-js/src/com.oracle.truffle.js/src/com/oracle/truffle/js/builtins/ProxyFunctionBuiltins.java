@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -91,7 +91,7 @@ public final class ProxyFunctionBuiltins extends JSBuiltinsContainer.Lambda {
 
         public RevocableNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.proxyCreateNode = ConstructJSProxyNodeGen.create(context, builtin, false, null);
+            this.proxyCreateNode = ConstructJSProxyNodeGen.create(context, builtin, null);
             this.setRevocableProxySlotNode = PropertySetNode.createSetHidden(JSProxy.REVOCABLE_PROXY, context);
             this.createObjectNode = CreateObjectNode.create(context);
             this.createProxyPropertyNode = CreateDataPropertyNode.create(context, Strings.PROXY);
@@ -100,7 +100,7 @@ public final class ProxyFunctionBuiltins extends JSBuiltinsContainer.Lambda {
 
         @Specialization
         protected Object doDefault(Object target, Object handler) {
-            JSDynamicObject proxy = proxyCreateNode.execute(Undefined.instance, target, handler);
+            JSDynamicObject proxy = proxyCreateNode.execute(target, handler);
 
             JSFunctionData revokerFunctionData = getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.ProxyRevokerFunction, c -> createProxyRevokerFunctionImpl(c));
             JSRealm realm = getRealm();

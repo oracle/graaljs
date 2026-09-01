@@ -461,7 +461,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Override
         public boolean isNewTargetConstructor() {
-            return EnumSet.range(Array, ZonedDateTime).contains(this);
+            return this != Proxy && EnumSet.range(Array, ZonedDateTime).contains(this);
         }
 
         @Override
@@ -692,7 +692,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                                 : CallSymbolNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case Proxy:
                 if (construct) {
-                    return ConstructJSProxyNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(3).createArgumentNodes(context));
+                    return ConstructJSProxyNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
@@ -2871,14 +2871,14 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
     }
 
     @ImportStatic(value = {JSProxy.class})
-    public abstract static class ConstructJSProxyNode extends ConstructWithNewTargetNode {
+    public abstract static class ConstructJSProxyNode extends JSBuiltinNode {
 
-        public ConstructJSProxyNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
-            super(context, builtin, isNewTargetCase);
+        public ConstructJSProxyNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
         }
 
         @Specialization
-        protected final JSObject constructJSProxy(JSDynamicObject newTarget, Object target, Object handler,
+        protected final JSObject constructJSProxy(Object target, Object handler,
                         @Cached InlinedConditionProfile targetNonObject,
                         @Cached InlinedConditionProfile handlerNonObject) {
             if (targetNonObject.profile(this, !JSGuards.isTruffleObject(target) || target instanceof Symbol || target == Undefined.instance || target == Null.instance ||
@@ -2890,16 +2890,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             }
             JSDynamicObject handlerObj = (JSDynamicObject) handler;
             JSRealm realm = getRealm();
-            JSDynamicObject proto = getPrototype(realm, newTarget);
-            return JSProxy.create(getContext(), realm, proto, target, handlerObj);
+            return JSProxy.create(getContext(), realm, target, handlerObj);
         }
 
-        @Override
-        protected JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-            return realm.getProxyPrototype();
-        }
-
-        public abstract JSDynamicObject execute(JSDynamicObject newTarget, Object target, Object handler);
+        public abstract JSDynamicObject execute(Object target, Object handler);
     }
 
     @ImportStatic(JSConfig.class)
