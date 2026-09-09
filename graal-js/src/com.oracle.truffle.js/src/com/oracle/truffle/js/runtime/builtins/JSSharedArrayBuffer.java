@@ -80,10 +80,20 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
         return createSharedArrayBuffer(realm, factory.getPrototype(realm), buffer, factory, byteLength, maxByteLength);
     }
 
+    public static JSArrayBufferObject createSharedArrayBuffer(JSContext context, JSRealm realm, ByteBuffer buffer, JSAgentWaiterList waiterList, AtomicInteger byteLength, long maxByteLength) {
+        JSObjectFactory factory = context.getSharedArrayBufferFactory();
+        return createSharedArrayBuffer(realm, factory.getPrototype(realm), buffer, factory, waiterList, byteLength, maxByteLength);
+    }
+
     private static JSArrayBufferObject createSharedArrayBuffer(JSRealm realm, JSDynamicObject proto, ByteBuffer buffer, JSObjectFactory factory, AtomicInteger byteLength, long maxByteLength) {
+        return createSharedArrayBuffer(realm, proto, buffer, factory, new JSAgentWaiterList(), byteLength, maxByteLength);
+    }
+
+    private static JSArrayBufferObject createSharedArrayBuffer(JSRealm realm, JSDynamicObject proto, ByteBuffer buffer, JSObjectFactory factory, JSAgentWaiterList waiterList, AtomicInteger byteLength,
+                    long maxByteLength) {
         assert buffer != null;
         var shape = factory.getShape(realm, proto);
-        var newObj = factory.initProto(new JSArrayBufferObject.Shared(shape, proto, buffer, new JSAgentWaiterList(), byteLength, maxByteLength), realm, proto);
+        var newObj = factory.initProto(new JSArrayBufferObject.Shared(shape, proto, buffer, waiterList, byteLength, maxByteLength), realm, proto);
         return factory.trackAllocation(newObj);
     }
 

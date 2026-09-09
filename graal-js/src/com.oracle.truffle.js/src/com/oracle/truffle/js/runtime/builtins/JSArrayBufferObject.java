@@ -596,8 +596,8 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
     public static final class Interop extends JSArrayBufferObject {
         Object interopBuffer;
 
-        protected Interop(Shape shape, JSDynamicObject proto, Object interopBuffer) {
-            super(shape, proto, /* unused */ -1, JSArrayBuffer.FIXED_LENGTH);
+        protected Interop(Shape shape, JSDynamicObject proto, Object interopBuffer, long maxByteLength) {
+            super(shape, proto, /* unused */ -1, maxByteLength);
             assert InteropLibrary.getUncached().hasBufferElements(interopBuffer);
             this.interopBuffer = interopBuffer;
         }

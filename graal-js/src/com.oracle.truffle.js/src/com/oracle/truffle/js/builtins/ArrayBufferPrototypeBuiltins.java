@@ -48,6 +48,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
@@ -62,6 +63,7 @@ import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltinsFactory.JSArra
 import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltinsFactory.JSArrayBufferTransferNodeGen;
 import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltinsFactory.ResizableGetterNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.ArraySpeciesConstructorNode;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToIndexNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -75,6 +77,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemoryObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 
@@ -660,27 +663,31 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Specialization
         protected final Object arrayBufferHeap(JSArrayBufferObject.Heap thisObj, Object newLength,
                         @Cached @Shared JSToIndexNode toIndexNode,
-                        @Cached @Shared InlinedBranchProfile errorBranch) {
-            return arrayBuffer(thisObj, newLength, toIndexNode, errorBranch);
+                        @Cached @Shared InlinedBranchProfile errorBranch,
+                        @Cached("createGetMemoryObjectNode()") @Shared PropertyGetNode getMemoryObjectNode) {
+            return arrayBuffer(thisObj, newLength, toIndexNode, errorBranch, getMemoryObjectNode);
         }
 
         @Specialization
         protected final Object arrayBufferDirect(JSArrayBufferObject.Direct thisObj, Object newLength,
                         @Cached @Shared JSToIndexNode toIndexNode,
-                        @Cached @Shared InlinedBranchProfile errorBranch) {
-            return arrayBuffer(thisObj, newLength, toIndexNode, errorBranch);
+                        @Cached @Shared InlinedBranchProfile errorBranch,
+                        @Cached("createGetMemoryObjectNode()") @Shared PropertyGetNode getMemoryObjectNode) {
+            return arrayBuffer(thisObj, newLength, toIndexNode, errorBranch, getMemoryObjectNode);
         }
 
         @Specialization
         protected final Object arrayBufferInterop(JSArrayBufferObject.Interop thisObj, Object newLength,
                         @Cached @Shared JSToIndexNode toIndexNode,
-                        @Cached @Shared InlinedBranchProfile errorBranch) {
-            return arrayBuffer(thisObj, newLength, toIndexNode, errorBranch);
+                        @Cached @Shared InlinedBranchProfile errorBranch,
+                        @Cached("createGetMemoryObjectNode()") @Shared PropertyGetNode getMemoryObjectNode) {
+            return arrayBuffer(thisObj, newLength, toIndexNode, errorBranch, getMemoryObjectNode);
         }
 
         private Object arrayBuffer(JSArrayBufferObject thisObj, Object newLength,
                         JSToIndexNode toIndexNode,
-                        InlinedBranchProfile errorBranch) {
+                        InlinedBranchProfile errorBranch,
+                        PropertyGetNode getMemoryObjectNode) {
             if (thisObj.isFixedLength()) {
                 errorBranch.enter(this);
                 throw Errors.createTypeError("Resizable ArrayBuffer expected!");
@@ -693,6 +700,12 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
             if (newByteLengthLong > thisObj.getMaxByteLength()) {
                 errorBranch.enter(this);
                 throw Errors.createRangeError("newByteLength exceeds maxByteLength");
+            }
+            // Handle WebAssembly memory buffers as specified by HostResizeArrayBuffer.
+            Object memory = getMemoryObjectNode.getValue(thisObj);
+            if (memory instanceof JSWebAssemblyMemoryObject memoryObject) {
+                memoryObject.resizeBuffer(getRealm(), thisObj, newByteLengthLong);
+                return Undefined.instance;
             }
             int newByteLength = (int) newByteLengthLong;
             if (thisObj instanceof JSArrayBufferObject.Interop) {
@@ -718,6 +731,11 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
             }
             thisObj.setByteLength(newByteLength);
             return Undefined.instance;
+        }
+
+        @NeverDefault
+        protected final PropertyGetNode createGetMemoryObjectNode() {
+            return PropertyGetNode.createGetHidden(JSWebAssemblyMemoryObject.MEMORY_OBJECT_ID, getContext());
         }
 
         @Fallback

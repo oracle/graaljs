@@ -3482,17 +3482,18 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 }
             }
             JSRealm realm = getRealm();
+            int declaredMaximum = maximum == Undefined.instance ? JSWebAssemblyMemory.NO_MAXIMUM : maximumInt;
             Object wasmMemory;
             try {
                 Object createMemory = realm.getWASMMemAlloc();
-                wasmMemory = memAllocLib.execute(createMemory, initialInt, maximumInt, sharedBoolean);
+                wasmMemory = memAllocLib.execute(createMemory, initialInt, declaredMaximum, sharedBoolean);
             } catch (AbstractTruffleException tex) {
                 throw createCouldNotAllocateMemoryError(tex);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             }
             JSDynamicObject proto = getPrototype(realm, newTarget);
-            return JSWebAssemblyMemory.create(getContext(), realm, proto, wasmMemory, sharedBoolean);
+            return JSWebAssemblyMemory.create(getContext(), realm, proto, wasmMemory, sharedBoolean, declaredMaximum);
         }
 
         @Override

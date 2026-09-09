@@ -494,6 +494,7 @@ public class JSRealm {
     private final Object wasmIsFunc;
     private final Object wasmMemAlloc;
     private final Object wasmMemGrow;
+    private final Object wasmMemMax;
     private final Object wasmMemAsByteBuffer;
     private final Object wasmGlobalAlloc;
     private final Object wasmGlobalRead;
@@ -1001,6 +1002,7 @@ public class JSRealm {
                 wasmIsFunc = wasmInterop.readMember(wasmObject, "is_func");
                 wasmMemAlloc = wasmInterop.readMember(wasmObject, "mem_alloc");
                 wasmMemGrow = wasmInterop.readMember(wasmObject, "mem_grow");
+                wasmMemMax = wasmInterop.readMember(wasmObject, "mem_max");
                 wasmGlobalAlloc = wasmInterop.readMember(wasmObject, "global_alloc");
                 wasmGlobalRead = wasmInterop.readMember(wasmObject, "global_read");
                 wasmGlobalWrite = wasmInterop.readMember(wasmObject, "global_write");
@@ -1061,6 +1063,7 @@ public class JSRealm {
             this.wasmIsFunc = null;
             this.wasmMemAlloc = null;
             this.wasmMemGrow = null;
+            this.wasmMemMax = null;
             this.wasmMemAsByteBuffer = null;
             this.wasmGlobalAlloc = null;
             this.wasmGlobalRead = null;
@@ -3333,6 +3336,10 @@ public class JSRealm {
 
     public Object getWASMMemGrow() {
         return wasmMemGrow;
+    }
+
+    public Object getWASMMemMax() {
+        return wasmMemMax;
     }
 
     public Object getWASMGlobalAlloc() {

@@ -145,18 +145,22 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
     }
 
     public static JSArrayBufferObject.Interop createInteropArrayBuffer(JSContext context, JSRealm realm, Object buffer) {
+        return createInteropArrayBuffer(context, realm, buffer, FIXED_LENGTH);
+    }
+
+    public static JSArrayBufferObject.Interop createInteropArrayBuffer(JSContext context, JSRealm realm, Object buffer, long maxByteLength) {
         JSObjectFactory factory = context.getInteropArrayBufferFactory();
-        return createInteropArrayBuffer(factory, realm, factory.getPrototype(realm), buffer);
+        return createInteropArrayBuffer(factory, realm, factory.getPrototype(realm), buffer, maxByteLength);
     }
 
     public static JSArrayBufferObject.Interop createInteropArrayBuffer(JSContext context, JSRealm realm, JSDynamicObject proto, Object buffer) {
         JSObjectFactory factory = context.getInteropArrayBufferFactory();
-        return createInteropArrayBuffer(factory, realm, proto, buffer);
+        return createInteropArrayBuffer(factory, realm, proto, buffer, FIXED_LENGTH);
     }
 
-    private static JSArrayBufferObject.Interop createInteropArrayBuffer(JSObjectFactory factory, JSRealm realm, JSDynamicObject proto, Object buffer) {
+    private static JSArrayBufferObject.Interop createInteropArrayBuffer(JSObjectFactory factory, JSRealm realm, JSDynamicObject proto, Object buffer, long maxByteLength) {
         var shape = factory.getShape(realm, proto);
-        var newObj = factory.initProto(new JSArrayBufferObject.Interop(shape, proto, buffer), realm, proto);
+        var newObj = factory.initProto(new JSArrayBufferObject.Interop(shape, proto, buffer, maxByteLength), realm, proto);
         return factory.trackAllocation(newObj);
     }
 

@@ -93,6 +93,7 @@ import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModuleObject;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -230,6 +231,13 @@ public class SerializedData {
     }
 
     private void serializeSharedArrayBuffer(JSArrayBufferObject.Shared sharedArrayBuffer) {
+        Object memoryObject = JSObjectUtil.getHiddenProperty(sharedArrayBuffer, JSWebAssemblyMemoryObject.MEMORY_OBJECT_ID);
+        if (!sharedArrayBuffer.isFixedLength() && memoryObject instanceof JSWebAssemblyMemoryObject webAssemblyMemory) {
+            data.add(Type.WebAssemblyMemoryBuffer);
+            data.add(webAssemblyMemory.getWASMMemory());
+            data.add(sharedArrayBuffer.getWaiterList());
+            return;
+        }
         data.add(Type.SharedArrayBuffer);
         data.add(sharedArrayBuffer.getByteBuffer());
         data.add(sharedArrayBuffer.getByteLengthObject());
@@ -251,15 +259,23 @@ public class SerializedData {
             JSArrayBufferObject.Interop interopBuffer = (JSArrayBufferObject.Interop) arrayBuffer;
             Object foreignBuffer = interopBuffer.getInteropBuffer();
             int length = interopBuffer.getByteLength();
-            byte[] array = new byte[length];
+            long capacity = Math.max(length, interopBuffer.getMaxByteLength());
+            if (capacity > interopBuffer.getJSContext().getLanguageOptions().maxTypedArrayLength()) {
+                throw Errors.createRangeError("Array buffer allocation failed");
+            }
+            int backingCapacity = (int) capacity;
+            boolean direct = arrayBuffer.getJSContext().isOptionDirectByteBuffer();
             try {
-                InteropLibrary.getUncached().readBuffer(foreignBuffer, 0, array, 0, length);
-                if (arrayBuffer.getJSContext().isOptionDirectByteBuffer()) {
-                    ByteBuffer byteBuffer = ByteBuffer.allocateDirect(length);
+                if (direct) {
+                    byte[] array = new byte[length];
+                    InteropLibrary.getUncached().readBuffer(foreignBuffer, 0, array, 0, length);
+                    ByteBuffer byteBuffer = ByteBuffer.allocateDirect(backingCapacity);
                     byteBuffer.put(0, array);
                     content = byteBuffer;
                 } else {
-                    content = array;
+                    byte[] byteArray = new byte[backingCapacity];
+                    InteropLibrary.getUncached().readBuffer(foreignBuffer, 0, byteArray, 0, length);
+                    content = byteArray;
                 }
             } catch (InteropException iex) {
                 throw couldNotBeClonedError(interopBuffer);
@@ -349,10 +365,9 @@ public class SerializedData {
         if (memoryObject.isShared()) {
             Object wasmMemory = memoryObject.getWASMMemory();
             JSArrayBufferObject arrayBuffer = memoryObject.getBufferObject(memoryObject.getJSContext(), JSRealm.get(null));
-            JSAgentWaiterList waiterList = JSSharedArrayBuffer.getWaiterList(arrayBuffer);
             data.add(Type.WebAssemblyMemory);
             data.add(wasmMemory);
-            data.add(waiterList);
+            serializeValue(arrayBuffer);
         } else {
             throw couldNotBeClonedError(memoryObject);
         }
@@ -404,10 +419,11 @@ public class SerializedData {
             case Error -> deserializeError(realm, iter);
             case Array -> deserializeArray(realm, iter, deserialized);
             case Object -> deserializeObject(realm, iter, deserialized);
-            case WebAssemblyMemory -> deserializeWebAssemblyMemory(realm, iter);
+            case WebAssemblyMemoryBuffer -> deserializeWebAssemblyMemoryBuffer(realm, iter);
+            case WebAssemblyMemory -> deserializeWebAssemblyMemory(realm, iter, deserialized);
             case WebAssemblyModule -> deserializeWebAssemblyModule(realm, iter);
         };
-        if (type != Type.Primitive && type != Type.Duplicate && type != Type.Map && type != Type.Set && type != Type.Array && type != Type.Object) {
+        if (type != Type.Primitive && type != Type.Duplicate && type != Type.Map && type != Type.Set && type != Type.Array && type != Type.Object && type != Type.WebAssemblyMemory) {
             deserialized.add(result);
         }
         return result;
@@ -521,14 +537,37 @@ public class SerializedData {
         }
     }
 
-    private static Object deserializeWebAssemblyMemory(JSRealm realm, Iterator<Object> iter) {
+    private static Object deserializeWebAssemblyMemory(JSRealm realm, Iterator<Object> iter, List<Object> deserialized) {
+        Object wasmMemory = iter.next();
+        JSContext context = realm.getContext();
+        JSWebAssemblyMemoryObject webAssemblyMemory = JSWebAssemblyMemory.createMaximumUnknown(context, realm, wasmMemory, true);
+        deserialized.add(webAssemblyMemory);
+        JSArrayBufferObject arrayBuffer = (JSArrayBufferObject) deserializeValue(realm, iter, deserialized);
+        synchronized (wasmMemory) {
+            boolean staleFixedLengthBuffer = false;
+            if (arrayBuffer.isFixedLength()) {
+                try {
+                    long currentByteLength = InteropLibrary.getUncached().getBufferSize(wasmMemory);
+                    staleFixedLengthBuffer = arrayBuffer.getByteLength() < currentByteLength;
+                } catch (InteropException ex) {
+                    throw Errors.shouldNotReachHere(ex);
+                }
+            }
+            if (!staleFixedLengthBuffer) {
+                webAssemblyMemory.setBufferObject(arrayBuffer);
+            }
+        }
+        return webAssemblyMemory;
+    }
+
+    private static Object deserializeWebAssemblyMemoryBuffer(JSRealm realm, Iterator<Object> iter) {
         Object wasmMemory = iter.next();
         JSAgentWaiterList waiterList = (JSAgentWaiterList) iter.next();
         JSContext context = realm.getContext();
-        JSWebAssemblyMemoryObject webAssemblyMemory = JSWebAssemblyMemory.create(context, realm, wasmMemory, true);
-        JSArrayBufferObject arrayBuffer = webAssemblyMemory.getBufferObject(context, realm);
+        JSWebAssemblyMemoryObject webAssemblyMemory = JSWebAssemblyMemory.createMaximumUnknown(context, realm, wasmMemory, true);
+        JSArrayBufferObject arrayBuffer = webAssemblyMemory.createResizableBufferObject(context, realm);
         JSSharedArrayBuffer.setWaiterList(arrayBuffer, waiterList);
-        return webAssemblyMemory;
+        return arrayBuffer;
     }
 
     private static Object deserializeWebAssemblyModule(JSRealm realm, Iterator<Object> iter) {
@@ -555,6 +594,7 @@ public class SerializedData {
         Error,
         Array,
         Object,
+        WebAssemblyMemoryBuffer,
         WebAssemblyMemory,
         WebAssemblyModule
     }
