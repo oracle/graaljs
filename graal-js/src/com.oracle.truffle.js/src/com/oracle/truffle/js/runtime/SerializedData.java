@@ -268,7 +268,7 @@ public class SerializedData {
         serializeArrayBufferImpl(content, arrayBuffer.getByteLength(), arrayBuffer.getMaxByteLength());
     }
 
-    private void serializeArrayBufferImpl(Object content, int byteLength, int maxByteLength) {
+    private void serializeArrayBufferImpl(Object content, int byteLength, long maxByteLength) {
         data.add(Type.ArrayBuffer);
         data.add(content);
         data.add(byteLength);
@@ -424,7 +424,7 @@ public class SerializedData {
     private static Object deserializeSharedArrayBuffer(JSRealm realm, Iterator<Object> iter) {
         ByteBuffer byteBuffer = (ByteBuffer) iter.next();
         AtomicInteger byteLength = (AtomicInteger) iter.next();
-        int maxByteLength = (int) iter.next();
+        long maxByteLength = (Long) iter.next();
         JSAgentWaiterList waiterList = (JSAgentWaiterList) iter.next();
         JSArrayBufferObject sharedArrayBuffer = JSSharedArrayBuffer.createSharedArrayBuffer(realm.getContext(), realm, byteBuffer, byteLength, maxByteLength);
         ((JSArrayBufferObject.Shared) sharedArrayBuffer).setWaiterList(waiterList);
@@ -435,7 +435,7 @@ public class SerializedData {
         JSContext context = realm.getContext();
         Object content = iter.next();
         int byteLength = (int) iter.next();
-        int maxByteLength = (int) iter.next();
+        long maxByteLength = (Long) iter.next();
         if (content instanceof byte[] || content == null) {
             return JSArrayBuffer.createArrayBuffer(context, realm, (byte[]) content, byteLength, maxByteLength);
         } else if (content instanceof ByteBuffer buffer) {

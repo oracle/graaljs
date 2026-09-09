@@ -84,7 +84,7 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
         return createArrayBuffer(context, realm, byteArray, byteArray.length, FIXED_LENGTH);
     }
 
-    public static JSArrayBufferObject createArrayBuffer(JSContext context, JSRealm realm, byte[] byteArray, int byteLength, int maxByteLength) {
+    public static JSArrayBufferObject createArrayBuffer(JSContext context, JSRealm realm, byte[] byteArray, int byteLength, long maxByteLength) {
         JSObjectFactory factory = context.getArrayBufferFactory();
         return createHeapArrayBuffer(factory, realm, factory.getPrototype(realm), byteArray, byteLength, maxByteLength);
     }
@@ -94,7 +94,7 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
         return createHeapArrayBuffer(factory, realm, proto, new byte[Math.max(byteLength, maxByteLength)], byteLength, maxByteLength);
     }
 
-    private static JSArrayBufferObject createHeapArrayBuffer(JSObjectFactory factory, JSRealm realm, JSDynamicObject proto, byte[] byteArray, int byteLength, int maxByteLength) {
+    private static JSArrayBufferObject createHeapArrayBuffer(JSObjectFactory factory, JSRealm realm, JSDynamicObject proto, byte[] byteArray, int byteLength, long maxByteLength) {
         var shape = factory.getShape(realm, proto);
         var newObj = factory.initProto(new JSArrayBufferObject.Heap(shape, proto, byteArray, byteLength, maxByteLength), realm, proto);
         return factory.trackAllocation(newObj);
@@ -124,7 +124,7 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
         return createDirectArrayBuffer(factory, realm, factory.getPrototype(realm), buffer);
     }
 
-    public static JSArrayBufferObject createDirectArrayBuffer(JSContext context, JSRealm realm, ByteBuffer buffer, int byteLength, int maxByteLength) {
+    public static JSArrayBufferObject createDirectArrayBuffer(JSContext context, JSRealm realm, ByteBuffer buffer, int byteLength, long maxByteLength) {
         JSObjectFactory factory = context.getDirectArrayBufferFactory();
         return createDirectArrayBuffer(factory, realm, factory.getPrototype(realm), buffer, byteLength, maxByteLength);
     }
@@ -133,7 +133,7 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
         return createDirectArrayBuffer(factory, realm, proto, buffer, buffer.capacity(), FIXED_LENGTH);
     }
 
-    private static JSArrayBufferObject createDirectArrayBuffer(JSObjectFactory factory, JSRealm realm, JSDynamicObject proto, ByteBuffer buffer, int byteLength, int maxByteLength) {
+    private static JSArrayBufferObject createDirectArrayBuffer(JSObjectFactory factory, JSRealm realm, JSDynamicObject proto, ByteBuffer buffer, int byteLength, long maxByteLength) {
         var shape = factory.getShape(realm, proto);
         var newObj = factory.initProto(new JSArrayBufferObject.Direct(shape, proto, buffer, byteLength, maxByteLength), realm, proto);
         return factory.trackAllocation(newObj);

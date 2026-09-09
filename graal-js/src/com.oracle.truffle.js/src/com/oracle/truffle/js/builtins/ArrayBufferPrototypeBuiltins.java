@@ -171,36 +171,36 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization
-        protected int heapArrayBuffer(JSArrayBufferObject.Heap thisObj) {
+        protected Number heapArrayBuffer(JSArrayBufferObject.Heap thisObj) {
             if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && thisObj.getByteArray() == null) {
                 return 0;
             }
             if (getMaxByteLength && !thisObj.isFixedLength()) {
-                return thisObj.getMaxByteLength();
+                return JSRuntime.longToIntOrDouble(thisObj.getMaxByteLength());
             }
             return thisObj.getByteLength();
         }
 
         @Specialization
-        protected int directArrayBuffer(JSArrayBufferObject.Direct thisObj) {
+        protected Number directArrayBuffer(JSArrayBufferObject.Direct thisObj) {
             if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && thisObj.getByteBuffer() == null) {
                 return 0;
             }
             if (getMaxByteLength && !thisObj.isFixedLength()) {
-                return thisObj.getMaxByteLength();
+                return JSRuntime.longToIntOrDouble(thisObj.getMaxByteLength());
             }
             return thisObj.getByteLength();
         }
 
         @Specialization
-        protected int interopArrayBuffer(JSArrayBufferObject.Interop thisObj,
+        protected Number interopArrayBuffer(JSArrayBufferObject.Interop thisObj,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
             Object buffer = thisObj.getInteropBuffer();
             if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && buffer == null) {
                 return 0;
             }
             if (getMaxByteLength && !thisObj.isFixedLength()) {
-                return thisObj.getMaxByteLength();
+                return JSRuntime.longToIntOrDouble(thisObj.getMaxByteLength());
             }
             try {
                 long bufferSize = interop.getBufferSize(buffer);
@@ -571,7 +571,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
                 throw Errors.createTypeErrorInvalidDetachKey();
             }
 
-            int newMaxByteLength;
+            long newMaxByteLength;
             if (preserveResizability == IMMUTABLE) {
                 newMaxByteLength = JSArrayBuffer.IMMUTABLE_BUFFER;
             } else if (preserveResizability == PRESERVE_RESIZABILITY && !arrayBuffer.isFixedLength()) {

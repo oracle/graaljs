@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -75,12 +75,12 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
         return createSharedArrayBuffer(realm, factory.getPrototype(realm), buffer, factory, new AtomicInteger(buffer.capacity()), JSArrayBuffer.FIXED_LENGTH);
     }
 
-    public static JSArrayBufferObject createSharedArrayBuffer(JSContext context, JSRealm realm, ByteBuffer buffer, AtomicInteger byteLength, int maxByteLength) {
+    public static JSArrayBufferObject createSharedArrayBuffer(JSContext context, JSRealm realm, ByteBuffer buffer, AtomicInteger byteLength, long maxByteLength) {
         JSObjectFactory factory = context.getSharedArrayBufferFactory();
         return createSharedArrayBuffer(realm, factory.getPrototype(realm), buffer, factory, byteLength, maxByteLength);
     }
 
-    private static JSArrayBufferObject createSharedArrayBuffer(JSRealm realm, JSDynamicObject proto, ByteBuffer buffer, JSObjectFactory factory, AtomicInteger byteLength, int maxByteLength) {
+    private static JSArrayBufferObject createSharedArrayBuffer(JSRealm realm, JSDynamicObject proto, ByteBuffer buffer, JSObjectFactory factory, AtomicInteger byteLength, long maxByteLength) {
         assert buffer != null;
         var shape = factory.getShape(realm, proto);
         var newObj = factory.initProto(new JSArrayBufferObject.Shared(shape, proto, buffer, new JSAgentWaiterList(), byteLength, maxByteLength), realm, proto);

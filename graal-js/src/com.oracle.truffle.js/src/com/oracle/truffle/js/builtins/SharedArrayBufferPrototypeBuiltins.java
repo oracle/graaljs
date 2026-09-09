@@ -58,6 +58,7 @@ import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
@@ -211,8 +212,8 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
         }
 
         @Specialization
-        protected static int sharedArrayBuffer(JSArrayBufferObject.Shared thisObj) {
-            return thisObj.isFixedLength() ? thisObj.getByteLength() : thisObj.getMaxByteLength();
+        protected static Number sharedArrayBuffer(JSArrayBufferObject.Shared thisObj) {
+            return thisObj.isFixedLength() ? thisObj.getByteLength() : JSRuntime.longToIntOrDouble(thisObj.getMaxByteLength());
         }
 
         @Specialization(guards = "!isJSSharedArrayBuffer(thisObj)")
