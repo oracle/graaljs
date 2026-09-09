@@ -2326,10 +2326,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2026-02-12"
   }, {
-    "filePath" : "mjsunit/regress/wasm/regress-451144692.js",
-    "status" : "FAIL",
-    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
-  }, {
     "filePath" : "mjsunit/regress/wasm/regress-452079540.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-02-12"
@@ -2366,17 +2362,9 @@
     "status" : "FAIL",
     "comment" : "new failures 2026-02-12"
   }, {
-    "filePath" : "mjsunit/regress/wasm/regress-476461881.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-02-12"
-  }, {
     "filePath" : "mjsunit/regress/wasm/regress-482759504.js",
     "status" : "FAIL",
     "comment" : "GraalWasm rejects the requested 4 GiB shared memory before the test can exercise worker transfer."
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-483643012.js",
-    "status" : "FAIL",
-    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-487444465.js",
     "status" : "FAIL",
@@ -2385,10 +2373,6 @@
     "filePath" : "mjsunit/regress/wasm/regress-488943662.js",
     "status" : "FAIL",
     "comment" : "TestV8 does not implement d8.test.serializeModule()."
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-489029655.js",
-    "status" : "FAIL",
-    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-490877757.js",
     "status" : "FAIL",
@@ -2937,36 +2921,12 @@
   }, {
     "filePath" : "mjsunit/wasm/grow-huge-memory-resizable-buffer.js",
     "status" : "FAIL",
-    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
+    "comment" : "GraalJS cannot expose an ArrayBuffer byte length above 2 GiB."
   }, {
     "filePath" : "mjsunit/wasm/grow-huge-memory.js",
     "status" : "FAIL",
     "runInIsolation" : true,
     "comment" : "Memory instance size exceeded 2GB. GraalJS is limited to 2GB because of using signed 32-bit integers for indices."
-  }, {
-    "filePath" : "mjsunit/wasm/grow-memory-detaching-resizable-buffer.js",
-    "status" : "FAIL",
-    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
-  }, {
-    "filePath" : "mjsunit/wasm/grow-memory-in-branch-resizable-buffer.js",
-    "status" : "FAIL",
-    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
-  }, {
-    "filePath" : "mjsunit/wasm/grow-memory-in-call-resizable-buffer.js",
-    "status" : "FAIL",
-    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
-  }, {
-    "filePath" : "mjsunit/wasm/grow-memory-in-loop-resizable-buffer.js",
-    "status" : "FAIL",
-    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
-  }, {
-    "filePath" : "mjsunit/wasm/grow-memory-resizable-buffer.js",
-    "status" : "FAIL",
-    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
-  }, {
-    "filePath" : "mjsunit/wasm/grow-shared-memory-resizable-buffer.js",
-    "status" : "FAIL",
-    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
   }, {
     "filePath" : "mjsunit/wasm/grow-shared-memory.js",
     "status" : "FAIL",
@@ -3065,61 +3025,9 @@
     "status" : "FAIL",
     "comment" : "Test expects v8 to use the words 'Out of memory' when trying to instantiate a very large memory."
   }, {
-    "filePath" : "mjsunit/wasm/memory-resizable-buffer-array-concat-dictionary-mode.js",
-    "status" : "FAIL",
-    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
-  }, {
-    "filePath" : "mjsunit/wasm/memory-resizable-buffer-array-concat.js",
-    "status" : "FAIL",
-    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
-  }, {
-    "filePath" : "mjsunit/wasm/memory-resizable-buffer-array-filter.js",
-    "status" : "FAIL",
-    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
-  }, {
-    "filePath" : "mjsunit/wasm/memory-resizable-buffer-array-flat-flatmap-from.js",
-    "status" : "FAIL",
-    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
-  }, {
-    "filePath" : "mjsunit/wasm/memory-resizable-buffer-array-flat-grows-detaches.js",
-    "status" : "FAIL",
-    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
-  }, {
-    "filePath" : "mjsunit/wasm/memory-resizable-buffer-array-flatmap-grows-detaches.js",
-    "status" : "FAIL",
-    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
-  }, {
-    "filePath" : "mjsunit/wasm/memory-resizable-buffer-array-foreach-reduce.js",
-    "status" : "FAIL",
-    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
-  }, {
-    "filePath" : "mjsunit/wasm/memory-resizable-buffer-array-from-grows-detaches.js",
-    "status" : "FAIL",
-    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
-  }, {
-    "filePath" : "mjsunit/wasm/memory-resizable-buffer-array-pop-shift.js",
-    "status" : "FAIL",
-    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
-  }, {
-    "filePath" : "mjsunit/wasm/memory-resizable-buffer-array-push-unshift-splice.js",
-    "status" : "FAIL",
-    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
-  }, {
-    "filePath" : "mjsunit/wasm/memory-resizable-buffer-array-slice.js",
-    "status" : "FAIL",
-    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
-  }, {
-    "filePath" : "mjsunit/wasm/memory-resizable-buffer-errors.js",
-    "status" : "FAIL",
-    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
-  }, {
     "filePath" : "mjsunit/wasm/memory-toresizable-max-byte-length.js",
     "status" : "FAIL",
-    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
-  }, {
-    "filePath" : "mjsunit/wasm/memory-toresizable-tofixedlength.js",
-    "status" : "FAIL",
-    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
+    "comment" : "GraalJS does not accept BigInt memory64 limits in the WebAssembly.Memory constructor."
   }, {
     "filePath" : "mjsunit/wasm/memory64.js",
     "status" : "FAIL",
@@ -3257,42 +3165,6 @@
     "status" : "SKIP",
     "comment" : "long-running test, deactivated"
   }, {
-    "filePath" : "mjsunit/wasm/shared-memory-resizable-buffer-array-concat.js",
-    "status" : "FAIL",
-    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
-  }, {
-    "filePath" : "mjsunit/wasm/shared-memory-resizable-buffer-array-flat-flatmap-from.js",
-    "status" : "FAIL",
-    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
-  }, {
-    "filePath" : "mjsunit/wasm/shared-memory-resizable-buffer-array-flat-grows.js",
-    "status" : "FAIL",
-    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
-  }, {
-    "filePath" : "mjsunit/wasm/shared-memory-resizable-buffer-array-flatmap-grows.js",
-    "status" : "FAIL",
-    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
-  }, {
-    "filePath" : "mjsunit/wasm/shared-memory-resizable-buffer-array-from-grows.js",
-    "status" : "FAIL",
-    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
-  }, {
-    "filePath" : "mjsunit/wasm/shared-memory-resizable-buffer-array-pop-shift.js",
-    "status" : "FAIL",
-    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
-  }, {
-    "filePath" : "mjsunit/wasm/shared-memory-resizable-buffer-array-push-unshift-splice.js",
-    "status" : "FAIL",
-    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
-  }, {
-    "filePath" : "mjsunit/wasm/shared-memory-resizable-buffer-array-slice.js",
-    "status" : "FAIL",
-    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
-  }, {
-    "filePath" : "mjsunit/wasm/shared-memory-resizable-buffer-errors.js",
-    "status" : "FAIL",
-    "comment" : "GraalWasm does not implement WebAssembly.Memory.prototype.toResizableBuffer/toFixedLengthBuffer."
-  }, {
     "filePath" : "mjsunit/wasm/shared-memory-worker-explicit-gc-stress.js",
     "status" : "SKIP",
     "comment" : "long-running test, deactivated"
@@ -3424,10 +3296,6 @@
     "filePath" : "mjsunit/wasm/wasm-to-js-tierup.js",
     "status" : "FAIL",
     "comment" : "TestV8 does not implement the V8 Wasm-to-JS wrapper tiering counter intrinsics."
-  }, {
-    "filePath" : "mjsunit/wasm/worker-memory.js",
-    "status" : "FAIL",
-    "comment" : "V8 test update 2022-11-28"
   }, {
     "filePath" : "mjsunit/wasm/worker-running-empty-loop-interruptible.js",
     "status" : "SKIP",
