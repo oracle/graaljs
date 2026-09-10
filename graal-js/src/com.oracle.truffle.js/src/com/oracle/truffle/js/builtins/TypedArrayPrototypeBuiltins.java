@@ -488,7 +488,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 return true;
             }
             return sourceBuffer instanceof JSArrayBufferObject.Shared sourceShared && targetBuffer instanceof JSArrayBufferObject.Shared targetShared &&
-                            sourceShared.getByteBuffer() == targetShared.getByteBuffer();
+                            sourceShared.hasSameDataBlock(targetShared);
         }
 
         @Specialization(guards = {"isJSFastArray(array)"})

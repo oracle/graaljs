@@ -150,7 +150,7 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
                 throw Errors.createTypeErrorSharedArrayBufferExpected();
             }
             var newBuffer = (JSArrayBufferObject.Shared) resObj;
-            if (newBuffer.getByteBuffer() == thisObj.getByteBuffer()) {
+            if (newBuffer.hasSameDataBlock(thisObj)) {
                 errorBranch.enter(this);
                 throw Errors.createTypeError("SharedArrayBuffer subclass returned this from species constructor");
             }

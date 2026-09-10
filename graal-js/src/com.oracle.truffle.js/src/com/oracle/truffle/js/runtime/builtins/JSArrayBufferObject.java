@@ -563,6 +563,10 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
             return byteLength.compareAndSet(expectedByteLength, newByteLength);
         }
 
+        public boolean hasSameDataBlock(Shared other) {
+            return waiterList == other.waiterList;
+        }
+
         public JSAgentWaiterList getWaiterList() {
             return waiterList;
         }
