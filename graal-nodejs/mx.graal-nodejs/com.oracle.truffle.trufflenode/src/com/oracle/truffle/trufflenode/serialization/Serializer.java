@@ -52,7 +52,6 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.JSAgentWaiterList;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
@@ -66,6 +65,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferViewBase;
 import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBigIntObject;
@@ -99,6 +99,7 @@ import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModuleObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -113,6 +114,8 @@ import com.oracle.truffle.trufflenode.threading.JavaMessagePortData;
 public class Serializer {
     static final byte VERSION = (byte) 0xFF; // SerializationTag::kVersion
     static final byte LATEST_VERSION = (byte) 15; // kLatestVersion
+    static final int ARRAY_BUFFER_VIEW_FLAG_IS_LENGTH_TRACKING = 1;
+    static final int ARRAY_BUFFER_VIEW_FLAG_IS_BACKED_BY_RAB = 1 << 1;
 
     public static final TruffleString COULD_NOT_BE_CLONED = Strings.constant(" could not be cloned.");
     public static final TruffleString HASH_BRACKETS_OBJECT = Strings.constant("#<Object>");
@@ -254,10 +257,10 @@ public class Serializer {
             writeJSString((JSStringObject) object);
         } else if (JSRegExp.isJSRegExp(object)) {
             writeJSRegExp((JSRegExpObject) object);
-        } else if (JSArrayBuffer.isJSDirectArrayBuffer(object)) {
-            writeJSArrayBuffer((JSArrayBufferObject) object);
         } else if (JSSharedArrayBuffer.isJSSharedArrayBuffer(object)) {
             writeJSSharedArrayBuffer((JSArrayBufferObject) object);
+        } else if (object instanceof JSArrayBufferObject arrayBuffer) {
+            writeJSArrayBuffer(arrayBuffer);
         } else if (JSMap.isJSMap(object)) {
             writeJSMap((JSMapObject) object);
         } else if (JSSet.isJSSet(object)) {
@@ -400,17 +403,36 @@ public class Serializer {
     }
 
     private void writeJSArrayBuffer(JSArrayBufferObject arrayBuffer) {
-        assert JSArrayBuffer.isJSDirectArrayBuffer(arrayBuffer);
+        assert !JSSharedArrayBuffer.isJSSharedArrayBuffer(arrayBuffer);
+        if (JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
+            NativeAccess.throwDataCloneError(delegate, Strings.concat(JSRuntime.safeToString(arrayBuffer), COULD_NOT_BE_CLONED));
+            return;
+        }
         Integer id = transferMap.get(arrayBuffer);
         if (id == null) {
             int byteLength = arrayBuffer.getByteLength();
-            ByteBuffer byteBuffer = JSArrayBuffer.getDirectByteBuffer(arrayBuffer);
-            writeTag(SerializationTag.ARRAY_BUFFER);
-            writeVarInt(byteLength);
-            ensureFreeSpace(byteLength);
-            for (int i = 0; i < byteLength; i++) {
-                buffer.put(byteBuffer.get(i));
+            if (arrayBuffer.isFixedLength()) {
+                writeTag(SerializationTag.ARRAY_BUFFER);
+            } else {
+                long maxByteLength = arrayBuffer.getMaxByteLength();
+                if (maxByteLength > arrayBuffer.getJSContext().getLanguageOptions().maxTypedArrayLength()) {
+                    NativeAccess.throwDataCloneError(delegate, Strings.concat(JSRuntime.safeToString(arrayBuffer), COULD_NOT_BE_CLONED));
+                    return;
+                }
+                writeTag(SerializationTag.RESIZABLE_ARRAY_BUFFER);
             }
+            writeVarInt(byteLength);
+            if (!arrayBuffer.isFixedLength()) {
+                writeVarInt(arrayBuffer.getMaxByteLength());
+            }
+            byte[] bytes = new byte[byteLength];
+            try {
+                InteropLibrary.getUncached().readBuffer(arrayBuffer, 0, bytes, 0, byteLength);
+            } catch (InteropException ex) {
+                NativeAccess.throwDataCloneError(delegate, Strings.concat(JSRuntime.safeToString(arrayBuffer), COULD_NOT_BE_CLONED));
+                return;
+            }
+            writeBytes(bytes, byteLength);
         } else {
             writeTag(SerializationTag.ARRAY_BUFFER_TRANSFER);
             writeVarInt(Integer.toUnsignedLong(id));
@@ -418,6 +440,13 @@ public class Serializer {
     }
 
     private void writeJSSharedArrayBuffer(JSArrayBufferObject sharedArrayBuffer) {
+        Object memoryObject = JSObjectUtil.getHiddenProperty(sharedArrayBuffer, JSWebAssemblyMemoryObject.MEMORY_OBJECT_ID);
+        if (!sharedArrayBuffer.isFixedLength() && memoryObject instanceof JSWebAssemblyMemoryObject webAssemblyMemory && access.getCurrentMessagePortData() != null) {
+            writeTag(SerializationTag.WASM_MEMORY_BUFFER);
+            writeSharedJavaObjectReference(webAssemblyMemory.getWASMMemory());
+            writeSharedJavaObjectReference(JSArrayBufferObject.getWaiterList(sharedArrayBuffer));
+            return;
+        }
         int id = NativeAccess.getSharedArrayBufferId(delegate, sharedArrayBuffer);
         writeTag(SerializationTag.SHARED_ARRAY_BUFFER);
         writeVarInt(id);
@@ -432,16 +461,10 @@ public class Serializer {
     private void writeJSWebAssemblyMemory(JSWebAssemblyMemoryObject wasmMemory) {
         if (wasmMemory.isShared()) {
             writeTag(SerializationTag.WASM_MEMORY_TRANSFER);
-
-            // Write wasm memory
-            writeSharedJavaObject(wasmMemory.getWASMMemory());
-
-            // Write waiter list of the underlying SharedArrayBuffer
             JSRealm realm = JSRealm.get(null);
             JSContext context = realm.getContext();
-            JSArrayBufferObject arrayBuffer = wasmMemory.getBufferObject(context, realm);
-            JSAgentWaiterList waiterList = JSArrayBufferObject.getWaiterList(arrayBuffer);
-            writeSharedJavaObject(waiterList);
+            writeSharedJavaObjectReference(wasmMemory.getWASMMemory());
+            writeValue(wasmMemory.getBufferObject(context, realm));
         } else {
             // non-shared WebAssembly.Memory cannot be cloned
             NativeAccess.throwDataCloneError(delegate, Strings.concat(JSRuntime.safeToString(wasmMemory), COULD_NOT_BE_CLONED));
@@ -539,7 +562,7 @@ public class Serializer {
             TypedArray typedArray = view.getArrayType();
             int length = typedArray.lengthInt(view) * typedArray.bytesPerElement();
             ArrayBufferViewTag tag = ArrayBufferViewTag.fromFactory(typedArray.getFactory());
-            writeJSArrayBufferView(tag, offset, length);
+            writeJSArrayBufferView(tag, offset, length, view);
         }
     }
 
@@ -550,15 +573,21 @@ public class Serializer {
         } else {
             int offset = view.getByteOffset();
             int length = view.getByteLength();
-            writeJSArrayBufferView(ArrayBufferViewTag.DATA_VIEW, offset, length);
+            writeJSArrayBufferView(ArrayBufferViewTag.DATA_VIEW, offset, length, view);
         }
     }
 
-    private void writeJSArrayBufferView(ArrayBufferViewTag tag, int offset, int length) {
+    private void writeJSArrayBufferView(ArrayBufferViewTag tag, int offset, int length, JSArrayBufferViewBase view) {
         writeTag(SerializationTag.ARRAY_BUFFER_VIEW);
         writeTag(tag);
         writeVarInt(offset);
         writeVarInt(length);
+        int flags = view.hasAutoLength() ? ARRAY_BUFFER_VIEW_FLAG_IS_LENGTH_TRACKING : 0;
+        JSArrayBufferObject arrayBuffer = view.getArrayBuffer();
+        if (!arrayBuffer.isFixedLength() && !JSSharedArrayBuffer.isJSSharedArrayBuffer(arrayBuffer)) {
+            flags |= ARRAY_BUFFER_VIEW_FLAG_IS_BACKED_BY_RAB;
+        }
+        writeVarInt(flags);
     }
 
     private void writeBigIntContents(BigInt value) {
@@ -645,10 +674,14 @@ public class Serializer {
     }
 
     private void writeSharedJavaObject(Object value) {
+        assignId(value);
+        writeSharedJavaObjectReference(value);
+    }
+
+    private void writeSharedJavaObjectReference(Object value) {
         JavaMessagePortData messagePort = access.getCurrentMessagePortData();
         writeTag(SerializationTag.SHARED_JAVA_OBJECT);
         writeVarInt(messagePort.getMessagePortDataPointer());
-        assignId(value);
         messagePort.enqueueJavaRef(value);
     }
 

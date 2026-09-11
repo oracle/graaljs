@@ -3617,7 +3617,21 @@ namespace v8 {
     }
 
     std::unique_ptr<BackingStore> SharedArrayBuffer::NewBackingStore(void* data, size_t byte_length, v8::BackingStore::DeleterCallback deleter, void* deleter_data) {
-        return ArrayBuffer::NewBackingStore(data, byte_length, deleter, deleter_data);
+        GraalIsolate* graal_isolate = CurrentIsolate();
+        jobject java_store;
+        if (data == nullptr) {
+            java_store = nullptr;
+        } else {
+            JNIEnv* env = graal_isolate->GetJNIEnv();
+            jobject java_buffer = env->NewDirectByteBuffer(data, byte_length);
+            java_store = env->NewGlobalRef(java_buffer);
+            env->DeleteLocalRef(java_buffer);
+
+            JNI_CALL_VOID(graal_isolate, GraalAccessMethod::backing_store_register_callback, java_store, (jlong) data, (jint) byte_length, (jlong) deleter_data, (jlong) deleter);
+        }
+
+        return std::unique_ptr<v8::BackingStore>(reinterpret_cast<v8::BackingStore*>(
+                        new GraalBackingStore(java_store, data, byte_length, byte_length, true, false, nullptr)));
     }
 
     std::shared_ptr<BackingStore> ArrayBuffer::GetBackingStore() {
@@ -3637,7 +3651,11 @@ namespace v8 {
 
     BackingStore::~BackingStore() {
         const GraalBackingStore* graal_store = reinterpret_cast<const GraalBackingStore*> (this);
+        jobject java_shared_byte_length = graal_store->GetJavaSharedByteLength();
         jobject java_store = graal_store->GetJavaStore();
+        if (java_shared_byte_length != nullptr) {
+            CurrentIsolate()->GetJNIEnv()->DeleteGlobalRef(java_shared_byte_length);
+        }
         if (java_store != nullptr) {
             CurrentIsolate()->GetJNIEnv()->DeleteGlobalRef(java_store);
         }
@@ -3646,9 +3664,13 @@ namespace v8 {
     Local<SharedArrayBuffer> SharedArrayBuffer::New(Isolate* isolate, std::shared_ptr<BackingStore> backing_store) {
         GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
         jobject java_context = graal_isolate->CurrentJavaContext();
-        jobject java_store = reinterpret_cast<GraalBackingStore*> (backing_store.get())->GetJavaStore();
+        GraalBackingStore* graal_store = reinterpret_cast<GraalBackingStore*> (backing_store.get());
+        jobject java_store = graal_store->GetJavaStore();
+        jobject java_shared_byte_length = graal_store->GetJavaSharedByteLength();
         void* data = backing_store->Data();
-        JNI_CALL(jobject, java_array_buffer, isolate, GraalAccessMethod::shared_array_buffer_new, Object, java_context, java_store, (jlong) data);
+        jlong max_byte_length = backing_store->IsResizableByUserJavaScript() ? (jlong) backing_store->MaxByteLength() : -1;
+        JNI_CALL(jobject, java_array_buffer, isolate, GraalAccessMethod::shared_array_buffer_new, Object, java_context, java_store, java_shared_byte_length,
+                        (jlong) data, (jlong) backing_store->ByteLength(), max_byte_length);
         GraalArrayBuffer* graal_object = GraalArrayBuffer::Allocate(graal_isolate, java_array_buffer, true, true);
         SharedArrayBuffer* v8_object = reinterpret_cast<SharedArrayBuffer*> (graal_object);
         return Local<SharedArrayBuffer>::New(isolate, v8_object);
@@ -3662,15 +3684,27 @@ namespace v8 {
         JNIEnv* env = graal_isolate->GetJNIEnv();
         void* pointer = nullptr;
         size_t byte_length = 0;
+        size_t max_byte_length = 0;
+        bool resizable = false;
         jobject java_store = NULL;
+        jobject java_shared_byte_length = NULL;
         if (java_buffer != nullptr) {
             pointer = env->GetDirectBufferAddress(java_buffer);
             JNI_CALL_VOID(graal_isolate, GraalAccessMethod::shared_array_buffer_externalize, java_array_buffer, (jlong) pointer);
-            byte_length = env->GetDirectBufferCapacity(java_buffer);
+            byte_length = ByteLength();
+            JNI_CALL(jlong, java_max_byte_length, graal_isolate, GraalAccessMethod::array_buffer_max_byte_length, Long, java_array_buffer);
+            resizable = java_max_byte_length >= 0;
+            max_byte_length = resizable ? (size_t) java_max_byte_length : byte_length;
+            if (resizable) {
+                JNI_CALL(jobject, local_java_shared_byte_length, graal_isolate, GraalAccessMethod::shared_array_buffer_byte_length_object, Object, java_array_buffer);
+                java_shared_byte_length = env->NewGlobalRef(local_java_shared_byte_length);
+                env->DeleteLocalRef(local_java_shared_byte_length);
+            }
             java_store = env->NewGlobalRef(java_buffer);
             env->DeleteLocalRef(java_buffer);
         }
-        return std::shared_ptr<v8::BackingStore>(reinterpret_cast<v8::BackingStore*>(new GraalBackingStore(java_store, pointer, byte_length)));
+        return std::shared_ptr<v8::BackingStore>(reinterpret_cast<v8::BackingStore*>(
+                        new GraalBackingStore(java_store, pointer, byte_length, max_byte_length, true, resizable, java_shared_byte_length)));
     }
 
     CompiledWasmModule WasmModuleObject::GetCompiledModule() {
@@ -4172,7 +4206,8 @@ namespace v8 {
         void* data = env->GetDirectBufferAddress(java_buffer);
         jobject java_store = env->NewGlobalRef(java_buffer);
         env->DeleteLocalRef(java_buffer);
-        std::unique_ptr<BackingStore> backing_store = std::unique_ptr<BackingStore>(reinterpret_cast<BackingStore*>(new GraalBackingStore(java_store, data, byte_length)));
+        std::unique_ptr<BackingStore> backing_store = std::unique_ptr<BackingStore>(reinterpret_cast<BackingStore*>(
+                        new GraalBackingStore(java_store, data, byte_length, byte_length, true, false, nullptr)));
         return New(isolate, std::move(backing_store));
     }
 
@@ -4220,8 +4255,15 @@ namespace v8 {
     }
 
     size_t BackingStore::MaxByteLength() const {
-        TRACE
-        return this->ByteLength();
+        return reinterpret_cast<const GraalBackingStore*> (this)->MaxByteLength();
+    }
+
+    bool BackingStore::IsShared() const {
+        return reinterpret_cast<const GraalBackingStore*> (this)->IsShared();
+    }
+
+    bool BackingStore::IsResizableByUserJavaScript() const {
+        return reinterpret_cast<const GraalBackingStore*> (this)->IsResizableByUserJavaScript();
     }
 
     ModuleImportPhase ModuleRequest::GetPhase() const {

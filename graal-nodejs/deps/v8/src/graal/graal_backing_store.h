@@ -48,14 +48,27 @@
 
 class GraalBackingStore : public v8::internal::BackingStoreBase {
     public:
-        inline GraalBackingStore(jobject java_store, void* data, size_t byte_length) : java_store_(java_store), data_(data), byte_length_(byte_length) {}
-        inline GraalBackingStore() : java_store_(nullptr), data_(nullptr), byte_length_(0) {}
+        inline GraalBackingStore(jobject java_store, void* data, size_t byte_length) :
+                GraalBackingStore(java_store, data, byte_length, byte_length, false, false, nullptr) {}
+        inline GraalBackingStore(jobject java_store, void* data, size_t byte_length, size_t max_byte_length, bool shared, bool resizable, jobject java_shared_byte_length) :
+                java_store_(java_store), data_(data), byte_length_(byte_length), max_byte_length_(max_byte_length), shared_(shared), resizable_(resizable), java_shared_byte_length_(java_shared_byte_length) {}
+        inline GraalBackingStore() : GraalBackingStore(nullptr, nullptr, 0) {}
 
         inline jobject GetJavaStore() const {
             return java_store_;
         }
-        inline size_t ByteLength() const {
-            return byte_length_;
+        inline jobject GetJavaSharedByteLength() const {
+            return java_shared_byte_length_;
+        }
+        size_t ByteLength() const;
+        inline size_t MaxByteLength() const {
+            return max_byte_length_;
+        }
+        inline bool IsShared() const {
+            return shared_;
+        }
+        inline bool IsResizableByUserJavaScript() const {
+            return resizable_;
         }
         inline void* Data() const {
             return data_;
@@ -66,6 +79,11 @@ class GraalBackingStore : public v8::internal::BackingStoreBase {
         jobject java_store_;
         void* data_;
         size_t byte_length_;
+        size_t max_byte_length_;
+        bool shared_;
+        bool resizable_;
+        // Global JNI reference to the shared byte length of a growable SharedArrayBuffer.
+        jobject java_shared_byte_length_;
 };
 
 #endif /* GRAAL_BACKING_STORE_H_ */

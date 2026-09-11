@@ -48,6 +48,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsHashCodeNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -59,12 +61,14 @@ import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.SuppressFBWarnings;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferViewBase;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
@@ -95,6 +99,7 @@ import com.oracle.truffle.trufflenode.threading.SharedMemMessagingManager;
 /**
  * Implementation of {@code v8::(internal::)ValueDeserializer}.
  */
+@SuppressFBWarnings(value = "AT_STALE_THREAD_WRITE_OF_PRIMITIVE", justification = "Deserializer instances are confined to their owning JavaScript agent.")
 public class Deserializer {
     /** Pointer to the corresponding v8::ValueDeserializer. */
     private final long delegate;
@@ -176,7 +181,9 @@ public class Deserializer {
             case REGEXP:
                 return readJSRegExp(context, realm);
             case ARRAY_BUFFER:
-                return readJSArrayBuffer(context, realm);
+                return readJSArrayBuffer(context, realm, false);
+            case RESIZABLE_ARRAY_BUFFER:
+                return readJSArrayBuffer(context, realm, true);
             case ARRAY_BUFFER_TRANSFER:
                 return readTransferredJSArrayBuffer(context, realm);
             case SHARED_ARRAY_BUFFER:
@@ -201,6 +208,8 @@ public class Deserializer {
                 return readWasmModuleTransfer();
             case WASM_MEMORY_TRANSFER:
                 return readWasmMemoryTransfer(realm);
+            case WASM_MEMORY_BUFFER:
+                return readWasmMemoryBuffer(context, realm);
             case SHARED_JAVA_OBJECT:
                 Object hostValue = readSharedJavaObject();
                 return realm.getEnv().asGuestValue(hostValue);
@@ -342,9 +351,14 @@ public class Deserializer {
         return assignId(GraalJSAccess.regexpCreate(context, realm, pattern, flags));
     }
 
-    private JSDynamicObject readJSArrayBuffer(JSContext context, JSRealm realm) {
+    private JSDynamicObject readJSArrayBuffer(JSContext context, JSRealm realm, boolean resizable) {
         int byteLength = readVarInt();
-        JSArrayBufferObject arrayBuffer = JSArrayBuffer.createDirectArrayBuffer(context, realm, byteLength);
+        int maxByteLength = resizable ? readVarInt() : JSArrayBuffer.FIXED_LENGTH;
+        if (byteLength < 0 || (resizable && (maxByteLength < byteLength || maxByteLength < 0))) {
+            throw Errors.createError("invalid array buffer length");
+        }
+        JSArrayBufferObject arrayBuffer = resizable ? JSArrayBuffer.createDirectArrayBuffer(context, realm, realm.getArrayBufferPrototype(), byteLength, maxByteLength)
+                        : JSArrayBuffer.createDirectArrayBuffer(context, realm, byteLength);
         ByteBuffer byteBuffer = JSArrayBuffer.getDirectByteBuffer(arrayBuffer);
         for (int i = 0; i < byteLength; i++) {
             byteBuffer.put(i, buffer.get());
@@ -465,13 +479,24 @@ public class Deserializer {
         ArrayBufferViewTag tag = readArrayBufferViewTag();
         int offset = readVarInt();
         int byteLength = readVarInt();
+        int flags = version >= 14 ? readVarInt() : 0;
+        boolean isLengthTracking = (flags & Serializer.ARRAY_BUFFER_VIEW_FLAG_IS_LENGTH_TRACKING) != 0;
+        boolean isBackedByRab = (flags & Serializer.ARRAY_BUFFER_VIEW_FLAG_IS_BACKED_BY_RAB) != 0;
+        if (version >= 14) {
+            boolean isResizable = !arrayBuffer.isFixedLength();
+            boolean isShared = JSSharedArrayBuffer.isJSSharedArrayBuffer(arrayBuffer);
+            if (((isLengthTracking || isBackedByRab) && !isResizable) || (isBackedByRab && isShared) || (isResizable && !isShared && !isBackedByRab)) {
+                throw Errors.createError("Invalid ArrayBufferView flags");
+            }
+        }
         JSDynamicObject view;
         if (tag == ArrayBufferViewTag.DATA_VIEW) {
-            view = JSDataView.createDataView(context, realm, arrayBuffer, offset, byteLength);
+            int length = isLengthTracking ? JSArrayBufferViewBase.AUTO_LENGTH : byteLength;
+            view = JSDataView.createDataView(context, realm, arrayBuffer, offset, length);
         } else {
             TypedArrayFactory factory = tag.getFactory();
-            TypedArray array = factory.createArrayType(TypedArray.BUFFER_TYPE_DIRECT, offset != 0, true);
-            int length = byteLength / factory.getBytesPerElement();
+            TypedArray array = factory.createArrayType(TypedArray.BUFFER_TYPE_DIRECT, offset != 0, !isLengthTracking);
+            int length = isLengthTracking ? JSArrayBufferViewBase.AUTO_LENGTH : byteLength / factory.getBytesPerElement();
             view = JSArrayBufferView.createArrayBufferView(context, realm, arrayBuffer, factory, array, offset, length);
         }
         return assignId(view);
@@ -571,16 +596,42 @@ public class Deserializer {
         assert sharedJavaObjectTag == SerializationTag.SHARED_JAVA_OBJECT;
         Object wasmMemory = readSharedJavaObject();
 
+        JSContext context = realm.getContext();
+        JSWebAssemblyMemoryObject webAssemblyMemory = JSWebAssemblyMemory.createMaximumUnknown(context, realm, wasmMemory, true);
+        assignId(webAssemblyMemory);
+        JSArrayBufferObject arrayBuffer = (JSArrayBufferObject) readValue(realm);
+        synchronized (wasmMemory) {
+            boolean staleFixedLengthBuffer = false;
+            if (arrayBuffer.isFixedLength()) {
+                try {
+                    long currentByteLength = InteropLibrary.getUncached().getBufferSize(wasmMemory);
+                    staleFixedLengthBuffer = arrayBuffer.getByteLength() < currentByteLength;
+                } catch (InteropException ex) {
+                    throw Errors.shouldNotReachHere(ex);
+                }
+            }
+            if (!staleFixedLengthBuffer) {
+                webAssemblyMemory.setBufferObject(arrayBuffer);
+            }
+        }
+
+        return webAssemblyMemory;
+    }
+
+    private Object readWasmMemoryBuffer(JSContext context, JSRealm realm) {
+        SerializationTag sharedJavaObjectTag = readTag();
+        assert sharedJavaObjectTag == SerializationTag.SHARED_JAVA_OBJECT;
+        Object wasmMemory = readSharedJavaObject();
+
         sharedJavaObjectTag = readTag();
         assert sharedJavaObjectTag == SerializationTag.SHARED_JAVA_OBJECT;
         JSAgentWaiterList waiterList = (JSAgentWaiterList) readSharedJavaObject();
 
-        JSContext context = realm.getContext();
-        JSWebAssemblyMemoryObject webAssemblyMemory = JSWebAssemblyMemory.create(context, realm, wasmMemory, true);
-        JSArrayBufferObject arrayBuffer = webAssemblyMemory.getBufferObject(context, realm);
+        JSWebAssemblyMemoryObject webAssemblyMemory = JSWebAssemblyMemory.createMaximumUnknown(context, realm, wasmMemory, true);
+        JSArrayBufferObject arrayBuffer = webAssemblyMemory.createResizableBufferObject(context, realm);
         JSSharedArrayBuffer.setWaiterList(arrayBuffer, waiterList);
-
-        return assignId(webAssemblyMemory);
+        assignId(arrayBuffer);
+        return (peekTag() == SerializationTag.ARRAY_BUFFER_VIEW) ? readJSArrayBufferView(context, realm, arrayBuffer) : arrayBuffer;
     }
 
     public Object readSharedJavaObject() {

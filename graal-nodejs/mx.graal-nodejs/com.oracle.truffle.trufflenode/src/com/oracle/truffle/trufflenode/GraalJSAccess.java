@@ -1401,7 +1401,7 @@ public final class GraalJSAccess {
         return JSArray.arrayGetLength((JSDynamicObject) object);
     }
 
-    public Object arrayBufferNew(Object context, Object buffer) {
+    public Object arrayBufferNew(Object context, Object buffer, long byteLength, long maxByteLength) {
         ByteBuffer byteBuffer = (ByteBuffer) buffer;
         JSRealm realm = (JSRealm) context;
         JSContext jsContext = realm.getContext();
@@ -1409,7 +1409,12 @@ public final class GraalJSAccess {
         if (buffer == null) {
             arrayBuffer = JSArrayBuffer.createDirectArrayBuffer(jsContext, realm, 0);
         } else {
-            arrayBuffer = JSArrayBuffer.createDirectArrayBuffer(jsContext, realm, byteBuffer);
+            if (byteLength < 0 || byteLength > byteBuffer.capacity() ||
+                            (maxByteLength != JSArrayBuffer.FIXED_LENGTH && (maxByteLength < byteLength || maxByteLength > byteBuffer.capacity()))) {
+                throw Errors.createRangeError("Invalid ArrayBuffer length");
+            }
+            arrayBuffer = JSArrayBuffer.createDirectArrayBuffer(jsContext, realm, byteBuffer, (int) byteLength,
+                            maxByteLength);
         }
         return arrayBuffer;
     }
@@ -1427,7 +1432,12 @@ public final class GraalJSAccess {
     }
 
     public long arrayBufferByteLength(Object arrayBuffer) {
-        return ((JSArrayBufferObject) arrayBuffer).getByteLength();
+        JSArrayBufferObject buffer = (JSArrayBufferObject) arrayBuffer;
+        return JSArrayBuffer.isDetachedBuffer(buffer) ? 0 : buffer.getByteLength();
+    }
+
+    public long arrayBufferMaxByteLength(Object arrayBuffer) {
+        return ((JSArrayBufferObject) arrayBuffer).getMaxByteLength();
     }
 
     public Object arrayBufferGetContents(Object arrayBuffer) {
@@ -1565,10 +1575,20 @@ public final class GraalJSAccess {
         }
     }
 
-    public Object sharedArrayBufferNew(Object context, Object buffer, long pointer) {
+    public Object sharedArrayBufferNew(Object context, Object buffer, Object sharedByteLengthObject, long pointer, long byteLength, long maxByteLength) {
         ByteBuffer byteBuffer = (ByteBuffer) buffer;
+        if (byteLength < 0 || byteLength > byteBuffer.capacity()) {
+            throw Errors.createRangeError("Invalid SharedArrayBuffer length");
+        }
+        AtomicInteger sharedByteLength = sharedByteLengthObject == null ? new AtomicInteger((int) byteLength) : (AtomicInteger) sharedByteLengthObject;
+        int currentByteLength = sharedByteLength.get();
+        if (currentByteLength < 0 || currentByteLength > byteBuffer.capacity() ||
+                        (maxByteLength != JSArrayBuffer.FIXED_LENGTH && (maxByteLength < currentByteLength || maxByteLength > byteBuffer.capacity()))) {
+            throw Errors.createRangeError("Invalid SharedArrayBuffer length");
+        }
         JSRealm realm = (JSRealm) context;
-        JSDynamicObject sharedArrayBuffer = JSSharedArrayBuffer.createSharedArrayBuffer(realm.getContext(), realm, byteBuffer);
+        JSDynamicObject sharedArrayBuffer = JSSharedArrayBuffer.createSharedArrayBuffer(realm.getContext(), realm, byteBuffer,
+                        sharedByteLength, maxByteLength);
         updateWaiterList(sharedArrayBuffer, pointer);
         return sharedArrayBuffer;
     }
@@ -1582,7 +1602,15 @@ public final class GraalJSAccess {
     }
 
     public long sharedArrayBufferByteLength(Object sharedArrayBuffer) {
-        return JSSharedArrayBuffer.getDirectByteBuffer((JSDynamicObject) sharedArrayBuffer).capacity();
+        return ((JSArrayBufferObject) sharedArrayBuffer).getByteLength();
+    }
+
+    public long sharedArrayBufferBackingStoreByteLength(Object sharedByteLength) {
+        return ((AtomicInteger) sharedByteLength).get();
+    }
+
+    public Object sharedArrayBufferByteLengthObject(Object sharedArrayBuffer) {
+        return ((JSArrayBufferObject.Shared) sharedArrayBuffer).getByteLengthObject();
     }
 
     public int typedArrayLength(Object typedArray) {
