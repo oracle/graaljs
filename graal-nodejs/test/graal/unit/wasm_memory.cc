@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -102,6 +102,19 @@ EXPORT_TO_JS(CheckBackingStore) {
 EXPORT_TO_JS(Buffer) {
     Local<WasmMemoryObject> memory = args[0].As<WasmMemoryObject>();
     args.GetReturnValue().Set(memory->Buffer());
+}
+
+// ArrayBuffer::New and SharedArrayBuffer::New from a BackingStore
+
+EXPORT_TO_JS(CloneBackingStore) {
+    Isolate* isolate = args.GetIsolate();
+    if (args[0]->IsSharedArrayBuffer()) {
+        Local<SharedArrayBuffer> buffer = args[0].As<SharedArrayBuffer>();
+        args.GetReturnValue().Set(SharedArrayBuffer::New(isolate, buffer->GetBackingStore()));
+    } else {
+        Local<ArrayBuffer> buffer = args[0].As<ArrayBuffer>();
+        args.GetReturnValue().Set(ArrayBuffer::New(isolate, buffer->GetBackingStore()));
+    }
 }
 
 #undef SUITE

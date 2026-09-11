@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,33 @@
 
 var assert = require('assert');
 var v8 = require('v8');
+var Worker = require('worker_threads').Worker;
+
+function inspectResizableBufferInWorker(buffer, transferList) {
+    return new Promise(function(resolve, reject) {
+        var worker = new Worker(`
+            const { parentPort } = require('worker_threads');
+            parentPort.once('message', function(buffer) {
+                if (buffer.resizable) {
+                    buffer.resize(12);
+                } else {
+                    buffer.grow(12);
+                }
+                parentPort.postMessage([buffer.byteLength, buffer.maxByteLength, buffer.resizable === true, buffer.growable === true]);
+            });
+        `, { eval: true });
+        worker.once('error', function(error) {
+            worker.terminate();
+            reject(error);
+        });
+        worker.once('message', function(result) {
+            worker.terminate().then(function() {
+                resolve(result);
+            }, reject);
+        });
+        worker.postMessage(buffer, transferList);
+    });
+}
 
 var arrayBuffer = new ArrayBuffer(2);
 var typedArray = new Uint8Array(arrayBuffer);
@@ -168,6 +195,35 @@ describe('Serialization', function () {
             message: /could not be cloned/
         });
     });
+    it('should refuse to serialize a detached ArrayBuffer', function () {
+        var buffer = new ArrayBuffer(8);
+        structuredClone(buffer, { transfer: [buffer] });
+        var worker = new Worker(`
+            const { parentPort } = require('worker_threads');
+            parentPort.on('message', () => {});
+        `, { eval: true });
+        try {
+            assert.throws(function() {
+                worker.postMessage(buffer);
+            }, {
+                name: 'DataCloneError'
+            });
+        } finally {
+            worker.terminate();
+        }
+    });
+    it('should preserve resizable metadata when transferring an ArrayBuffer', async function () {
+        var buffer = new ArrayBuffer(8, { maxByteLength: 16 });
+        var result = await inspectResizableBufferInWorker(buffer, [buffer]);
+        assert.deepStrictEqual(result, [12, 16, true, false]);
+        assert.strictEqual(buffer.byteLength, 0);
+    }).timeout(20000);
+    it('should preserve growable metadata when cloning a SharedArrayBuffer', async function () {
+        var buffer = new SharedArrayBuffer(8, { maxByteLength: 16 });
+        var result = await inspectResizableBufferInWorker(buffer);
+        assert.deepStrictEqual(result, [12, 16, false, true]);
+        assert.strictEqual(buffer.byteLength, 12);
+    }).timeout(20000);
     it('should handle deserialization failures', function () {
         assert.throws(function() {
             new v8.Deserializer(new v8.Serializer().releaseBuffer()).readHeader();

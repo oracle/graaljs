@@ -125,6 +125,20 @@ if (typeof WebAssembly !== 'undefined') {
         assert.strictEqual(module.WasmMemory_Buffer(memory), memory.buffer);
       });
 
+      it('preserves the logical length when creating a buffer from a Wasm backing store', function() {
+        const memory = new WebAssembly.Memory({initial: 4, maximum: 10});
+        memory.grow(1);
+        const buffer = memory.buffer;
+        new Uint8Array(buffer)[0] = 42;
+        const clone = module.WasmMemory_CloneBackingStore(buffer);
+        assert.strictEqual(clone.byteLength, 5 * PAGE_SIZE);
+        assert.strictEqual(new Uint8Array(clone)[0], 42);
+
+        const sharedMemory = new WebAssembly.Memory({initial: 1, maximum: 4, shared: true});
+        const sharedClone = module.WasmMemory_CloneBackingStore(sharedMemory.buffer);
+        assert.strictEqual(sharedClone.byteLength, PAGE_SIZE);
+      });
+
       // Shared-memory worker tests can take more than 10s on slow CI machines.
       const WORKER_TEST_TIMEOUT = 20000;
 

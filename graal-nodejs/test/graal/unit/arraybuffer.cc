@@ -47,6 +47,10 @@ EXPORT_TO_JS(Detach) {
     args[0].As<ArrayBuffer>()->Detach();
 }
 
+EXPORT_TO_JS(ByteLength) {
+    args.GetReturnValue().Set((uint32_t) args[0].As<ArrayBuffer>()->ByteLength());
+}
+
 // ArrayBuffer::GetBackingStore
 
 EXPORT_TO_JS(GetBackingStoreDataPointerIsNull) {
@@ -63,6 +67,17 @@ EXPORT_TO_JS(GetBackingStoreSum) {
         sum += data[i];
     }
     args.GetReturnValue().Set(sum);
+}
+
+EXPORT_TO_JS(GetBackingStoreByteLengthAfterCallback) {
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+    std::shared_ptr<BackingStore> backing_store = args[0].As<SharedArrayBuffer>()->GetBackingStore();
+    Local<Function> callback = args[1].As<Function>();
+    if (callback->Call(context, context->Global(), 0, nullptr).IsEmpty()) {
+        return;
+    }
+    args.GetReturnValue().Set((uint32_t) backing_store->ByteLength());
 }
 
 #define ArrayBufferViewNewTest(view_class, bytes_per_element) \
