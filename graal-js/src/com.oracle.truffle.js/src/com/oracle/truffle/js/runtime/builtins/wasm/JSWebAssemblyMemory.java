@@ -140,19 +140,19 @@ public class JSWebAssemblyMemory extends JSNonProxy implements JSConstructorFact
     private static JSWebAssemblyMemoryObject createShared(JSContext context, JSRealm realm, JSDynamicObject proto, Object wasmMemory, long maximum) {
         synchronized (wasmMemory) {
             Object embedderData = JSWebAssembly.getEmbedderData(realm, wasmMemory);
-            EconomicMapHolder mapHolder;
-            if (embedderData instanceof EconomicMapHolder) {
-                mapHolder = (EconomicMapHolder) embedderData;
-                JSWebAssemblyMemoryObject webAssemblyMemory = Boundaries.economicMapGet(mapHolder.map, realm.getAgent());
+            SharedMemoryEmbedderData memoryEmbedderData;
+            if (embedderData instanceof SharedMemoryEmbedderData) {
+                memoryEmbedderData = (SharedMemoryEmbedderData) embedderData;
+                JSWebAssemblyMemoryObject webAssemblyMemory = Boundaries.economicMapGet(memoryEmbedderData.map, realm.getAgent());
                 if (webAssemblyMemory != null) {
                     return webAssemblyMemory;
                 }
             } else {
-                mapHolder = new EconomicMapHolder();
-                JSWebAssembly.setEmbedderData(realm, wasmMemory, mapHolder);
+                memoryEmbedderData = new SharedMemoryEmbedderData();
+                JSWebAssembly.setEmbedderData(realm, wasmMemory, memoryEmbedderData);
             }
             JSWebAssemblyMemoryObject webAssemblyMemory = createImpl(context, realm, proto, wasmMemory, true, maximum);
-            Boundaries.economicMapPut(mapHolder.map, realm.getAgent(), webAssemblyMemory);
+            Boundaries.economicMapPut(memoryEmbedderData.map, realm.getAgent(), webAssemblyMemory);
             return webAssemblyMemory;
         }
     }
@@ -162,8 +162,8 @@ public class JSWebAssemblyMemory extends JSNonProxy implements JSConstructorFact
             Object embedderData = JSWebAssembly.getEmbedderData(realm, wasmMemory);
             if (embedderData instanceof JSWebAssemblyMemoryObject webAssemblyMemory) {
                 return webAssemblyMemory;
-            } else if (embedderData instanceof EconomicMapHolder mapHolder) {
-                return Boundaries.economicMapGet(mapHolder.map, realm.getAgent());
+            } else if (embedderData instanceof SharedMemoryEmbedderData memoryEmbedderData) {
+                return Boundaries.economicMapGet(memoryEmbedderData.map, realm.getAgent());
             }
             return null;
         }
@@ -172,8 +172,8 @@ public class JSWebAssemblyMemory extends JSNonProxy implements JSConstructorFact
     static JSAgentWaiterList getSharedWaiterList(JSRealm realm, Object wasmMemory) {
         synchronized (wasmMemory) {
             Object embedderData = JSWebAssembly.getEmbedderData(realm, wasmMemory);
-            if (embedderData instanceof EconomicMapHolder mapHolder) {
-                return mapHolder.waiterList;
+            if (embedderData instanceof SharedMemoryEmbedderData memoryEmbedderData) {
+                return memoryEmbedderData.waiterList;
             }
             throw Errors.shouldNotReachHere();
         }
@@ -182,9 +182,9 @@ public class JSWebAssemblyMemory extends JSNonProxy implements JSConstructorFact
     static AtomicInteger getSharedGrowableByteLength(JSRealm realm, Object wasmMemory, int byteLength) {
         synchronized (wasmMemory) {
             Object embedderData = JSWebAssembly.getEmbedderData(realm, wasmMemory);
-            if (embedderData instanceof EconomicMapHolder mapHolder) {
-                mapHolder.growableByteLength.accumulateAndGet(byteLength, Math::max);
-                return mapHolder.growableByteLength;
+            if (embedderData instanceof SharedMemoryEmbedderData memoryEmbedderData) {
+                memoryEmbedderData.growableByteLength.accumulateAndGet(byteLength, Math::max);
+                return memoryEmbedderData.growableByteLength;
             }
             throw Errors.shouldNotReachHere();
         }
@@ -207,10 +207,10 @@ public class JSWebAssemblyMemory extends JSNonProxy implements JSConstructorFact
         return factory.trackAllocation(object);
     }
 
-    private static void refreshSharedGrowableByteLength(Object wasmMemory, EconomicMapHolder mapHolder) {
+    private static void refreshSharedGrowableByteLength(Object wasmMemory, SharedMemoryEmbedderData memoryEmbedderData) {
         try {
             int byteLength = Math.toIntExact(InteropLibrary.getUncached().getBufferSize(wasmMemory));
-            mapHolder.growableByteLength.accumulateAndGet(byteLength, Math::max);
+            memoryEmbedderData.growableByteLength.accumulateAndGet(byteLength, Math::max);
         } catch (InteropException ex) {
             throw Errors.shouldNotReachHere(ex);
         } catch (ArithmeticException ex) {
@@ -224,10 +224,10 @@ public class JSWebAssemblyMemory extends JSNonProxy implements JSConstructorFact
         Object embedderData = JSWebAssembly.getEmbedderData(realm, wasmMemory);
         if (embedderData instanceof JSWebAssemblyMemoryObject webAssemblyMemory) {
             webAssemblyMemory.refreshBufferObject(realm);
-        } else if (embedderData instanceof EconomicMapHolder mapHolder) {
+        } else if (embedderData instanceof SharedMemoryEmbedderData memoryEmbedderData) {
             synchronized (wasmMemory) {
-                refreshSharedGrowableByteLength(wasmMemory, mapHolder);
-                for (JSWebAssemblyMemoryObject webAssemblyMemory : mapHolder.map.getValues()) {
+                refreshSharedGrowableByteLength(wasmMemory, memoryEmbedderData);
+                for (JSWebAssemblyMemoryObject webAssemblyMemory : memoryEmbedderData.map.getValues()) {
                     webAssemblyMemory.refreshBufferObject(realm);
                 }
             }
@@ -235,9 +235,7 @@ public class JSWebAssemblyMemory extends JSNonProxy implements JSConstructorFact
 
     }
 
-    // EconomicMap is not an interop value => we cannot pass it to WasmMemory
-    // => we need to wrap it in TruffleObject
-    static class EconomicMapHolder implements TruffleObject {
+    static class SharedMemoryEmbedderData implements TruffleObject {
         final EconomicMap<JSAgent, JSWebAssemblyMemoryObject> map = Boundaries.economicMapCreate();
         final JSAgentWaiterList waiterList = new JSAgentWaiterList();
         final AtomicInteger growableByteLength = new AtomicInteger();
