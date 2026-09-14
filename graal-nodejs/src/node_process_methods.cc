@@ -1,5 +1,8 @@
 #include "async_wrap-inl.h"
 #include "base_object-inl.h"
+#if HAVE_OPENSSL
+#include "crypto/crypto_util.h"
+#endif  // HAVE_OPENSSL
 #include "debug_utils-inl.h"
 #include "env-inl.h"
 #include "memory_tracker-inl.h"
@@ -507,6 +510,12 @@ static void ReallyExit(const FunctionCallbackInfo<Value>& args) {
     code = static_cast<ExitCode>(code_int.FromJust());
   }
   if (env->is_main_thread()) {
+    env->set_stopping(true);
+    env->set_can_call_into_js(false);
+    env->stop_sub_worker_contexts();
+#if HAVE_OPENSSL
+    crypto::CleanupCachedRootCertificates();
+#endif  // HAVE_OPENSSL
     args.GetIsolate()->Dispose(true, static_cast<int>(code));
   } else {
     env->Exit(code);
