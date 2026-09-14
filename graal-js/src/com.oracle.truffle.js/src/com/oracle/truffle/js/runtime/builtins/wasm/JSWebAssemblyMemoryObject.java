@@ -157,11 +157,10 @@ public final class JSWebAssemblyMemoryObject extends JSNonProxyObject {
 
     public void setBufferObject(JSArrayBufferObject buffer) {
         assert shared;
-        synchronized (wasmMemory) {
-            setMemoryObject(buffer, this);
-            freezeBufferObject(buffer);
-            bufferObject = buffer;
-        }
+        assert Thread.holdsLock(wasmMemory);
+        setMemoryObject(buffer, this);
+        freezeBufferObject(buffer);
+        bufferObject = buffer;
     }
 
     public JSArrayBufferObject toFixedLengthBuffer(JSContext context, JSRealm realm) {

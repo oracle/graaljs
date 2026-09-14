@@ -170,24 +170,22 @@ public class JSWebAssemblyMemory extends JSNonProxy implements JSConstructorFact
     }
 
     static JSAgentWaiterList getSharedWaiterList(JSRealm realm, Object wasmMemory) {
-        synchronized (wasmMemory) {
-            Object embedderData = JSWebAssembly.getEmbedderData(realm, wasmMemory);
-            if (embedderData instanceof SharedMemoryEmbedderData memoryEmbedderData) {
-                return memoryEmbedderData.waiterList;
-            }
-            throw Errors.shouldNotReachHere();
+        assert Thread.holdsLock(wasmMemory);
+        Object embedderData = JSWebAssembly.getEmbedderData(realm, wasmMemory);
+        if (embedderData instanceof SharedMemoryEmbedderData memoryEmbedderData) {
+            return memoryEmbedderData.waiterList;
         }
+        throw Errors.shouldNotReachHere();
     }
 
     static AtomicInteger getSharedGrowableByteLength(JSRealm realm, Object wasmMemory, int byteLength) {
-        synchronized (wasmMemory) {
-            Object embedderData = JSWebAssembly.getEmbedderData(realm, wasmMemory);
-            if (embedderData instanceof SharedMemoryEmbedderData memoryEmbedderData) {
-                memoryEmbedderData.growableByteLength.accumulateAndGet(byteLength, Math::max);
-                return memoryEmbedderData.growableByteLength;
-            }
-            throw Errors.shouldNotReachHere();
+        assert Thread.holdsLock(wasmMemory);
+        Object embedderData = JSWebAssembly.getEmbedderData(realm, wasmMemory);
+        if (embedderData instanceof SharedMemoryEmbedderData memoryEmbedderData) {
+            memoryEmbedderData.growableByteLength.accumulateAndGet(byteLength, Math::max);
+            return memoryEmbedderData.growableByteLength;
         }
+        throw Errors.shouldNotReachHere();
     }
 
     @TruffleBoundary
