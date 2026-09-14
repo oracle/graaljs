@@ -99,6 +99,9 @@ ExitCode NodeMainInstance::Run() {
   Run(&exit_code, env.get());
 
   env.reset(); // graal-nodejs: Trigger cleanup hooks before the process is terminated by the next line
+#if HAVE_OPENSSL
+  crypto::CleanupCachedRootCertificates();
+#endif  // HAVE_OPENSSL
   isolate_->Dispose(true, static_cast<int>(exit_code));
 
   return exit_code;
