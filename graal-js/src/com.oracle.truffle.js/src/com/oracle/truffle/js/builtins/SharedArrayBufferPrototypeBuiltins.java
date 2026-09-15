@@ -42,8 +42,11 @@ package com.oracle.truffle.js.builtins;
 
 import java.nio.ByteBuffer;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltins.JSArrayBufferAbstractSliceNode;
 import com.oracle.truffle.js.builtins.SharedArrayBufferPrototypeBuiltinsFactory.ByteLengthGetterNodeGen;
@@ -51,6 +54,7 @@ import com.oracle.truffle.js.builtins.SharedArrayBufferPrototypeBuiltinsFactory.
 import com.oracle.truffle.js.builtins.SharedArrayBufferPrototypeBuiltinsFactory.JSSharedArrayBufferGrowNodeGen;
 import com.oracle.truffle.js.builtins.SharedArrayBufferPrototypeBuiltinsFactory.JSSharedArrayBufferSliceNodeGen;
 import com.oracle.truffle.js.builtins.SharedArrayBufferPrototypeBuiltinsFactory.MaxByteLengthGetterNodeGen;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToIndexNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -58,10 +62,12 @@ import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemoryObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -144,7 +150,7 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
                 throw Errors.createTypeErrorSharedArrayBufferExpected();
             }
             var newBuffer = (JSArrayBufferObject.Shared) resObj;
-            if (newBuffer.getByteBuffer() == thisObj.getByteBuffer()) {
+            if (newBuffer.hasSameDataBlock(thisObj)) {
                 errorBranch.enter(this);
                 throw Errors.createTypeError("SharedArrayBuffer subclass returned this from species constructor");
             }
@@ -211,8 +217,8 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
         }
 
         @Specialization
-        protected static int sharedArrayBuffer(JSArrayBufferObject.Shared thisObj) {
-            return thisObj.isFixedLength() ? thisObj.getByteLength() : thisObj.getMaxByteLength();
+        protected static Number sharedArrayBuffer(JSArrayBufferObject.Shared thisObj) {
+            return thisObj.isFixedLength() ? thisObj.getByteLength() : JSRuntime.longToIntOrDouble(thisObj.getMaxByteLength());
         }
 
         @Specialization(guards = "!isJSSharedArrayBuffer(thisObj)")
@@ -246,10 +252,12 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
 
         @Specialization
         protected Object sharedArrayBuffer(JSArrayBufferObject.Shared thisObj, Object newLength,
+                        @Bind Node node,
                         @Cached JSToIndexNode toIndexNode,
-                        @Cached InlinedBranchProfile errorBranch) {
+                        @Cached InlinedBranchProfile errorBranch,
+                        @Cached("createGetMemoryObjectNode()") PropertyGetNode getMemoryObjectNode) {
             if (thisObj.isFixedLength()) {
-                errorBranch.enter(this);
+                errorBranch.enter(node);
                 throw Errors.createTypeError("Growable SharedArrayBuffer expected!");
             }
             long newByteLength = toIndexNode.executeLong(newLength);
@@ -260,11 +268,22 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
                     return Undefined.instance;
                 }
                 if (newByteLength < currentByteLength || newByteLength > thisObj.getMaxByteLength()) {
-                    errorBranch.enter(this);
+                    errorBranch.enter(node);
                     throw Errors.createRangeError("invalid newByteLength");
+                }
+                // Handle shared WebAssembly memory buffers as specified by HostGrowSharedArrayBuffer.
+                Object memory = getMemoryObjectNode.getValue(thisObj);
+                if (memory instanceof JSWebAssemblyMemoryObject memoryObject) {
+                    memoryObject.resizeBuffer(getRealm(), thisObj, newByteLength);
+                    return Undefined.instance;
                 }
             } while (!thisObj.updateByteLength(currentByteLength, (int) newByteLength));
             return Undefined.instance;
+        }
+
+        @NeverDefault
+        protected final PropertyGetNode createGetMemoryObjectNode() {
+            return PropertyGetNode.createGetHidden(JSWebAssemblyMemoryObject.MEMORY_OBJECT_ID, getContext());
         }
 
         @Specialization(guards = "!isJSSharedArrayBuffer(thisObj)")

@@ -85,7 +85,7 @@ public final class JSWebAssemblyMemoryWaitCallback implements TruffleObject {
     @ExportMessage
     Object execute(Object[] arguments) {
         assert arguments.length == 5;
-        final JSWebAssemblyMemoryObject memoryObject = JSWebAssemblyMemory.create(context, realm, arguments[0], true);
+        final JSWebAssemblyMemoryObject memoryObject = JSWebAssemblyMemory.createMaximumUnknown(context, realm, arguments[0], true);
         final long address = (long) arguments[1];
         final long expected = (long) arguments[2];
         final long timeout = (long) arguments[3];

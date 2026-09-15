@@ -1053,6 +1053,7 @@
         '<(V8_ROOT)/src/graal/graal_array.cc',
         '<(V8_ROOT)/src/graal/graal_array_buffer.cc',
         '<(V8_ROOT)/src/graal/graal_array_buffer_view.cc',
+        '<(V8_ROOT)/src/graal/graal_backing_store.cc',
         '<(V8_ROOT)/src/graal/graal_big_int.cc',
         '<(V8_ROOT)/src/graal/graal_boolean.cc',
         '<(V8_ROOT)/src/graal/graal_context.cc',

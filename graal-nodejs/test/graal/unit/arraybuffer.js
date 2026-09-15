@@ -62,8 +62,10 @@ describe('ArrayBuffer', function () {
     describe('Detach', function () {
         it('should set byteLength to 0', function () {
             var buffer = new ArrayBuffer(10);
+            assert.strictEqual(module.ArrayBuffer_ByteLength(buffer), 10);
             module.ArrayBuffer_Detach(buffer);
             assert.strictEqual(buffer.byteLength, 0);
+            assert.strictEqual(module.ArrayBuffer_ByteLength(buffer), 0);
         });
         it('should set content to null', function () {
             var buffer = new ArrayBuffer(10);
@@ -109,6 +111,13 @@ describe('ArrayBuffer', function () {
             }
             var sum = module.ArrayBuffer_GetBackingStoreSum(buffer);
             assert.strictEqual(sum, 42);
+        });
+        it('should track the byte length of a growable shared buffer', function() {
+            var buffer = new SharedArrayBuffer(8, { maxByteLength: 16 });
+            var byteLength = module.ArrayBuffer_GetBackingStoreByteLengthAfterCallback(buffer, function() {
+                buffer.grow(12);
+            });
+            assert.strictEqual(byteLength, 12);
         });
         if (module.hasJavaInterop()) {
             it('should work on an interop buffer', function() {

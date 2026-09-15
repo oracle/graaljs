@@ -64,6 +64,7 @@ import com.oracle.truffle.js.builtins.GlobalBuiltins;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.helper.GCNodeGen;
 import com.oracle.truffle.js.builtins.helper.SharedMemorySync;
+import com.oracle.truffle.js.builtins.testing.TestV8BuiltinsFactory.TestV8ArrayBufferDetachForceWasmNodeGen;
 import com.oracle.truffle.js.builtins.testing.TestV8BuiltinsFactory.TestV8AtomicsNumNodeGen;
 import com.oracle.truffle.js.builtins.testing.TestV8BuiltinsFactory.TestV8ConstructDoubleNodeGen;
 import com.oracle.truffle.js.builtins.testing.TestV8BuiltinsFactory.TestV8CreateAsyncFromSyncIteratorNodeGen;
@@ -103,6 +104,8 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSAsyncFromSyncIteratorObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -112,6 +115,7 @@ import com.oracle.truffle.js.runtime.builtins.JSTestV8;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyException;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyExceptionObject;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemory;
 import com.oracle.truffle.js.runtime.builtins.wasm.WebAssemblyType;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -140,6 +144,7 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         setTimeout(1),
         stringCompare(2),
         typedArrayDetachBuffer(1),
+        arrayBufferDetachForceWasm(1),
 
         constructDouble(2),
         doubleHi(1),
@@ -197,6 +202,8 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
                 return DebugStringCompareNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
             case typedArrayDetachBuffer:
                 return DebugTypedArrayDetachBufferNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            case arrayBufferDetachForceWasm:
+                return TestV8ArrayBufferDetachForceWasmNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
 
             case constructDouble:
                 return TestV8ConstructDoubleNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
@@ -237,6 +244,25 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
                 return TestV8BuiltinsFactory.TestV8GetWasmExceptionValuesNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
+    }
+
+    public abstract static class TestV8ArrayBufferDetachForceWasmNode extends JSBuiltinNode {
+
+        public TestV8ArrayBufferDetachForceWasmNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @TruffleBoundary
+        @Specialization
+        protected static Object detachBuffer(Object obj) {
+            if (!(obj instanceof JSArrayBufferObject arrayBuffer) ||
+                            !JSArrayBuffer.isJSInteropArrayBuffer(arrayBuffer) ||
+                            !JSRuntime.identical(arrayBuffer.getDetachKey(), JSWebAssemblyMemory.WEB_ASSEMBLY_MEMORY)) {
+                throw Errors.createTypeError("Non-shared WebAssembly memory ArrayBuffer expected");
+            }
+            JSArrayBuffer.detachArrayBuffer(arrayBuffer, JSWebAssemblyMemory.WEB_ASSEMBLY_MEMORY);
+            return Undefined.instance;
+        }
     }
 
     /**

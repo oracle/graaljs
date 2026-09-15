@@ -64,6 +64,7 @@ public enum SerializationTag {
     STRING_OBJECT('s'), // kStringObject
     REGEXP('R'), // kRegExp
     ARRAY_BUFFER('B'), // kArrayBuffer
+    RESIZABLE_ARRAY_BUFFER('~'), // kResizableArrayBuffer
     SHARED_ARRAY_BUFFER('u'), // kSharedArrayBuffer
     ARRAY_BUFFER_TRANSFER('t'), // kArrayBufferTransfer
     ARRAY_BUFFER_VIEW('V'), // kArrayBufferView
@@ -83,7 +84,8 @@ public enum SerializationTag {
     OBJECT_REFERENCE('^'), // kObjectReference
     HOST_OBJECT('\\'), // kHostObject
     ERROR('r'), // kError
-    SHARED_JAVA_OBJECT('J'); // Custom, for shared interop Java objects
+    SHARED_JAVA_OBJECT('J'), // Custom, for shared interop Java objects
+    WASM_MEMORY_BUFFER('W'); // Custom, for growable shared WebAssembly memory buffers
 
     private final byte tag;
 

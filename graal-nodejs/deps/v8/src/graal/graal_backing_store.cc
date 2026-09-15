@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,37 +38,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.builtins.wasm;
 
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.objects.Undefined;
+#include "graal_backing_store.h"
 
-/**
- * Represents a callback that is invoked when the memory grow function is called inside WebAssembly.
- * This allows the JavaScript Memory representation to be reset properly.
- */
-@ExportLibrary(InteropLibrary.class)
-public final class JSWebAssemblyMemoryGrowCallback implements TruffleObject {
-    private final JSRealm realm;
-
-    public JSWebAssemblyMemoryGrowCallback(JSRealm realm) {
-        this.realm = realm;
+size_t GraalBackingStore::ByteLength() const {
+    if (java_shared_byte_length_ != nullptr) {
+        GraalIsolate* graal_isolate = CurrentIsolate();
+        JNI_CALL(jlong, byte_length, graal_isolate, GraalAccessMethod::shared_array_buffer_backing_store_byte_length, Long, java_shared_byte_length_);
+        return (size_t) byte_length;
     }
-
-    @SuppressWarnings("static-method")
-    @ExportMessage
-    boolean isExecutable() {
-        return true;
-    }
-
-    @ExportMessage
-    Object execute(Object[] arguments) {
-        assert arguments.length == 1;
-        JSWebAssemblyMemory.refreshBuffers(realm, arguments[0]);
-        return Undefined.instance;
-    }
+    return byte_length_;
 }

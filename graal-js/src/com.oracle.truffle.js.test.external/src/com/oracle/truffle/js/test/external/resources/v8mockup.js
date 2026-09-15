@@ -548,8 +548,12 @@ globalThis['%CreatePrivateSymbol'] = function(sym) {
     return TestV8.createPrivateSymbol(sym);
 };
 
-globalThis['%ArrayBufferDetach'] = globalThis['%ArrayBufferDetachForceWasm'] = function(arr) {
+globalThis['%ArrayBufferDetach'] = function(arr) {
     TestV8.typedArrayDetachBuffer(arr);
+};
+
+globalThis['%ArrayBufferDetachForceWasm'] = function(arr) {
+    TestV8.arrayBufferDetachForceWasm(arr);
 };
 
 globalThis['%GetScript'] = function(name) {

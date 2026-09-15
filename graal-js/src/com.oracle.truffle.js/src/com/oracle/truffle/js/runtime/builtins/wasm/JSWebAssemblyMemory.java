@@ -40,15 +40,21 @@
  */
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyMemoryPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.Boundaries;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSAgent;
+import com.oracle.truffle.js.runtime.JSAgentWaiterList;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
@@ -63,6 +69,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 public class JSWebAssemblyMemory extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
+    public static final int NO_MAXIMUM = -1;
     public static final int MAX_MEMORY_SIZE = 65536;
     public static final TruffleString CLASS_NAME = Strings.constant("Memory");
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("Memory.prototype");
@@ -104,71 +111,132 @@ public class JSWebAssemblyMemory extends JSNonProxy implements JSConstructorFact
         return INSTANCE.createConstructorAndPrototype(realm);
     }
 
-    public static JSWebAssemblyMemoryObject create(JSContext context, JSRealm realm, Object wasmMemory, boolean shared) {
-        return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm), wasmMemory, shared);
+    public static JSWebAssemblyMemoryObject createMaximumUnknown(JSContext context, JSRealm realm, Object wasmMemory, boolean shared) {
+        JSWebAssemblyMemoryObject webAssemblyMemory = getCached(realm, wasmMemory);
+        if (webAssemblyMemory != null) {
+            return webAssemblyMemory;
+        }
+        return create(context, realm, wasmMemory, shared, getMaximum(realm, wasmMemory));
     }
 
-    public static JSWebAssemblyMemoryObject create(JSContext context, JSRealm realm, JSDynamicObject proto, Object wasmMemory, boolean shared) {
+    public static JSWebAssemblyMemoryObject create(JSContext context, JSRealm realm, Object wasmMemory, boolean shared, long maximum) {
+        return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm), wasmMemory, shared, maximum);
+    }
+
+    public static JSWebAssemblyMemoryObject create(JSContext context, JSRealm realm, JSDynamicObject proto, Object wasmMemory, boolean shared, long maximum) {
         if (shared) {
-            return createShared(context, realm, proto, wasmMemory);
+            return createShared(context, realm, proto, wasmMemory, maximum);
         } else {
             Object embedderData = JSWebAssembly.getEmbedderData(realm, wasmMemory);
             if (embedderData instanceof JSWebAssemblyMemoryObject webAssemblyMemory) {
                 return webAssemblyMemory;
             }
-            JSWebAssemblyMemoryObject webAssemblyMemory = createImpl(context, realm, proto, wasmMemory, false);
+            JSWebAssemblyMemoryObject webAssemblyMemory = createImpl(context, realm, proto, wasmMemory, false, maximum);
             JSWebAssembly.setEmbedderData(realm, wasmMemory, webAssemblyMemory);
             return webAssemblyMemory;
         }
     }
 
-    private static JSWebAssemblyMemoryObject createShared(JSContext context, JSRealm realm, JSDynamicObject proto, Object wasmMemory) {
+    private static JSWebAssemblyMemoryObject createShared(JSContext context, JSRealm realm, JSDynamicObject proto, Object wasmMemory, long maximum) {
         synchronized (wasmMemory) {
             Object embedderData = JSWebAssembly.getEmbedderData(realm, wasmMemory);
-            EconomicMapHolder mapHolder;
-            if (embedderData instanceof EconomicMapHolder) {
-                mapHolder = (EconomicMapHolder) embedderData;
-                JSWebAssemblyMemoryObject webAssemblyMemory = Boundaries.economicMapGet(mapHolder.map, realm.getAgent());
+            SharedMemoryEmbedderData memoryEmbedderData;
+            if (embedderData instanceof SharedMemoryEmbedderData) {
+                memoryEmbedderData = (SharedMemoryEmbedderData) embedderData;
+                JSWebAssemblyMemoryObject webAssemblyMemory = Boundaries.economicMapGet(memoryEmbedderData.map, realm.getAgent());
                 if (webAssemblyMemory != null) {
                     return webAssemblyMemory;
                 }
             } else {
-                mapHolder = new EconomicMapHolder();
-                JSWebAssembly.setEmbedderData(realm, wasmMemory, mapHolder);
+                memoryEmbedderData = new SharedMemoryEmbedderData();
+                JSWebAssembly.setEmbedderData(realm, wasmMemory, memoryEmbedderData);
             }
-            JSWebAssemblyMemoryObject webAssemblyMemory = createImpl(context, realm, proto, wasmMemory, true);
-            Boundaries.economicMapPut(mapHolder.map, realm.getAgent(), webAssemblyMemory);
+            JSWebAssemblyMemoryObject webAssemblyMemory = createImpl(context, realm, proto, wasmMemory, true, maximum);
+            Boundaries.economicMapPut(memoryEmbedderData.map, realm.getAgent(), webAssemblyMemory);
             return webAssemblyMemory;
         }
     }
 
-    private static JSWebAssemblyMemoryObject createImpl(JSContext context, JSRealm realm, JSDynamicObject proto, Object wasmMemory, boolean shared) {
+    private static JSWebAssemblyMemoryObject getCached(JSRealm realm, Object wasmMemory) {
+        synchronized (wasmMemory) {
+            Object embedderData = JSWebAssembly.getEmbedderData(realm, wasmMemory);
+            if (embedderData instanceof JSWebAssemblyMemoryObject webAssemblyMemory) {
+                return webAssemblyMemory;
+            } else if (embedderData instanceof SharedMemoryEmbedderData memoryEmbedderData) {
+                return Boundaries.economicMapGet(memoryEmbedderData.map, realm.getAgent());
+            }
+            return null;
+        }
+    }
+
+    static JSAgentWaiterList getSharedWaiterList(JSRealm realm, Object wasmMemory) {
+        assert Thread.holdsLock(wasmMemory);
+        Object embedderData = JSWebAssembly.getEmbedderData(realm, wasmMemory);
+        if (embedderData instanceof SharedMemoryEmbedderData memoryEmbedderData) {
+            return memoryEmbedderData.waiterList;
+        }
+        throw Errors.shouldNotReachHere();
+    }
+
+    static AtomicInteger getSharedGrowableByteLength(JSRealm realm, Object wasmMemory, int byteLength) {
+        assert Thread.holdsLock(wasmMemory);
+        Object embedderData = JSWebAssembly.getEmbedderData(realm, wasmMemory);
+        if (embedderData instanceof SharedMemoryEmbedderData memoryEmbedderData) {
+            memoryEmbedderData.growableByteLength.accumulateAndGet(byteLength, Math::max);
+            return memoryEmbedderData.growableByteLength;
+        }
+        throw Errors.shouldNotReachHere();
+    }
+
+    @TruffleBoundary
+    private static long getMaximum(JSRealm realm, Object wasmMemory) {
+        InteropLibrary interop = InteropLibrary.getUncached();
+        try {
+            return interop.asLong(interop.execute(realm.getWASMMemMax(), wasmMemory));
+        } catch (InteropException ex) {
+            throw Errors.shouldNotReachHere(ex);
+        }
+    }
+
+    private static JSWebAssemblyMemoryObject createImpl(JSContext context, JSRealm realm, JSDynamicObject proto, Object wasmMemory, boolean shared, long maximum) {
         JSObjectFactory factory = context.getWebAssemblyMemoryFactory();
         var shape = factory.getShape(realm, proto);
-        var object = factory.initProto(new JSWebAssemblyMemoryObject(shape, proto, wasmMemory, shared), realm, proto);
+        var object = factory.initProto(new JSWebAssemblyMemoryObject(shape, proto, wasmMemory, shared, maximum), realm, proto);
         return factory.trackAllocation(object);
+    }
+
+    private static void refreshSharedGrowableByteLength(Object wasmMemory, SharedMemoryEmbedderData memoryEmbedderData) {
+        try {
+            int byteLength = Math.toIntExact(InteropLibrary.getUncached().getBufferSize(wasmMemory));
+            memoryEmbedderData.growableByteLength.accumulateAndGet(byteLength, Math::max);
+        } catch (InteropException ex) {
+            throw Errors.shouldNotReachHere(ex);
+        } catch (ArithmeticException ex) {
+            throw Errors.createRangeErrorInvalidBufferSize();
+        }
     }
 
     // Invoked when the memory is resized
     @TruffleBoundary
-    public static void resetBuffers(JSRealm realm, Object wasmMemory) {
+    public static void refreshBuffers(JSRealm realm, Object wasmMemory) {
         Object embedderData = JSWebAssembly.getEmbedderData(realm, wasmMemory);
         if (embedderData instanceof JSWebAssemblyMemoryObject webAssemblyMemory) {
-            webAssemblyMemory.resetBufferObject();
-        } else if (embedderData instanceof EconomicMapHolder mapHolder) {
+            webAssemblyMemory.refreshBufferObject(realm);
+        } else if (embedderData instanceof SharedMemoryEmbedderData memoryEmbedderData) {
             synchronized (wasmMemory) {
-                for (JSWebAssemblyMemoryObject webAssemblyMemory : mapHolder.map.getValues()) {
-                    webAssemblyMemory.resetBufferObject();
+                refreshSharedGrowableByteLength(wasmMemory, memoryEmbedderData);
+                for (JSWebAssemblyMemoryObject webAssemblyMemory : memoryEmbedderData.map.getValues()) {
+                    webAssemblyMemory.refreshBufferObject(realm);
                 }
             }
         }
 
     }
 
-    // EconomicMap is not an interop value => we cannot pass it to WasmMemory
-    // => we need to wrap it in TruffleObject
-    static class EconomicMapHolder implements TruffleObject {
+    static class SharedMemoryEmbedderData implements TruffleObject {
         final EconomicMap<JSAgent, JSWebAssemblyMemoryObject> map = Boundaries.economicMapCreate();
+        final JSAgentWaiterList waiterList = new JSAgentWaiterList();
+        final AtomicInteger growableByteLength = new AtomicInteger();
     }
 
 }
