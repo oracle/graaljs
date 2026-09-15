@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,6 @@ package com.oracle.truffle.js.parser.env;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
@@ -86,14 +85,12 @@ public final class FunctionEnvironment extends Environment {
     private boolean needsParentFrame;
     private boolean frozen;
 
-    private int breakNodeCount;
-    private int continueNodeCount;
     private boolean hasReturn;
     private boolean hasYield;
     private boolean hasAwait;
 
     private boolean hasMappedParameters;
-    private List<BreakTarget> jumpTargetStack;
+    private List<JumpTargetCloseable<? extends BreakTarget>> jumpTargetStack;
     private boolean directArgumentsAccess;
 
     private final boolean isGlobal;
@@ -215,63 +212,67 @@ public final class FunctionEnvironment extends Environment {
         return getFunctionFrameDescriptor().findFrameSlot(name);
     }
 
-    private <T extends BreakTarget> T pushJumpTarget(T target) {
+    private <T extends BreakTarget> JumpTargetCloseable<T> pushJumpTarget(T target) {
         if (jumpTargetStack == null) {
             jumpTargetStack = new ArrayList<>(4);
         }
-        jumpTargetStack.add(target);
-        return target;
+        JumpTargetCloseable<T> jumpTarget = new JumpTargetCloseable<>(target);
+        jumpTargetStack.add(jumpTarget);
+        return jumpTarget;
     }
 
-    private void popJumpTarget(BreakTarget target) {
+    private void popJumpTarget(JumpTargetCloseable<?> target) {
         assert jumpTargetStack != null && jumpTargetStack.get(jumpTargetStack.size() - 1) == target;
         jumpTargetStack.remove(jumpTargetStack.size() - 1);
     }
 
     public JumpTargetCloseable<ContinueTarget> pushContinueTarget(String label) {
-        ContinueTarget target = ContinueTarget.forLoop(label, -1);
-        pushJumpTarget(target);
-        return new JumpTargetCloseable<>(target);
+        return pushJumpTarget(ContinueTarget.forLoop(label, -1));
     }
 
     public JumpTargetCloseable<BreakTarget> pushBreakTarget(String label) {
-        BreakTarget target = label == null ? BreakTarget.forSwitch() : BreakTarget.forLabel(label, -1);
-        pushJumpTarget(target);
-        return new JumpTargetCloseable<>(target);
+        return pushJumpTarget(label == null ? BreakTarget.forSwitch() : BreakTarget.forLabel(label, -1));
     }
 
     public BreakTarget findBreakTarget(Object label) {
-        breakNodeCount++;
-        return findJumpTarget(label, BreakTarget.class, true);
+        JumpTargetCloseable<? extends BreakTarget> target = findJumpTarget(label, BreakTarget.class, true);
+        target.hasBreak = true;
+        return target.getTarget();
     }
 
     public ContinueTarget findContinueTarget(Object label) {
-        continueNodeCount++;
-        return findJumpTarget(label, ContinueTarget.class, false);
+        JumpTargetCloseable<? extends ContinueTarget> target = findJumpTarget(label, ContinueTarget.class, false);
+        if (label == null || target == findJumpTarget(null, ContinueTarget.class, false)) {
+            target.hasDirectContinue = true;
+            return ContinueTarget.forUnlabeledLoop();
+        }
+        target.hasLabelContinue = true;
+        return target.getTarget();
     }
 
-    private <T extends BreakTarget> T findJumpTarget(Object label, Class<T> targetClass, boolean direct) {
-        T applicableTarget = null;
-        for (ListIterator<BreakTarget> iterator = jumpTargetStack.listIterator(jumpTargetStack.size()); iterator.hasPrevious();) {
-            BreakTarget target = iterator.previous();
+    private <T extends BreakTarget> JumpTargetCloseable<? extends T> findJumpTarget(Object label, Class<T> targetClass, boolean direct) {
+        JumpTargetCloseable<? extends T> applicableTarget = null;
+        for (var iterator = jumpTargetStack.listIterator(jumpTargetStack.size()); iterator.hasPrevious();) {
+            JumpTargetCloseable<? extends BreakTarget> jumpTarget = iterator.previous();
+            BreakTarget target = jumpTarget.getTarget();
             if (direct && label == null) {
                 // break without a label is consumed by a switch or an iteration statement,
                 // not by other labelled statements
                 if ((BreakTarget.forSwitch() == target) || (target instanceof ContinueTarget)) {
-                    return targetClass.cast(target);
+                    return castJumpTarget(jumpTarget, targetClass);
                 }
             } else if (direct || label == null) {
                 // ignore label or label directly on target
                 if (label == null || label.equals(target.getLabel())) {
                     if (targetClass.isInstance(target)) {
-                        return targetClass.cast(target);
+                        return castJumpTarget(jumpTarget, targetClass);
                     }
                 }
             } else {
                 assert !direct;
                 // label is indirectly associated with last applicable target
                 if (targetClass.isInstance(target)) {
-                    applicableTarget = targetClass.cast(target);
+                    applicableTarget = castJumpTarget(jumpTarget, targetClass);
                 }
                 if (label.equals(target.getLabel())) {
                     assert applicableTarget != null : "Illegal or duplicate label"; // SyntaxError
@@ -280,6 +281,12 @@ public final class FunctionEnvironment extends Environment {
             }
         }
         throw new NoSuchElementException("jump target not found");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T extends BreakTarget> JumpTargetCloseable<? extends T> castJumpTarget(JumpTargetCloseable<?> jumpTarget, Class<T> targetClass) {
+        targetClass.cast(jumpTarget.getTarget());
+        return (JumpTargetCloseable<? extends T>) jumpTarget;
     }
 
     public boolean hasReturn() {
@@ -452,8 +459,9 @@ public final class FunctionEnvironment extends Environment {
     public class JumpTargetCloseable<T extends BreakTarget> implements AutoCloseable {
 
         private final T target;
-        private final int prevBreakCount = breakNodeCount;
-        private final int prevContinueCount = continueNodeCount;
+        private boolean hasBreak;
+        private boolean hasDirectContinue;
+        private boolean hasLabelContinue;
 
         protected JumpTargetCloseable(T target) {
             this.target = target;
@@ -465,31 +473,21 @@ public final class FunctionEnvironment extends Environment {
 
         @Override
         public void close() {
-            popJumpTarget(target);
-        }
-
-        private boolean hasBreak() {
-            return breakNodeCount != prevBreakCount;
-        }
-
-        private boolean hasContinue() {
-            return continueNodeCount != prevContinueCount;
+            popJumpTarget(this);
         }
 
         public JavaScriptNode wrapContinueTargetNode(JavaScriptNode child) {
-            boolean hasContinue = hasContinue();
-            return hasContinue ? factory.createContinueTarget(child, (ContinueTarget) target) : child;
+            JavaScriptNode result = hasDirectContinue ? factory.createDirectContinueTarget(child) : child;
+            return hasLabelContinue ? factory.createContinueTarget(result, (ContinueTarget) target) : result;
         }
 
         public JavaScriptNode wrapBreakTargetNode(JavaScriptNode child) {
             assert target.getLabel() == null;
-            boolean hasBreak = hasBreak();
             return hasBreak ? factory.createDirectBreakTarget(child) : child;
         }
 
         public JavaScriptNode wrapLabelBreakTargetNode(JavaScriptNode child) {
             assert target.getLabel() != null;
-            boolean hasBreak = hasBreak();
             return hasBreak ? factory.createLabel(child, target) : child;
         }
     }
