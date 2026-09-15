@@ -107,14 +107,27 @@ assertThrows(() => WebAssembly.Memory.prototype.toResizableBuffer.call({}), Type
         return new WebAssembly.Instance(module).exports.memory;
     }
 
+    /*
+     * (module
+     *   (memory (export "memory") 1))
+     */
     const noMaximum = exportedMemory([0x05, 0x03, 0x01, 0x00, 0x01]);
     assertThrows(() => noMaximum.toResizableBuffer(), TypeError);
 
+    /*
+     * (module
+     *   (memory (export "memory") 1 65536))
+     */
     const maximum65536 = exportedMemory([0x05, 0x06, 0x01, 0x01, 0x01, 0x80, 0x80, 0x04]);
     assertSame(4294967296, maximum65536.toResizableBuffer().maxByteLength);
 })();
 
 (function testReexportedMemoryUsesOriginalMaximum() {
+    /*
+     * (module
+     *   (import "m" "memory" (memory 1 5))
+     *   (export "memory" (memory 0)))
+     */
     const bytes = new Uint8Array([
         0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
         0x02, 0x0e, 0x01, 0x01, 0x6d, 0x06, 0x6d, 0x65, 0x6d, 0x6f, 0x72, 0x79, 0x02, 0x01, 0x01, 0x05,
@@ -298,6 +311,16 @@ assertThrows(() => WebAssembly.Memory.prototype.toResizableBuffer.call({}), Type
 })();
 
 (function testAtomicsCallbackBeforeMemoryExport() {
+    /*
+     * (module
+     *   (memory (export "memory") 1 4 shared)
+     *   (func $start
+     *     i32.const 0
+     *     i32.const 0
+     *     memory.atomic.notify
+     *     drop)
+     *   (start $start))
+     */
     const bytes = new Uint8Array([
         0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
         0x01, 0x04, 0x01, 0x60, 0x00, 0x00,
