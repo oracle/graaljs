@@ -663,24 +663,22 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Specialization
         protected final Object arrayBufferHeap(JSArrayBufferObject.Heap thisObj, Object newLength,
                         @Cached @Shared JSToIndexNode toIndexNode,
-                        @Cached @Shared InlinedBranchProfile errorBranch,
-                        @Cached("createGetMemoryObjectNode()") @Shared PropertyGetNode getMemoryObjectNode) {
-            return arrayBuffer(thisObj, newLength, toIndexNode, errorBranch, getMemoryObjectNode);
+                        @Cached @Shared InlinedBranchProfile errorBranch) {
+            return arrayBuffer(thisObj, newLength, toIndexNode, errorBranch, null);
         }
 
         @Specialization
         protected final Object arrayBufferDirect(JSArrayBufferObject.Direct thisObj, Object newLength,
                         @Cached @Shared JSToIndexNode toIndexNode,
-                        @Cached @Shared InlinedBranchProfile errorBranch,
-                        @Cached("createGetMemoryObjectNode()") @Shared PropertyGetNode getMemoryObjectNode) {
-            return arrayBuffer(thisObj, newLength, toIndexNode, errorBranch, getMemoryObjectNode);
+                        @Cached @Shared InlinedBranchProfile errorBranch) {
+            return arrayBuffer(thisObj, newLength, toIndexNode, errorBranch, null);
         }
 
         @Specialization
         protected final Object arrayBufferInterop(JSArrayBufferObject.Interop thisObj, Object newLength,
                         @Cached @Shared JSToIndexNode toIndexNode,
                         @Cached @Shared InlinedBranchProfile errorBranch,
-                        @Cached("createGetMemoryObjectNode()") @Shared PropertyGetNode getMemoryObjectNode) {
+                        @Cached("createGetMemoryObjectNode()") PropertyGetNode getMemoryObjectNode) {
             return arrayBuffer(thisObj, newLength, toIndexNode, errorBranch, getMemoryObjectNode);
         }
 
@@ -702,10 +700,12 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
                 throw Errors.createRangeError("newByteLength exceeds maxByteLength");
             }
             // Handle WebAssembly memory buffers as specified by HostResizeArrayBuffer.
-            Object memory = getMemoryObjectNode.getValue(thisObj);
-            if (memory instanceof JSWebAssemblyMemoryObject memoryObject) {
-                memoryObject.resizeBuffer(getRealm(), thisObj, newByteLengthLong);
-                return Undefined.instance;
+            if (getMemoryObjectNode != null) {
+                Object memory = getMemoryObjectNode.getValue(thisObj);
+                if (memory instanceof JSWebAssemblyMemoryObject memoryObject) {
+                    memoryObject.resizeBuffer(getRealm(), thisObj, newByteLengthLong);
+                    return Undefined.instance;
+                }
             }
             int newByteLength = (int) newByteLengthLong;
             if (thisObj instanceof JSArrayBufferObject.Interop) {
