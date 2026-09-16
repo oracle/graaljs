@@ -694,6 +694,8 @@ namespace v8 {
 #else
         WaitForSingleObject(graal_isolate->lock_, INFINITE);
 #endif
+        // A Locker can transfer an isolate to a different native thread.
+        graal_isolate->RefreshJNIEnv();
         graal_isolate->lock_owner_ = this;
         isolate_ = reinterpret_cast<internal::Isolate*> (isolate);
     }

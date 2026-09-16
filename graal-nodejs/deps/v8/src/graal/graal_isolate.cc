@@ -153,6 +153,78 @@ typedef jint(*CreatedJVMs)(JavaVM **vmBuffer, jsize bufferLength, jsize *written
 
 const jint REQUESTED_JNI_VERSION = JNI_VERSION_9;
 
+// JNI attachments belong to native threads, not to V8 isolates. Keep
+// persistent attachments made for ordinary isolate use until the native
+// thread terminates.
+class GraalThreadAttachment {
+public:
+    ~GraalThreadAttachment() {
+        if (jvm_ != nullptr) {
+            jvm_->DetachCurrentThread();
+        }
+    }
+
+    void TakeOwnership(JavaVM* jvm) {
+        jvm_ = jvm;
+    }
+
+private:
+    JavaVM* jvm_ = nullptr;
+};
+
+static thread_local GraalThreadAttachment current_thread_attachment;
+
+static JNIEnv* GetJNIEnvForCurrentThread(JavaVM* jvm, bool* attached) {
+    JNIEnv* env;
+    jint result = jvm->GetEnv(reinterpret_cast<void**> (&env), REQUESTED_JNI_VERSION);
+    *attached = false;
+    if (result == JNI_EDETACHED) {
+        result = jvm->AttachCurrentThread(reinterpret_cast<void**> (&env), nullptr);
+        if (result == JNI_OK) {
+            *attached = true;
+        }
+    }
+    if (result != JNI_OK) {
+        fprintf(stderr, "Attachment of the current thread to the JVM failed!\n");
+        exit(1);
+    }
+    return env;
+}
+
+static JNIEnv* EnsureCurrentThreadAttached(JavaVM* jvm) {
+    bool attached;
+    JNIEnv* env = GetJNIEnvForCurrentThread(jvm, &attached);
+    if (attached) {
+        current_thread_attachment.TakeOwnership(jvm);
+    }
+    return env;
+}
+
+class ScopedJNIEnv {
+public:
+    explicit ScopedJNIEnv(JavaVM* jvm) : jvm_(jvm) {
+        env_ = GetJNIEnvForCurrentThread(jvm, &detach_);
+    }
+
+    ~ScopedJNIEnv() {
+        if (detach_) {
+            jvm_->DetachCurrentThread();
+        }
+    }
+
+    JNIEnv* Get() {
+        return env_;
+    }
+
+    ScopedJNIEnv(const ScopedJNIEnv&) = delete;
+    ScopedJNIEnv& operator=(const ScopedJNIEnv&) = delete;
+
+private:
+    JavaVM* jvm_;
+    JNIEnv* env_;
+    bool detach_ = false;
+};
+
 #ifdef __POSIX__
     static const std::string file_separator = "/";
     static const std::string path_separator = ":";
@@ -619,6 +691,7 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
             fprintf(stderr, "Creation of the JVM failed!\n");
             exit(1);
         }
+        current_thread_attachment.TakeOwnership(jvm);
         existing_jvm = jvm;
 
         jclass callback_class = findClassExtra(env, "com/oracle/truffle/trufflenode/NativeAccess");
@@ -626,9 +699,7 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
             exit(1);
         }
     } else {
-        if (jvm->GetEnv(reinterpret_cast<void**> (&env), REQUESTED_JNI_VERSION) == JNI_EDETACHED) {
-            jvm->AttachCurrentThread(reinterpret_cast<void**> (&env), nullptr);
-        }
+        env = EnsureCurrentThreadAttached(jvm);
     }
 
     internal_error_check_ = !getstdenv("NODE_INTERNAL_ERROR_CHECK").empty();
@@ -1218,7 +1289,10 @@ void GraalIsolate::Deinitialize() {
 }
 
 void GraalIsolate::Deinitialize(bool exit, int status) {
-    JNIEnv* env = jni_env_;
+    // The isolate may be disposed on a thread different from the one that
+    // used it last. JNIEnv pointers must not be used across threads.
+    ScopedJNIEnv scoped_env(jvm_);
+    JNIEnv* env = scoped_env.Get();
     jni_env_ = nullptr; // mark the isolate as disposed, see ~GraalHandleContent()
 
     // we do not use JNI_CALL_VOID because jni_env_ is cleared
@@ -1249,7 +1323,6 @@ void GraalIsolate::Deinitialize(bool exit, int status) {
 
     // this is executed when exit is false only
     env->ExceptionClear();
-    jvm_->DetachCurrentThread();
 
 #ifdef __POSIX__
     pthread_mutex_destroy(&lock_);
@@ -1374,40 +1447,23 @@ void GraalIsolate::NotifyGCCallbacks(bool prolog) {
 void GraalIsolate::TerminateExecution() {
     // We cannot use GetJNIEnv()/JNI_CALL_VOID because TerminateExecution()
     // can be called from a thread that does not correspond to this isolate
-    GraalIsolate* current_isolate = CurrentIsolate();
-    JNIEnv* env;
-    if (current_isolate == nullptr) {
-        // the thread does not belong to any isolate (i.e. is not attached to JVM)
-        jvm_->AttachCurrentThread((void**) &env, nullptr);
-    } else {
-        env = current_isolate->GetJNIEnv();
-    }
+    ScopedJNIEnv scoped_env(jvm_);
+    JNIEnv* env = scoped_env.Get();
     jmethodID method_id = GetJNIMethod(GraalAccessMethod::isolate_terminate_execution);
     env->functions->CallVoidMethod(env, access_, method_id);
-    if (current_isolate == nullptr) {
-        jvm_->DetachCurrentThread();
-    }
 }
 
 void GraalIsolate::CancelTerminateExecution() {
-    // We cannot use GetJNIEnv()/JNI_CALL_VOID because TerminateExecution()
+    // We cannot use GetJNIEnv()/JNI_CALL_VOID because CancelTerminateExecution()
     // can be called from a thread that does not correspond to this isolate
     GraalIsolate* current_isolate = CurrentIsolate();
-    JNIEnv* env;
-    if (current_isolate == nullptr) {
-        // the thread does not belong to any isolate (i.e. is not attached to JVM)
-        jvm_->AttachCurrentThread((void**) &env, nullptr);
-    } else {
-        env = current_isolate->GetJNIEnv();
-        if (current_isolate == this) {
-            env->ExceptionClear(); // Clear potential termination exception in this thread
-        }
+    ScopedJNIEnv scoped_env(jvm_);
+    JNIEnv* env = scoped_env.Get();
+    if (current_isolate == this) {
+        env->ExceptionClear(); // Clear potential termination exception in this thread
     }
     jmethodID method_id = GetJNIMethod(GraalAccessMethod::isolate_cancel_terminate_execution);
     env->functions->CallVoidMethod(env, access_, method_id);
-    if (current_isolate == nullptr) {
-        jvm_->DetachCurrentThread();
-    }
 }
 
 bool GraalIsolate::IsExecutionTerminating() {
@@ -1598,11 +1654,13 @@ void GraalIsolate::RunMicrotasks() {
 }
 
 void GraalIsolate::Enter() {
-    if (jvm_->GetEnv(reinterpret_cast<void**> (&jni_env_), REQUESTED_JNI_VERSION) == JNI_EDETACHED) {
-        jvm_->AttachCurrentThread(reinterpret_cast<void**> (&jni_env_), nullptr);
-    }
+    RefreshJNIEnv();
     uv_key_set(&current_isolate_key, this);
     JNI_CALL_VOID(this, GraalAccessMethod::isolate_enter, (jlong) this);
+}
+
+void GraalIsolate::RefreshJNIEnv() {
+    jni_env_ = EnsureCurrentThreadAttached(jvm_);
 }
 
 void GraalIsolate::Exit() {
@@ -1688,19 +1746,10 @@ void GraalIsolate::SchedulePauseOnNextStatement() {
 void GraalIsolate::RequestInterrupt(v8::InterruptCallback callback, void* data) {
     // We cannot use GetJNIEnv()/JNI_CALL_VOID because RequestInterrupt()
     // can be called from a thread that does not correspond to this isolate
-    GraalIsolate* current_isolate = CurrentIsolate();
-    JNIEnv* env;
-    if (current_isolate == nullptr) {
-        // the thread does not belong to any isolate (i.e. is not attached to JVM)
-        jvm_->AttachCurrentThread((void**) &env, nullptr);
-    } else {
-        env = current_isolate->GetJNIEnv();
-    }
+    ScopedJNIEnv scoped_env(jvm_);
+    JNIEnv* env = scoped_env.Get();
     jmethodID method_id = GetJNIMethod(GraalAccessMethod::isolate_request_interrupt);
     env->functions->CallVoidMethod(env, access_, method_id, (jlong) callback, (jlong) data);
-    if (current_isolate == nullptr) {
-        jvm_->DetachCurrentThread();
-    }
 }
 
 void GraalIsolate::JSExecutionViolation(JSExecutionAction action) {
