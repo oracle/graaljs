@@ -289,6 +289,8 @@ jclass findClassExtra(JNIEnv* env, const char* name) {
 
         jstring dotNameString = env->NewStringUTF(dotName.c_str());
         loadedClass = (jclass) env->CallStaticObjectMethod(engineClass, loadLanguageClassID, dotNameString);
+        env->DeleteLocalRef(dotNameString);
+        env->DeleteLocalRef(engineClass);
         if (loadedClass == NULL) {
             std::string msg = dotName;
             msg.append(" class not found!\n");
@@ -695,7 +697,9 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
         existing_jvm = jvm;
 
         jclass callback_class = findClassExtra(env, "com/oracle/truffle/trufflenode/NativeAccess");
-        if (!RegisterCallbacks(env, callback_class)) {
+        bool callbacks_registered = RegisterCallbacks(env, callback_class);
+        env->DeleteLocalRef(callback_class);
+        if (!callbacks_registered) {
             exit(1);
         }
     } else {
@@ -742,6 +746,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     // Object.class
     jclass object_class = env->FindClass("java/lang/Object");
     object_class_ = (jclass) env->NewGlobalRef(object_class);
+    env->DeleteLocalRef(object_class);
 
     // Boolean.TRUE, Boolean.FALSE
     jclass boolean_class = env->FindClass("java/lang/Boolean");
@@ -751,13 +756,18 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     jobject boolean_false = env->GetStaticObjectField(boolean_class, boolean_false_id);
     boolean_true_ = env->NewGlobalRef(boolean_true);
     boolean_false_ = env->NewGlobalRef(boolean_false);
+    env->DeleteLocalRef(boolean_true);
+    env->DeleteLocalRef(boolean_false);
+    env->DeleteLocalRef(boolean_class);
 
     // Arguments
     jclass string_class = env->FindClass("java/lang/String");
     jobjectArray args = env->NewObjectArray(GraalIsolate::argc, string_class, nullptr);
+    env->DeleteLocalRef(string_class);
     for (int i = 0; i < GraalIsolate::argc; i++) {
         jstring arg = env->NewStringUTF(GraalIsolate::argv[i]);
         env->SetObjectArrayElement(args, i, arg);
+        env->DeleteLocalRef(arg);
     }
 
     // Graal.js access
@@ -766,14 +776,18 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     if (createID == NULL) EXIT_WITH_MESSAGE(env, "GraalJSAccess.create(String[],long) method not found!\n")
     jobject access = env->functions->CallStaticObjectMethod(env, access_class, createID, args);
     if (access == NULL) EXIT_WITH_MESSAGE(env, "GraalJSAccess.create() failed!\n")
+    env->DeleteLocalRef(args);
     access_class_ = (jclass) env->NewGlobalRef(access_class);
     access_ = env->NewGlobalRef(access);
+    env->DeleteLocalRef(access_class);
+    env->DeleteLocalRef(access);
 
     // Shared buffer
-    jfieldID shared_buffer_id = env->GetFieldID(access_class, "sharedBuffer", "Ljava/nio/ByteBuffer;");
+    jfieldID shared_buffer_id = env->GetFieldID(access_class_, "sharedBuffer", "Ljava/nio/ByteBuffer;");
     if (shared_buffer_id == NULL) EXIT_WITH_MESSAGE(env, "GraalAccess.sharedBuffer field not found!\n")
     jobject shared_buffer = env->GetObjectField(access_, shared_buffer_id);
     shared_buffer_ = env->GetDirectBufferAddress(shared_buffer);
+    env->DeleteLocalRef(shared_buffer);
     ResetSharedBuffer();
 
     ACCESS_METHOD(GraalAccessMethod::undefined_instance, "undefinedInstance", "()Ljava/lang/Object;")
@@ -1206,12 +1220,15 @@ void GraalIsolate::FindDynamicObjectFields(jobject context) {
                 jfieldID field = env->FromReflectedField(reflectedField);
                 if (field == NULL) {
                     env->ExceptionClear();
+                    env->DeleteLocalRef(reflectedField);
                     continue;
                 }
                 SetJNIField(static_cast<GraalAccessField>(i), field);
+                env->DeleteLocalRef(reflectedField);
             }
         }
     }
+    env->DeleteLocalRef(field_info_obj);
 }
 
 bool GraalIsolate::AddMessageListener(v8::MessageCallback callback, v8::Local<v8::Value> data) {
@@ -1374,6 +1391,7 @@ void GraalIsolate::InternalErrorCheck() {
         jobject exception = env->ExceptionOccurred();
         jmethodID method_id = GetJNIMethod(GraalAccessMethod::isolate_internal_error_check);
         env->functions->CallVoidMethod(env, GetGraalAccess(), method_id, exception);
+        env->DeleteLocalRef(exception);
     }
 }
 
@@ -1696,6 +1714,7 @@ void GraalIsolate::HandleEmptyCallResult() {
                 env->Throw(java_exception);
             }
         }
+        env->DeleteLocalRef(java_exception);
     }
 }
 
@@ -1774,6 +1793,7 @@ std::string GraalIsolate::GetDefaultLocale() {
     const char *chars = jni_env_->GetStringUTFChars((jstring) java_locale, nullptr);
     std::string locale = std::string(chars);
     jni_env_->ReleaseStringUTFChars((jstring) java_locale, chars);
+    jni_env_->DeleteLocalRef(java_locale);
     return locale;
 }
 

@@ -143,6 +143,7 @@ v8::Local<v8::Module> GraalModule::CreateSyntheticModule(
     jobject java_module_name = graal_module_name->GetJavaObject();
     jlong java_callback = (jlong) evaluation_steps;
     JNI_CALL(jobject, java_module, graal_isolate, GraalAccessMethod::module_create_synthetic_module, Object, java_module_name, java_export_names, java_callback);
+    env->DeleteLocalRef(java_export_names);
     GraalModule* graal_module = new GraalModule(graal_isolate, java_module);
     v8::Module* v8_module = reinterpret_cast<v8::Module*> (graal_module);
     return v8::Local<v8::Module>::New(isolate, v8_module);
