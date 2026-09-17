@@ -119,9 +119,6 @@
 #endif
 
 extern "C" int uv_exepath(char* buffer, size_t* size) WEAK_ATTRIBUTE;
-extern "C" int uv_key_create(uv_key_t* key) WEAK_ATTRIBUTE;
-extern "C" void uv_key_set(uv_key_t* key, void* value) WEAK_ATTRIBUTE;
-extern "C" void* uv_key_get(uv_key_t* key) WEAK_ATTRIBUTE;
 extern "C" uv_loop_t* uv_default_loop(void) WEAK_ATTRIBUTE;
 #ifdef __POSIX__
 extern "C" int uv__cloexec(int fd, int set) WEAK_ATTRIBUTE;
@@ -129,16 +126,14 @@ extern "C" int uv__cloexec(int fd, int set) WEAK_ATTRIBUTE;
 
 #undef WEAK_ATTRIBUTE
 
-// Key for the current (per-thread) isolate
-static uv_key_t current_isolate_key;
-static bool current_isolate_initialized = false;
+static thread_local GraalIsolate* current_isolate = nullptr;
 
 GraalIsolate* CurrentIsolate() {
-    return reinterpret_cast<GraalIsolate*> (uv_key_get(&current_isolate_key));
+    return current_isolate;
 }
 
 v8::Isolate* GraalIsolate::TryGetCurrent() {
-    return current_isolate_initialized ? GetCurrent() : nullptr;
+    return GetCurrent();
 }
 
 #define ACCESS_METHOD(id, name, signature) \
@@ -152,6 +147,78 @@ typedef jint(*InitJVM)(JavaVM **, void **, void *);
 typedef jint(*CreatedJVMs)(JavaVM **vmBuffer, jsize bufferLength, jsize *written);
 
 const jint REQUESTED_JNI_VERSION = JNI_VERSION_9;
+
+// JNI attachments belong to native threads, not to V8 isolates. Keep
+// persistent attachments made for ordinary isolate use until the native
+// thread terminates.
+class GraalThreadAttachment {
+public:
+    ~GraalThreadAttachment() {
+        if (jvm_ != nullptr) {
+            jvm_->DetachCurrentThread();
+        }
+    }
+
+    void TakeOwnership(JavaVM* jvm) {
+        jvm_ = jvm;
+    }
+
+private:
+    JavaVM* jvm_ = nullptr;
+};
+
+static thread_local GraalThreadAttachment current_thread_attachment;
+
+static JNIEnv* GetJNIEnvForCurrentThread(JavaVM* jvm, bool* attached) {
+    JNIEnv* env;
+    jint result = jvm->GetEnv(reinterpret_cast<void**> (&env), REQUESTED_JNI_VERSION);
+    *attached = false;
+    if (result == JNI_EDETACHED) {
+        result = jvm->AttachCurrentThread(reinterpret_cast<void**> (&env), nullptr);
+        if (result == JNI_OK) {
+            *attached = true;
+        }
+    }
+    if (result != JNI_OK) {
+        fprintf(stderr, "Attachment of the current thread to the JVM failed!\n");
+        exit(1);
+    }
+    return env;
+}
+
+static JNIEnv* EnsureCurrentThreadAttached(JavaVM* jvm) {
+    bool attached;
+    JNIEnv* env = GetJNIEnvForCurrentThread(jvm, &attached);
+    if (attached) {
+        current_thread_attachment.TakeOwnership(jvm);
+    }
+    return env;
+}
+
+class ScopedJNIEnv {
+public:
+    explicit ScopedJNIEnv(JavaVM* jvm) : jvm_(jvm) {
+        env_ = GetJNIEnvForCurrentThread(jvm, &detach_);
+    }
+
+    ~ScopedJNIEnv() {
+        if (detach_) {
+            jvm_->DetachCurrentThread();
+        }
+    }
+
+    JNIEnv* Get() {
+        return env_;
+    }
+
+    ScopedJNIEnv(const ScopedJNIEnv&) = delete;
+    ScopedJNIEnv& operator=(const ScopedJNIEnv&) = delete;
+
+private:
+    JavaVM* jvm_;
+    JNIEnv* env_;
+    bool detach_ = false;
+};
 
 #ifdef __POSIX__
     static const std::string file_separator = "/";
@@ -217,6 +284,8 @@ jclass findClassExtra(JNIEnv* env, const char* name) {
 
         jstring dotNameString = env->NewStringUTF(dotName.c_str());
         loadedClass = (jclass) env->CallStaticObjectMethod(engineClass, loadLanguageClassID, dotNameString);
+        env->DeleteLocalRef(dotNameString);
+        env->DeleteLocalRef(engineClass);
         if (loadedClass == NULL) {
             std::string msg = dotName;
             msg.append(" class not found!\n");
@@ -619,16 +688,17 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
             fprintf(stderr, "Creation of the JVM failed!\n");
             exit(1);
         }
+        current_thread_attachment.TakeOwnership(jvm);
         existing_jvm = jvm;
 
         jclass callback_class = findClassExtra(env, "com/oracle/truffle/trufflenode/NativeAccess");
-        if (!RegisterCallbacks(env, callback_class)) {
+        bool callbacks_registered = RegisterCallbacks(env, callback_class);
+        env->DeleteLocalRef(callback_class);
+        if (!callbacks_registered) {
             exit(1);
         }
     } else {
-        if (jvm->GetEnv(reinterpret_cast<void**> (&env), REQUESTED_JNI_VERSION) == JNI_EDETACHED) {
-            jvm->AttachCurrentThread(reinterpret_cast<void**> (&env), nullptr);
-        }
+        env = EnsureCurrentThreadAttached(jvm);
     }
 
     internal_error_check_ = !getstdenv("NODE_INTERNAL_ERROR_CHECK").empty();
@@ -671,6 +741,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     // Object.class
     jclass object_class = env->FindClass("java/lang/Object");
     object_class_ = (jclass) env->NewGlobalRef(object_class);
+    env->DeleteLocalRef(object_class);
 
     // Boolean.TRUE, Boolean.FALSE
     jclass boolean_class = env->FindClass("java/lang/Boolean");
@@ -680,13 +751,18 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     jobject boolean_false = env->GetStaticObjectField(boolean_class, boolean_false_id);
     boolean_true_ = env->NewGlobalRef(boolean_true);
     boolean_false_ = env->NewGlobalRef(boolean_false);
+    env->DeleteLocalRef(boolean_true);
+    env->DeleteLocalRef(boolean_false);
+    env->DeleteLocalRef(boolean_class);
 
     // Arguments
     jclass string_class = env->FindClass("java/lang/String");
     jobjectArray args = env->NewObjectArray(GraalIsolate::argc, string_class, nullptr);
+    env->DeleteLocalRef(string_class);
     for (int i = 0; i < GraalIsolate::argc; i++) {
         jstring arg = env->NewStringUTF(GraalIsolate::argv[i]);
         env->SetObjectArrayElement(args, i, arg);
+        env->DeleteLocalRef(arg);
     }
 
     // Graal.js access
@@ -695,14 +771,18 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     if (createID == NULL) EXIT_WITH_MESSAGE(env, "GraalJSAccess.create(String[],long) method not found!\n")
     jobject access = env->functions->CallStaticObjectMethod(env, access_class, createID, args);
     if (access == NULL) EXIT_WITH_MESSAGE(env, "GraalJSAccess.create() failed!\n")
+    env->DeleteLocalRef(args);
     access_class_ = (jclass) env->NewGlobalRef(access_class);
     access_ = env->NewGlobalRef(access);
+    env->DeleteLocalRef(access_class);
+    env->DeleteLocalRef(access);
 
     // Shared buffer
-    jfieldID shared_buffer_id = env->GetFieldID(access_class, "sharedBuffer", "Ljava/nio/ByteBuffer;");
+    jfieldID shared_buffer_id = env->GetFieldID(access_class_, "sharedBuffer", "Ljava/nio/ByteBuffer;");
     if (shared_buffer_id == NULL) EXIT_WITH_MESSAGE(env, "GraalAccess.sharedBuffer field not found!\n")
     jobject shared_buffer = env->GetObjectField(access_, shared_buffer_id);
     shared_buffer_ = env->GetDirectBufferAddress(shared_buffer);
+    env->DeleteLocalRef(shared_buffer);
     ResetSharedBuffer();
 
     ACCESS_METHOD(GraalAccessMethod::undefined_instance, "undefinedInstance", "()Ljava/lang/Object;")
@@ -1135,12 +1215,15 @@ void GraalIsolate::FindDynamicObjectFields(jobject context) {
                 jfieldID field = env->FromReflectedField(reflectedField);
                 if (field == NULL) {
                     env->ExceptionClear();
+                    env->DeleteLocalRef(reflectedField);
                     continue;
                 }
                 SetJNIField(static_cast<GraalAccessField>(i), field);
+                env->DeleteLocalRef(reflectedField);
             }
         }
     }
+    env->DeleteLocalRef(field_info_obj);
 }
 
 bool GraalIsolate::AddMessageListener(v8::MessageCallback callback, v8::Local<v8::Value> data) {
@@ -1181,11 +1264,6 @@ void GraalIsolate::EnsureValidWorkingDir() {
 #endif
 }
 
-void GraalIsolate::InitThreadLocals() {
-    uv_key_create(&current_isolate_key);
-    current_isolate_initialized = true;
-}
-
 void GraalIsolate::SetAbortOnUncaughtExceptionCallback(v8::Isolate::AbortOnUncaughtExceptionCallback callback) {
     abort_on_uncaught_exception_callback_ = callback;
 }
@@ -1218,7 +1296,10 @@ void GraalIsolate::Deinitialize() {
 }
 
 void GraalIsolate::Deinitialize(bool exit, int status) {
-    JNIEnv* env = jni_env_;
+    // The isolate may be disposed on a thread different from the one that
+    // used it last. JNIEnv pointers must not be used across threads.
+    ScopedJNIEnv scoped_env(jvm_);
+    JNIEnv* env = scoped_env.Get();
     jni_env_ = nullptr; // mark the isolate as disposed, see ~GraalHandleContent()
 
     // we do not use JNI_CALL_VOID because jni_env_ is cleared
@@ -1249,7 +1330,6 @@ void GraalIsolate::Deinitialize(bool exit, int status) {
 
     // this is executed when exit is false only
     env->ExceptionClear();
-    jvm_->DetachCurrentThread();
 
 #ifdef __POSIX__
     pthread_mutex_destroy(&lock_);
@@ -1301,6 +1381,7 @@ void GraalIsolate::InternalErrorCheck() {
         jobject exception = env->ExceptionOccurred();
         jmethodID method_id = GetJNIMethod(GraalAccessMethod::isolate_internal_error_check);
         env->functions->CallVoidMethod(env, GetGraalAccess(), method_id, exception);
+        env->DeleteLocalRef(exception);
     }
 }
 
@@ -1374,40 +1455,23 @@ void GraalIsolate::NotifyGCCallbacks(bool prolog) {
 void GraalIsolate::TerminateExecution() {
     // We cannot use GetJNIEnv()/JNI_CALL_VOID because TerminateExecution()
     // can be called from a thread that does not correspond to this isolate
-    GraalIsolate* current_isolate = CurrentIsolate();
-    JNIEnv* env;
-    if (current_isolate == nullptr) {
-        // the thread does not belong to any isolate (i.e. is not attached to JVM)
-        jvm_->AttachCurrentThread((void**) &env, nullptr);
-    } else {
-        env = current_isolate->GetJNIEnv();
-    }
+    ScopedJNIEnv scoped_env(jvm_);
+    JNIEnv* env = scoped_env.Get();
     jmethodID method_id = GetJNIMethod(GraalAccessMethod::isolate_terminate_execution);
     env->functions->CallVoidMethod(env, access_, method_id);
-    if (current_isolate == nullptr) {
-        jvm_->DetachCurrentThread();
-    }
 }
 
 void GraalIsolate::CancelTerminateExecution() {
-    // We cannot use GetJNIEnv()/JNI_CALL_VOID because TerminateExecution()
+    // We cannot use GetJNIEnv()/JNI_CALL_VOID because CancelTerminateExecution()
     // can be called from a thread that does not correspond to this isolate
     GraalIsolate* current_isolate = CurrentIsolate();
-    JNIEnv* env;
-    if (current_isolate == nullptr) {
-        // the thread does not belong to any isolate (i.e. is not attached to JVM)
-        jvm_->AttachCurrentThread((void**) &env, nullptr);
-    } else {
-        env = current_isolate->GetJNIEnv();
-        if (current_isolate == this) {
-            env->ExceptionClear(); // Clear potential termination exception in this thread
-        }
+    ScopedJNIEnv scoped_env(jvm_);
+    JNIEnv* env = scoped_env.Get();
+    if (current_isolate == this) {
+        env->ExceptionClear(); // Clear potential termination exception in this thread
     }
     jmethodID method_id = GetJNIMethod(GraalAccessMethod::isolate_cancel_terminate_execution);
     env->functions->CallVoidMethod(env, access_, method_id);
-    if (current_isolate == nullptr) {
-        jvm_->DetachCurrentThread();
-    }
 }
 
 bool GraalIsolate::IsExecutionTerminating() {
@@ -1598,16 +1662,18 @@ void GraalIsolate::RunMicrotasks() {
 }
 
 void GraalIsolate::Enter() {
-    if (jvm_->GetEnv(reinterpret_cast<void**> (&jni_env_), REQUESTED_JNI_VERSION) == JNI_EDETACHED) {
-        jvm_->AttachCurrentThread(reinterpret_cast<void**> (&jni_env_), nullptr);
-    }
-    uv_key_set(&current_isolate_key, this);
+    RefreshJNIEnv();
+    current_isolate = this;
     JNI_CALL_VOID(this, GraalAccessMethod::isolate_enter, (jlong) this);
+}
+
+void GraalIsolate::RefreshJNIEnv() {
+    jni_env_ = EnsureCurrentThreadAttached(jvm_);
 }
 
 void GraalIsolate::Exit() {
     JNI_CALL(jlong, previous, this, GraalAccessMethod::isolate_exit, Long, (jlong) this);
-    uv_key_set(&current_isolate_key, reinterpret_cast<void*> (previous));
+    current_isolate = reinterpret_cast<GraalIsolate*> (previous);
 }
 
 void GraalIsolate::HandleEmptyCallResult() {
@@ -1638,6 +1704,7 @@ void GraalIsolate::HandleEmptyCallResult() {
                 env->Throw(java_exception);
             }
         }
+        env->DeleteLocalRef(java_exception);
     }
 }
 
@@ -1688,19 +1755,10 @@ void GraalIsolate::SchedulePauseOnNextStatement() {
 void GraalIsolate::RequestInterrupt(v8::InterruptCallback callback, void* data) {
     // We cannot use GetJNIEnv()/JNI_CALL_VOID because RequestInterrupt()
     // can be called from a thread that does not correspond to this isolate
-    GraalIsolate* current_isolate = CurrentIsolate();
-    JNIEnv* env;
-    if (current_isolate == nullptr) {
-        // the thread does not belong to any isolate (i.e. is not attached to JVM)
-        jvm_->AttachCurrentThread((void**) &env, nullptr);
-    } else {
-        env = current_isolate->GetJNIEnv();
-    }
+    ScopedJNIEnv scoped_env(jvm_);
+    JNIEnv* env = scoped_env.Get();
     jmethodID method_id = GetJNIMethod(GraalAccessMethod::isolate_request_interrupt);
     env->functions->CallVoidMethod(env, access_, method_id, (jlong) callback, (jlong) data);
-    if (current_isolate == nullptr) {
-        jvm_->DetachCurrentThread();
-    }
 }
 
 void GraalIsolate::JSExecutionViolation(JSExecutionAction action) {
@@ -1725,6 +1783,7 @@ std::string GraalIsolate::GetDefaultLocale() {
     const char *chars = jni_env_->GetStringUTFChars((jstring) java_locale, nullptr);
     std::string locale = std::string(chars);
     jni_env_->ReleaseStringUTFChars((jstring) java_locale, chars);
+    jni_env_->DeleteLocalRef(java_locale);
     return locale;
 }
 

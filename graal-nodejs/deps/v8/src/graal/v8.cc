@@ -182,6 +182,7 @@ namespace v8 {
                     JNI_CALL(jobject, java_compiled_module, graal_isolate, GraalAccessMethod::wasm_module_object_get_compiled_module, Object, java_module);
                     JNIEnv* env = graal_isolate->GetJNIEnv();
                     java_module_ = env->NewGlobalRef(java_compiled_module);
+                    env->DeleteLocalRef(java_compiled_module);
                 }
                 ~NativeModule() {
                     GraalIsolate* graal_isolate = CurrentIsolate();
@@ -694,6 +695,8 @@ namespace v8 {
 #else
         WaitForSingleObject(graal_isolate->lock_, INFINITE);
 #endif
+        // A Locker can transfer an isolate to a different native thread.
+        graal_isolate->RefreshJNIEnv();
         graal_isolate->lock_owner_ = this;
         isolate_ = reinterpret_cast<internal::Isolate*> (isolate);
     }
@@ -1062,8 +1065,11 @@ namespace v8 {
 
     Local<Value> TryCatch::ReThrow() {
         rethrow_ = true;
-        exception_ = nullptr;
         GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (i_isolate_);
+        if (exception_ != nullptr) {
+            graal_isolate->GetJNIEnv()->DeleteLocalRef((jobject) exception_);
+            exception_ = nullptr;
+        }
         if (!graal_isolate->GetJNIEnv()->ExceptionCheck()) {
             graal_isolate->ThrowException(Null(i_isolate_));
         }
@@ -1089,11 +1095,15 @@ namespace v8 {
                 Local<v8::Message> message = Message();
                 env->ExceptionClear();
                 graal_isolate->NotifyMessageListener(message, exception, java_exception);
+                env->DeleteLocalRef(java_exception);
             } else if (REPORT_CAUGHT_EXCEPTIONS) {
                 env->ExceptionDescribe();
             } else {
                 env->ExceptionClear();
             }
+        }
+        if (exception_ != nullptr) {
+            graal_isolate->GetJNIEnv()->DeleteLocalRef((jobject) exception_);
         }
     }
 
@@ -1211,7 +1221,6 @@ namespace v8 {
 
     bool V8::Initialize(int build_config) {
         TRACE
-        GraalIsolate::InitThreadLocals();
         return true;
     }
 
@@ -1472,9 +1481,13 @@ namespace v8 {
         if (pending) env->ExceptionClear();
         int32_t result = graal_value->Int32Value();
         if (env->ExceptionCheck()) {
+            if (pending) env->DeleteLocalRef(pending);
             return Nothing<int32_t>();
         } else {
-            if (pending) env->Throw(pending);
+            if (pending) {
+                env->Throw(pending);
+                env->DeleteLocalRef(pending);
+            }
             return Just<int32_t>(result);
         }
     }
@@ -1486,9 +1499,13 @@ namespace v8 {
         if (pending) env->ExceptionClear();
         uint32_t result = graal_value->Uint32Value();
         if (env->ExceptionCheck()) {
+            if (pending) env->DeleteLocalRef(pending);
             return Nothing<uint32_t>();
         } else {
-            if (pending) env->Throw(pending);
+            if (pending) {
+                env->Throw(pending);
+                env->DeleteLocalRef(pending);
+            }
             return Just<uint32_t>(result);
         }
     }
@@ -1508,9 +1525,13 @@ namespace v8 {
         if (pending) env->ExceptionClear();
         double result = graal_value->NumberValue();
         if (env->ExceptionCheck()) {
+            if (pending) env->DeleteLocalRef(pending);
             return Nothing<double>();
         } else {
-            if (pending) env->Throw(pending);
+            if (pending) {
+                env->Throw(pending);
+                env->DeleteLocalRef(pending);
+            }
             return Just<double>(result);
         }
     }
@@ -1682,11 +1703,15 @@ namespace v8 {
             // Restore the original pending exception (unless we managed
             // to generate a new one from the call above already)
             if (env->ExceptionCheck()) {
+                if (exception_object != nullptr) {
+                    env->DeleteLocalRef(exception_object);
+                }
                 exception_object = env->ExceptionOccurred();
             } else {
                 env->Throw(java_exception);
             }
             GraalValue* graal_exception = GraalValue::FromJavaObject(graal_isolate, exception_object);
+            env->DeleteLocalRef(java_exception);
             Value* v8_exception = reinterpret_cast<Value*> (graal_exception);
             return Local<Value>::New(i_isolate_, v8_exception);
         } else {
@@ -1710,7 +1735,10 @@ namespace v8 {
             GraalIsolate::Abort();
         }
         if (rethrow_) {
-            return !env->IsSameObject((jobject) exception_, env->ExceptionOccurred());
+            jobject java_exception = env->ExceptionOccurred();
+            bool caught = !env->IsSameObject((jobject) exception_, java_exception);
+            env->DeleteLocalRef(java_exception);
+            return caught;
         } else {
             return env->ExceptionCheck();
         }
@@ -1718,8 +1746,10 @@ namespace v8 {
 
     bool TryCatch::HasTerminated() const {
         GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (i_isolate_);
-        jobject java_exception = graal_isolate->GetJNIEnv()->ExceptionOccurred();
+        JNIEnv* env = graal_isolate->GetJNIEnv();
+        jobject java_exception = env->ExceptionOccurred();
         JNI_CALL(jboolean, terminated, graal_isolate, GraalAccessMethod::try_catch_has_terminated, Boolean, java_exception);
+        env->DeleteLocalRef(java_exception);
         return terminated;
     }
 
@@ -2688,6 +2718,7 @@ namespace v8 {
         void* address = private_->delegate->ReallocateBufferMemory(nullptr, size, nullptr);
         jobject buffer = env->NewDirectByteBuffer(address, size);
         JNI_CALL_VOID(graal_isolate, GraalAccessMethod::value_serializer_release, private_->serializer, buffer);
+        env->DeleteLocalRef(buffer);
         return {(uint8_t*) address, (size_t) size};
     }
 
@@ -3230,6 +3261,7 @@ namespace v8 {
         }
 
         jobject java_function = graal_isolate->GetJNIEnv()->GetObjectArrayElement((jobjectArray) java_array, 0);
+        env->DeleteLocalRef(java_array);
         GraalFunction* graal_function = GraalFunction::Allocate(graal_isolate, java_function);
         Function* v8_function = reinterpret_cast<Function*> (graal_function);
         return Local<Function>::New(isolate, v8_function);
@@ -3745,14 +3777,18 @@ namespace v8 {
     void Isolate::DateTimeConfigurationChangeNotification(TimeZoneDetection time_zone_detection) {
         // Note: per-process env var lock is still being held by RealEnvStore at this point.
         GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*>(this);
+        JNIEnv* env = graal_isolate->GetJNIEnv();
         jstring tz_java_string = NULL;
         if (time_zone_detection == TimeZoneDetection::kRedetect) {
             std::unique_ptr<const char[]> tz_cstr = GetEnv("TZ");
             if (tz_cstr) {
-                tz_java_string = graal_isolate->GetJNIEnv()->NewStringUTF(tz_cstr.get());
+                tz_java_string = env->NewStringUTF(tz_cstr.get());
             }
         }
         JNI_CALL_VOID(graal_isolate, GraalAccessMethod::date_time_configuration_change_notification, (jint) time_zone_detection, tz_java_string);
+        if (tz_java_string != nullptr) {
+            env->DeleteLocalRef(tz_java_string);
+        }
     }
 
     std::unique_ptr<MicrotaskQueue> MicrotaskQueue::New(Isolate* isolate, MicrotasksPolicy policy) {

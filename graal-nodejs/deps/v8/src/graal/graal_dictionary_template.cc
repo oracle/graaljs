@@ -57,6 +57,7 @@ v8::Local<v8::DictionaryTemplate> GraalDictionaryTemplate::New(v8::Isolate* isol
     for (int i = 0; i < length; i++) {
         jstring name = env->NewStringUTF(names[i].data());
         env->SetObjectArrayElement(java_names, i, name);
+        env->DeleteLocalRef(name);
     }
     GraalDictionaryTemplate* graal_dictionary_template = new GraalDictionaryTemplate(graal_isolate, java_names);
     v8::DictionaryTemplate* v8_dictionary_template = reinterpret_cast<v8::DictionaryTemplate*> (graal_dictionary_template);
@@ -84,6 +85,7 @@ v8::Local<v8::Object> GraalDictionaryTemplate::NewInstance(v8::Local<v8::Context
         env->SetObjectArrayElement(java_values, i, java_value);
     }
     JNI_CALL(jobject, java_object, graal_isolate, GraalAccessMethod::dictionary_template_new_instance, Object, java_context, GetJavaObject(), java_values);
+    env->DeleteLocalRef(java_values);
     GraalObject* graal_object = GraalObject::Allocate(graal_isolate, java_object);
     v8::Object* v8_object = reinterpret_cast<v8::Object*> (graal_object);
     return v8::Local<v8::Object>::New(v8_isolate, v8_object);

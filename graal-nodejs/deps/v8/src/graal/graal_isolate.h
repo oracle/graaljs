@@ -797,7 +797,6 @@ public:
         }
     }
 
-    static void InitThreadLocals();
     static void SetEnv(const char * name, const char * value);
     static void UnsetEnv(const char * name);
 
@@ -860,6 +859,7 @@ private:
     }
 
     void SetJNIField(GraalAccessField id, jobject holder_class, jobject field_name, const char* sig);
+    void RefreshJNIEnv();
     void InitStackOverflowCheck(intptr_t stack_bottom);
     void RemoveCallback(std::vector<std::tuple<GCCallbackType, void*, void*>>&vector, void* callback);
     void SetTaskRunner(std::shared_ptr<v8::TaskRunner> task_runner);

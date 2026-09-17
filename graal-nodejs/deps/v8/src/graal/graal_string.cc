@@ -204,6 +204,7 @@ v8::Local<v8::String> GraalString::NewFromModifiedUtf8(v8::Isolate* isolate, con
     jstring java_string = graal_isolate->GetJNIEnv()->NewStringUTF(data);
 
     JNI_CALL(jobject, java_truffle_string, graal_isolate, GraalAccessMethod::string_new, Object, java_string);
+    graal_isolate->GetJNIEnv()->DeleteLocalRef(java_string);
 
     GraalString* graal_string = GraalString::Allocate(graal_isolate, java_truffle_string);
     v8::String* v8_string = reinterpret_cast<v8::String*> (graal_string);

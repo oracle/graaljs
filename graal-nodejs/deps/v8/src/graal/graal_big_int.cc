@@ -125,4 +125,5 @@ void GraalBigInt::ToWordsArray(int* sign_bit, int* word_count, uint64_t* words) 
         words[i] = java_elements[i + 2];
     }
     env->ReleaseLongArrayElements(java_array, java_elements, JNI_ABORT);
+    env->DeleteLocalRef(java_result);
 }

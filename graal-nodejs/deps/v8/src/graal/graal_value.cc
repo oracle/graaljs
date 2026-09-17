@@ -357,9 +357,13 @@ v8::Maybe<int64_t> GraalValue::IntegerValue(v8::Local<v8::Context> context) cons
         if (pending) env->ExceptionClear();
         JNI_CALL(jlong, java_result, graal_isolate, GraalAccessMethod::value_integer_value, Long, GetJavaObject());
         if (env->ExceptionCheck()) {
+            if (pending) env->DeleteLocalRef(pending);
             return v8::Nothing<int64_t>();
         }
-        if (pending) env->Throw(pending);
+        if (pending) {
+            env->Throw(pending);
+            env->DeleteLocalRef(pending);
+        }
         result = java_result;
     }
     return v8::Just<int64_t>(result);
