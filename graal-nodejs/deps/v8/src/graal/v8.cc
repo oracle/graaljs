@@ -1221,7 +1221,6 @@ namespace v8 {
 
     bool V8::Initialize(int build_config) {
         TRACE
-        GraalIsolate::InitThreadLocals();
         return true;
     }
 

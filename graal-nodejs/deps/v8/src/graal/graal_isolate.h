@@ -797,7 +797,6 @@ public:
         }
     }
 
-    static void InitThreadLocals();
     static void SetEnv(const char * name, const char * value);
     static void UnsetEnv(const char * name);
 

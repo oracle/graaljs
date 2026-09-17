@@ -119,9 +119,6 @@
 #endif
 
 extern "C" int uv_exepath(char* buffer, size_t* size) WEAK_ATTRIBUTE;
-extern "C" int uv_key_create(uv_key_t* key) WEAK_ATTRIBUTE;
-extern "C" void uv_key_set(uv_key_t* key, void* value) WEAK_ATTRIBUTE;
-extern "C" void* uv_key_get(uv_key_t* key) WEAK_ATTRIBUTE;
 extern "C" uv_loop_t* uv_default_loop(void) WEAK_ATTRIBUTE;
 #ifdef __POSIX__
 extern "C" int uv__cloexec(int fd, int set) WEAK_ATTRIBUTE;
@@ -129,16 +126,14 @@ extern "C" int uv__cloexec(int fd, int set) WEAK_ATTRIBUTE;
 
 #undef WEAK_ATTRIBUTE
 
-// Key for the current (per-thread) isolate
-static uv_key_t current_isolate_key;
-static bool current_isolate_initialized = false;
+static thread_local GraalIsolate* current_isolate = nullptr;
 
 GraalIsolate* CurrentIsolate() {
-    return reinterpret_cast<GraalIsolate*> (uv_key_get(&current_isolate_key));
+    return current_isolate;
 }
 
 v8::Isolate* GraalIsolate::TryGetCurrent() {
-    return current_isolate_initialized ? GetCurrent() : nullptr;
+    return GetCurrent();
 }
 
 #define ACCESS_METHOD(id, name, signature) \
@@ -1269,11 +1264,6 @@ void GraalIsolate::EnsureValidWorkingDir() {
 #endif
 }
 
-void GraalIsolate::InitThreadLocals() {
-    uv_key_create(&current_isolate_key);
-    current_isolate_initialized = true;
-}
-
 void GraalIsolate::SetAbortOnUncaughtExceptionCallback(v8::Isolate::AbortOnUncaughtExceptionCallback callback) {
     abort_on_uncaught_exception_callback_ = callback;
 }
@@ -1673,7 +1663,7 @@ void GraalIsolate::RunMicrotasks() {
 
 void GraalIsolate::Enter() {
     RefreshJNIEnv();
-    uv_key_set(&current_isolate_key, this);
+    current_isolate = this;
     JNI_CALL_VOID(this, GraalAccessMethod::isolate_enter, (jlong) this);
 }
 
@@ -1683,7 +1673,7 @@ void GraalIsolate::RefreshJNIEnv() {
 
 void GraalIsolate::Exit() {
     JNI_CALL(jlong, previous, this, GraalAccessMethod::isolate_exit, Long, (jlong) this);
-    uv_key_set(&current_isolate_key, reinterpret_cast<void*> (previous));
+    current_isolate = reinterpret_cast<GraalIsolate*> (previous);
 }
 
 void GraalIsolate::HandleEmptyCallResult() {
