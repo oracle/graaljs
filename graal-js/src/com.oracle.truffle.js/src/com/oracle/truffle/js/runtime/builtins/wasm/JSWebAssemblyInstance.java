@@ -363,7 +363,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                 if (tagAddr == realm.getJSTagAddr()) {
                     // Unwrap JS exception
                     Object exnRef = exnAddrInterop.readArrayElement(exnAddr, 0);
-                    throw JSRuntime.getException(exnRef, this);
+                    throw JSRuntime.getException(toJSValueNode.execute(exnRef), this);
                 }
                 // Rethrow WasmRuntimeException as WebAssembly.Exception object
                 JSWebAssemblyExceptionObject exnObj;
