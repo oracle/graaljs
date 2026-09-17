@@ -178,6 +178,7 @@ import com.oracle.truffle.js.nodes.control.CreateDisposeCapabilityNode;
 import com.oracle.truffle.js.nodes.control.DebuggerNode;
 import com.oracle.truffle.js.nodes.control.DeletePropertyNode;
 import com.oracle.truffle.js.nodes.control.DirectBreakTargetNode;
+import com.oracle.truffle.js.nodes.control.DirectContinueTargetNode;
 import com.oracle.truffle.js.nodes.control.DisposeResourcesWrapperNode;
 import com.oracle.truffle.js.nodes.control.EmptyNode;
 import com.oracle.truffle.js.nodes.control.ExprBlockNode;
@@ -614,6 +615,10 @@ public class NodeFactory {
 
     public ContinueTargetNode createContinueTarget(JavaScriptNode block, ContinueTarget continueTarget) {
         return ContinueTargetNode.create(block, continueTarget);
+    }
+
+    public DirectContinueTargetNode createDirectContinueTarget(JavaScriptNode block) {
+        return DirectContinueTargetNode.create(block);
     }
 
     public DirectBreakTargetNode createDirectBreakTarget(JavaScriptNode block) {

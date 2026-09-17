@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,12 +40,47 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
-import com.oracle.truffle.api.nodes.ControlFlowException;
+import java.util.Set;
 
-@SuppressWarnings("serial")
-public abstract class ContinueException extends ControlFlowException {
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
-    public final boolean matchTarget(ContinueTarget target) {
-        return this == target.getContinueException();
+/**
+ * @see ContinueNode
+ */
+public final class DirectContinueTargetNode extends StatementNode {
+
+    @Child private JavaScriptNode block;
+
+    DirectContinueTargetNode(JavaScriptNode block) {
+        this.block = block;
+    }
+
+    public static DirectContinueTargetNode create(JavaScriptNode block) {
+        return new DirectContinueTargetNode(block);
+    }
+
+    @Override
+    public Object execute(VirtualFrame frame) {
+        try {
+            return block.execute(frame);
+        } catch (DirectContinueException ex) {
+            return Undefined.instance;
+        }
+    }
+
+    @Override
+    public void executeVoid(VirtualFrame frame) {
+        try {
+            block.executeVoid(frame);
+        } catch (DirectContinueException ex) {
+        }
+    }
+
+    @Override
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return create(cloneUninitialized(block, materializedTags));
     }
 }

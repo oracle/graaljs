@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,12 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
-import com.oracle.truffle.api.nodes.ControlFlowException;
-
 @SuppressWarnings("serial")
-public abstract class ContinueException extends ControlFlowException {
-
-    public final boolean matchTarget(ContinueTarget target) {
-        return this == target.getContinueException();
-    }
+public final class LabelContinueException extends ContinueException {
 }
