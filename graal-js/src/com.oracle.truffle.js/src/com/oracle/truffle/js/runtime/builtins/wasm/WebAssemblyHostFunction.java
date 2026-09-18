@@ -102,13 +102,14 @@ public class WebAssemblyHostFunction implements TruffleObject {
                     @CachedLibrary(limit = "1") InteropLibrary exnAllocLib,
                     @Cached TryCatchNode.GetErrorObjectNode getErrorObjectNode) {
         JSContext context = JSContext.get(self);
-        if ((!context.getLanguageOptions().wasmBigInt() && type.anyTypeIsI64()) || type.anyTypeIsV128()) {
+        if ((!context.getLanguageOptions().wasmBigInt() && type.anyTypeIsI64()) || type.anyTypeIsV128() || type.anyTypeIsExnref()) {
             errorBranch.enter(node);
             throw Errors.createTypeError("wasm function signature contains illegal type");
         }
         Object[] jsArgs = new Object[args.length];
+        WebAssemblyType[] paramTypes = type.paramTypes();
         for (int i = 0; i < args.length; i++) {
-            jsArgs[i] = toJSValueNode.execute(args[i]);
+            jsArgs[i] = toJSValueNode.execute(args[i], paramTypes[i]);
         }
 
         Object result;

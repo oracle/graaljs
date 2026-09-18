@@ -49,7 +49,8 @@ public record WasmFunctionTypeInfo(
                 @CompilationFinal(dimensions = 1) WebAssemblyType[] paramTypes,
                 @CompilationFinal(dimensions = 1) WebAssemblyType[] resultTypes,
                 boolean anyTypeIsI64,
-                boolean anyTypeIsV128) {
+                boolean anyTypeIsV128,
+                boolean anyTypeIsExnref) {
 
     public int paramLength() {
         return paramTypes.length;
@@ -68,12 +69,13 @@ public record WasmFunctionTypeInfo(
                         Arrays.equals(this.paramTypes, that.paramTypes) &&
                         Arrays.equals(this.resultTypes, that.resultTypes) &&
                         this.anyTypeIsI64 == that.anyTypeIsI64 &&
-                        this.anyTypeIsV128 == that.anyTypeIsV128;
+                        this.anyTypeIsV128 == that.anyTypeIsV128 &&
+                        this.anyTypeIsExnref == that.anyTypeIsExnref;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(Arrays.hashCode(paramTypes), Arrays.hashCode(resultTypes), anyTypeIsI64, anyTypeIsV128);
+        return Objects.hash(Arrays.hashCode(paramTypes), Arrays.hashCode(resultTypes), anyTypeIsI64, anyTypeIsV128, anyTypeIsExnref);
     }
 
     @Override

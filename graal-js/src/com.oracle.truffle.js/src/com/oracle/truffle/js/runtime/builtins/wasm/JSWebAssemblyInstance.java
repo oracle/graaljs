@@ -227,7 +227,8 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         WebAssemblyType[] resultTypes = parseTypeSequence(context, returnTypes);
         boolean anyTypeIsI64 = containsType(resultTypes, WebAssemblyType.i64) || containsType(paramTypes, WebAssemblyType.i64);
         boolean anyTypeIsV128 = containsType(resultTypes, WebAssemblyType.v128) || containsType(paramTypes, WebAssemblyType.v128);
-        return new WasmFunctionTypeInfo(paramTypes, resultTypes, anyTypeIsI64, anyTypeIsV128);
+        boolean anyTypeIsExnref = containsType(resultTypes, WebAssemblyType.exnref) || containsType(paramTypes, WebAssemblyType.exnref);
+        return new WasmFunctionTypeInfo(paramTypes, resultTypes, anyTypeIsI64, anyTypeIsV128, anyTypeIsExnref);
     }
 
     private static boolean containsType(WebAssemblyType[] types, WebAssemblyType test) {
@@ -283,11 +284,12 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
 
         @Override
         public Object execute(VirtualFrame frame) {
-            if ((!context.getLanguageOptions().wasmBigInt() && type.anyTypeIsI64()) || type.anyTypeIsV128()) {
+            if ((!context.getLanguageOptions().wasmBigInt() && type.anyTypeIsI64()) || type.anyTypeIsV128() || type.anyTypeIsExnref()) {
                 throw Errors.createTypeError("wasm function signature contains illegal type");
             }
             int argCount = type.paramLength();
-            int returnLength = type.resultLength();
+            WebAssemblyType[] resultTypes = type.resultTypes();
+            int returnLength = resultTypes.length;
 
             Object[] frameArguments = frame.getArguments();
             Object[] wasmArgs = convertArgsToWasm(frameArguments, argCount);
@@ -319,11 +321,11 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                 if (returnLength == 0) {
                     return Undefined.instance;
                 } else if (returnLength == 1) {
-                    return toJSValueNode.execute(wasmResult);
+                    return toJSValueNode.execute(wasmResult, resultTypes[0]);
                 } else {
                     Object[] values = new Object[returnLength];
                     for (int i = 0; i < returnLength; i++) {
-                        values[i] = toJSValueNode.execute(readArrayElementLib.readArrayElement(wasmResult, i));
+                        values[i] = toJSValueNode.execute(readArrayElementLib.readArrayElement(wasmResult, i), resultTypes[i]);
                     }
                     return JSArray.createConstantObjectArray(context, realm, values);
                 }
@@ -363,7 +365,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                 if (tagAddr == realm.getJSTagAddr()) {
                     // Unwrap JS exception
                     Object exnRef = exnAddrInterop.readArrayElement(exnAddr, 0);
-                    throw JSRuntime.getException(exnRef, this);
+                    throw JSRuntime.getException(toJSValueNode.execute(exnRef, WebAssemblyType.externref), this);
                 }
                 // Rethrow WasmRuntimeException as WebAssembly.Exception object
                 JSWebAssemblyExceptionObject exnObj;
