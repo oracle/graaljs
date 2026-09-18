@@ -52,6 +52,10 @@ public final class DisposeResourcesNode extends AbstractDisposeResourcesNode {
         return new DisposeResourcesNode();
     }
 
+    public void execute(DisposeCapability capability) {
+        execute(capability, null);
+    }
+
     public void execute(DisposeCapability capability, Object currentError) {
         Object errorObject = currentError;
         DisposableResource resource;
@@ -62,7 +66,7 @@ public final class DisposeResourcesNode extends AbstractDisposeResourcesNode {
                 errorObject = combineDisposeErrors(captureDisposeError(throwable), errorObject);
             }
         }
-        if (errorObject != DisposeCapability.NO_ERROR) {
+        if (errorObject != null) {
             throwError(errorObject);
         }
     }

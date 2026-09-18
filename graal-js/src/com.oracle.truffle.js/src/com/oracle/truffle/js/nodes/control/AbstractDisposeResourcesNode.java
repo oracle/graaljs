@@ -55,7 +55,6 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSErrorObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.DisposeCapability;
 import com.oracle.truffle.js.runtime.util.DisposeCapability.DisposableResource;
 
 abstract class AbstractDisposeResourcesNode extends JavaScriptBaseNode {
@@ -100,7 +99,7 @@ abstract class AbstractDisposeResourcesNode extends JavaScriptBaseNode {
     }
 
     protected final Object combineDisposeErrors(Object newError, Object currentError) {
-        if (currentError == DisposeCapability.NO_ERROR) {
+        if (currentError == null) {
             return newError;
         }
         return createSuppressedErrorObject(newError, currentError);

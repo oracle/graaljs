@@ -158,9 +158,13 @@ public final class AsyncDisposeResourcesNode extends AbstractDisposeResourcesNod
     }
 
     void complete(AsyncDisposeState state) {
-        if (state.errorObject != DisposeCapability.NO_ERROR) {
+        if (state.errorObject != null) {
             throwError(state.errorObject);
         }
+    }
+
+    public void execute(DisposeCapability capability, PromiseCapabilityRecord promiseCapability) {
+        execute(capability, null, promiseCapability);
     }
 
     public void execute(DisposeCapability capability, Object currentError, PromiseCapabilityRecord promiseCapability) {
@@ -193,8 +197,9 @@ public final class AsyncDisposeResourcesNode extends AbstractDisposeResourcesNod
     }
 
     private void complete(AsyncDisposeState state, PromiseCapabilityRecord promiseCapability) {
-        Object callback = state.errorObject == DisposeCapability.NO_ERROR ? promiseCapability.getResolve() : promiseCapability.getReject();
-        Object value = state.errorObject == DisposeCapability.NO_ERROR ? Undefined.instance : state.errorObject;
+        boolean hasError = state.errorObject != null;
+        Object callback = hasError ? promiseCapability.getReject() : promiseCapability.getResolve();
+        Object value = hasError ? state.errorObject : Undefined.instance;
         callNode.executeCall(JSArguments.createOneArg(Undefined.instance, callback, value));
     }
 

@@ -241,7 +241,7 @@ public final class AsyncDisposableStackPrototypeBuiltins extends JSBuiltinsConta
                     callResolve(promiseCapability, Undefined.instance);
                 } else {
                     stack.setDisposed(true);
-                    asyncDisposeResourcesNode.execute(stack.getDisposeCapability(), DisposeCapability.NO_ERROR, promiseCapability);
+                    asyncDisposeResourcesNode.execute(stack.getDisposeCapability(), promiseCapability);
                 }
             } catch (AbstractTruffleException ex) {
                 callReject(promiseCapability, getErrorObjectNode().execute(ex));
