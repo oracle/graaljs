@@ -224,7 +224,7 @@ public final class DisposableStackPrototypeBuiltins extends JSBuiltinsContainer.
             JSDisposableStackObject stack = requireDisposableStack(thisObj, errorProfile);
             if (!stack.isDisposed()) {
                 stack.setDisposed(true);
-                disposeResourcesNode.execute(stack.getDisposeCapability(), DisposeCapability.NO_ERROR);
+                disposeResourcesNode.execute(stack.getDisposeCapability());
             }
             return Undefined.instance;
         }

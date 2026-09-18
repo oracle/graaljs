@@ -187,7 +187,6 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.DisposeCapability;
 import com.oracle.truffle.js.runtime.util.InternalSlotId;
 import com.oracle.truffle.js.runtime.util.Pair;
 
@@ -2152,7 +2151,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
         return createBlock(
                         capabilityVar.createWriteNode(factory.createDisposeCapability()),
-                        errorVar.createWriteNode(factory.createConstant(DisposeCapability.NO_ERROR)),
+                        errorVar.createWriteNode(factory.createConstant(null)),
                         factory.createTryFinally(tryCatch, wrapSaveAndRestoreCompletionValue(wrapClearCompletionValue(finallyBlock))));
     }
 

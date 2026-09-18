@@ -45,7 +45,6 @@ import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class DisposeCapability {
-    public static final Object NO_ERROR = new Object();
     private final SimpleArrayList<DisposableResource> disposableResourceStack;
 
     public DisposeCapability() {
