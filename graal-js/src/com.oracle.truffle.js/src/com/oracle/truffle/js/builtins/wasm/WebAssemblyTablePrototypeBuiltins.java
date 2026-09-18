@@ -196,7 +196,7 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
             try {
                 Object getFn = realm.getWASMTableRead();
                 Object fn = tableGetLib.execute(getFn, wasmTable, tableIndex);
-                return toJSValueNode.execute(fn);
+                return toJSValueNode.execute(fn, table.getElementKind());
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             } catch (AbstractTruffleException ex) {

@@ -107,8 +107,9 @@ public class WebAssemblyHostFunction implements TruffleObject {
             throw Errors.createTypeError("wasm function signature contains illegal type");
         }
         Object[] jsArgs = new Object[args.length];
+        WebAssemblyType[] paramTypes = type.paramTypes();
         for (int i = 0; i < args.length; i++) {
-            jsArgs[i] = toJSValueNode.execute(args[i]);
+            jsArgs[i] = toJSValueNode.execute(args[i], paramTypes[i]);
         }
 
         Object result;

@@ -41,7 +41,7 @@
 package com.oracle.truffle.js.nodes.wasm;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -58,50 +58,64 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyExportedGC;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyInstance;
+import com.oracle.truffle.js.runtime.builtins.wasm.WebAssemblyType;
 import com.oracle.truffle.js.runtime.objects.Null;
 
 /**
  * Implementation of ToJSValue() operation. See
  * <a href="https://www.w3.org/TR/wasm-js-api/#tojsvalue">Wasm JS-API Spec</a>
  */
-@ImportStatic(JSConfig.class)
+@ImportStatic({JSConfig.class, WebAssemblyType.class})
 @GenerateUncached
 public abstract class ToJSValueNode extends JavaScriptBaseNode {
 
     protected ToJSValueNode() {
     }
 
-    public abstract Object execute(Object value);
+    public abstract Object execute(Object value, WebAssemblyType type);
 
-    @Specialization
-    static int i32(int value) {
+    @Specialization(guards = "type == i32")
+    static int i32(int value, @SuppressWarnings("unused") WebAssemblyType type) {
         return value;
     }
 
-    @Specialization
-    static BigInt i64(long value) {
+    @Specialization(guards = "type == i64")
+    static BigInt i64(long value, @SuppressWarnings("unused") WebAssemblyType type) {
         return BigInt.valueOf(value);
     }
 
-    @Specialization
-    static double f32(float value) {
+    @Specialization(guards = "type == f32")
+    static double f32(float value, @SuppressWarnings("unused") WebAssemblyType type) {
         return value;
     }
 
-    @Specialization
-    static double f64(double value) {
+    @Specialization(guards = "type == f64")
+    static double f64(double value, @SuppressWarnings("unused") WebAssemblyType type) {
         return value;
     }
 
-    @Fallback
-    final Object convert(Object value,
-                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary isStructLib,
-                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary isArrayLib,
-                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary isFuncLib,
-                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary funcTypeLib,
-                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary asTStringLib,
-                    @Cached ImportValueNode importValueNode,
+    @Specialization(guards = "type == funcref")
+    final Object anyfunc(Object value, @SuppressWarnings("unused") WebAssemblyType type,
+                    @CachedLibrary(limit = "InteropLibraryLimit") @Exclusive InteropLibrary funcTypeLib,
+                    @CachedLibrary(limit = "InteropLibraryLimit") @Exclusive InteropLibrary asTStringLib,
                     @Cached TruffleString.SwitchEncodingNode switchEncoding) {
+        JSRealm realm = getRealm();
+        if (value == realm.getWasmRefNull()) {
+            return Null.instance;
+        }
+        try {
+            TruffleString funcType = Strings.interopAsTruffleString(funcTypeLib.execute(realm.getWASMFuncType(), value), asTStringLib, switchEncoding);
+            return JSWebAssemblyInstance.exportFunction(realm.getContext(), realm, value, funcType);
+        } catch (InteropException ex) {
+            throw Errors.shouldNotReachHere(ex);
+        }
+    }
+
+    @Specialization(guards = "type == anyref || type == externref")
+    final Object anyref(Object value, @SuppressWarnings("unused") WebAssemblyType type,
+                    @CachedLibrary(limit = "InteropLibraryLimit") @Exclusive InteropLibrary isStructLib,
+                    @CachedLibrary(limit = "InteropLibraryLimit") @Exclusive InteropLibrary isArrayLib,
+                    @Cached ImportValueNode importValueNode) {
         JSRealm realm = getRealm();
         if (value == realm.getWasmRefNull()) {
             return Null.instance;
@@ -112,10 +126,6 @@ public abstract class ToJSValueNode extends JavaScriptBaseNode {
                 }
                 if (isArrayLib.execute(realm.getWASMIsArray(), value) instanceof Boolean isArray && isArray) {
                     return JSWebAssemblyExportedGC.create(getJSContext(), realm, value);
-                }
-                if (isFuncLib.execute(realm.getWASMIsFunc(), value) instanceof Boolean isFunc && isFunc) {
-                    TruffleString funcType = Strings.interopAsTruffleString(funcTypeLib.execute(realm.getWASMFuncType(), value), asTStringLib, switchEncoding);
-                    return JSWebAssemblyInstance.exportFunction(realm.getContext(), realm, value, funcType);
                 }
                 return importValueNode.executeWithTarget(value);
             } catch (InteropException ex) {

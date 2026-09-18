@@ -287,7 +287,8 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                 throw Errors.createTypeError("wasm function signature contains illegal type");
             }
             int argCount = type.paramLength();
-            int returnLength = type.resultLength();
+            WebAssemblyType[] resultTypes = type.resultTypes();
+            int returnLength = resultTypes.length;
 
             Object[] frameArguments = frame.getArguments();
             Object[] wasmArgs = convertArgsToWasm(frameArguments, argCount);
@@ -319,11 +320,11 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                 if (returnLength == 0) {
                     return Undefined.instance;
                 } else if (returnLength == 1) {
-                    return toJSValueNode.execute(wasmResult);
+                    return toJSValueNode.execute(wasmResult, resultTypes[0]);
                 } else {
                     Object[] values = new Object[returnLength];
                     for (int i = 0; i < returnLength; i++) {
-                        values[i] = toJSValueNode.execute(readArrayElementLib.readArrayElement(wasmResult, i));
+                        values[i] = toJSValueNode.execute(readArrayElementLib.readArrayElement(wasmResult, i), resultTypes[i]);
                     }
                     return JSArray.createConstantObjectArray(context, realm, values);
                 }
@@ -363,7 +364,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                 if (tagAddr == realm.getJSTagAddr()) {
                     // Unwrap JS exception
                     Object exnRef = exnAddrInterop.readArrayElement(exnAddr, 0);
-                    throw JSRuntime.getException(toJSValueNode.execute(exnRef), this);
+                    throw JSRuntime.getException(toJSValueNode.execute(exnRef, WebAssemblyType.externref), this);
                 }
                 // Rethrow WasmRuntimeException as WebAssembly.Exception object
                 JSWebAssemblyExceptionObject exnObj;

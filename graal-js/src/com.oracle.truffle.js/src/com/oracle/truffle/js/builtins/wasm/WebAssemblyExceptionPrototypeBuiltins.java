@@ -163,7 +163,7 @@ public class WebAssemblyExceptionPrototypeBuiltins extends JSBuiltinsContainer.S
                 errorBranch.enter(this);
                 throw Errors.createTypeError("WebAssembly.Exception.getArg(): Invalid type exnref", this);
             }
-            return toJSValueNode.execute(exn.payload()[i]);
+            return toJSValueNode.execute(exn.payload()[i], type);
         }
 
         @TruffleBoundary
