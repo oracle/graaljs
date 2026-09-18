@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -140,7 +140,10 @@ public class TestCallable extends AbstractTestCallable {
 
     private static Object evalSnapshot(Context context, Source source, boolean cacheSnapshot) {
         // Use snapshots for scripts only
-        if (JavaScriptLanguage.MODULE_MIME_TYPE.equals(source.getMimeType())) {
+        if (JavaScriptLanguage.MODULE_MIME_TYPE.equals(source.getMimeType())
+        // Don't snapshot v8mockup.js. WorkerAgent needs to find it in Engine.getCachedSources()
+        // but snapshot evaluation bypasses the engine source cache.
+                        || "v8mockup.js".equals(source.getName())) {
             return evalDefault(context, source);
         }
 
