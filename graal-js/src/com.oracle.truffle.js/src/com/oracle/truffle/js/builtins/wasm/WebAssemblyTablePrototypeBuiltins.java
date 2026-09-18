@@ -191,12 +191,17 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
             }
             JSRealm realm = getRealm();
             JSWebAssemblyTableObject table = (JSWebAssemblyTableObject) thiz;
+            WebAssemblyType elementKind = table.getElementKind();
+            if (elementKind == WebAssemblyType.exnref) {
+                errorBranch.enter(this);
+                throw Errors.createTypeError("WebAssembly.Table.get(): cannot read type exnref", this);
+            }
             long tableIndex = toIndexNode.execute(index, table.hasIndexType64());
             Object wasmTable = table.getWASMTable();
             try {
                 Object getFn = realm.getWASMTableRead();
                 Object fn = tableGetLib.execute(getFn, wasmTable, tableIndex);
-                return toJSValueNode.execute(fn, table.getElementKind());
+                return toJSValueNode.execute(fn, elementKind);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             } catch (AbstractTruffleException ex) {
@@ -229,9 +234,13 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
                 throw Errors.createTypeError("WebAssembly.Table.set(): Receiver is not a WebAssembly.Table");
             }
             JSWebAssemblyTableObject table = (JSWebAssemblyTableObject) thiz;
+            WebAssemblyType elementKind = table.getElementKind();
+            if (elementKind == WebAssemblyType.exnref) {
+                errorBranch.enter(this);
+                throw Errors.createTypeError("WebAssembly.Table.set(): cannot write type exnref", this);
+            }
             long tableIndex = toIndexNode.execute(index, table.hasIndexType64());
             Object wasmTable = table.getWASMTable();
-            WebAssemblyType elementKind = table.getElementKind();
             final JSRealm realm = getRealm();
 
             final Object wasmValue;
