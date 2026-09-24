@@ -56,6 +56,7 @@ import org.graalvm.options.OptionCategory;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSConfig;
 
@@ -128,6 +129,9 @@ public final class Options {
         private static final String INSPECT_SUSPEND = "inspect.Suspend";
         private static final String INSPECT_WAIT_ATTACHED = "inspect.WaitAttached";
         private static final String WASM_LANGUAGE_ID = "wasm";
+        private static final boolean IS_WASM_AVAILABLE = TruffleOptions.AOT && isLanguageAvailable(WASM_LANGUAGE_ID);
+        private static final String ENGINE_COMPILATION_OPTION = "engine.Compilation";
+        private static final boolean IS_ENGINE_COMPILATION_OPTION_AVAILABLE = TruffleOptions.AOT && isOptionAvailable(ENGINE_COMPILATION_OPTION);
 
         private Context.Builder contextBuilder;
         private boolean exposeGC;
@@ -328,8 +332,8 @@ public final class Options {
                 }
                 unprocessedArguments.add(arg);
             }
-            if ((jitless || wasmJitless) && isOptionAvailable("engine.Compilation")) {
-                polyglotOptions.put("engine.Compilation", "false");
+            if ((jitless || wasmJitless) && isEngineCompilationOptionAvailable()) {
+                polyglotOptions.put(ENGINE_COMPILATION_OPTION, "false");
             }
             if (optWebAssembly == null && jitless && !wasmJitless) {
                 optWebAssembly = Boolean.FALSE;
@@ -418,6 +422,9 @@ public final class Options {
         }
 
         private static boolean isWasmAvailable() {
+            if (TruffleOptions.AOT) {
+                return IS_WASM_AVAILABLE;
+            }
             return isLanguageAvailable(WASM_LANGUAGE_ID);
         }
 
@@ -425,6 +432,13 @@ public final class Options {
             try (Engine tempEngine = createDefaultEngine()) {
                 return tempEngine.getLanguages().containsKey(languageId);
             }
+        }
+
+        private static boolean isEngineCompilationOptionAvailable() {
+            if (TruffleOptions.AOT) {
+                return IS_ENGINE_COMPILATION_OPTION_AVAILABLE;
+            }
+            return isOptionAvailable(ENGINE_COMPILATION_OPTION);
         }
 
         private static boolean isOptionAvailable(String optionName) {
