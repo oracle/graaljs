@@ -104,8 +104,9 @@ public final class Options {
                         launcherCommonPath.toUri().toURL(),
                         jlinePath.toUri().toURL(),
         };
-        ClassLoader loader = new URLClassLoader(urls, ClassLoader.getSystemClassLoader());
-        return (Class<Function<String[], Object[]>>) loader.loadClass("com.oracle.truffle.trufflenode.Options$OptionsParser");
+        try (URLClassLoader loader = new URLClassLoader(urls, ClassLoader.getSystemClassLoader())) {
+            return (Class<Function<String[], Object[]>>) loader.loadClass("com.oracle.truffle.trufflenode.Options$OptionsParser");
+        }
     }
 
     public Context.Builder getContextBuilder() {
@@ -138,14 +139,11 @@ public final class Options {
         private boolean unsafeWasmMemory;
         private boolean auxEngineCacheMode;
 
-        private static final Set<String> AUX_CACHE_OPTIONS = Set.of("engine.Cache",
-                        "engine.CacheLoad",
-                        "engine.CacheStore");
+        private static final Set<String> AUX_CACHE_OPTIONS = Set.of("engine.Cache", "engine.CacheLoad", "engine.CacheStore");
 
         // Options that should not be passed to polyglot engine (they are processed
         // elsewhere or can be ignored without almost any harm).
-        private static final Set<String> IGNORED_OPTIONS = Set.of(new String[]{
-                        "debug-code",
+        private static final Set<String> IGNORED_OPTIONS = Set.of("debug-code",
                         "enable-sharedarraybuffer-per-context",
                         "es-staging",
                         "experimental-modules",
@@ -180,8 +178,7 @@ public final class Options {
                         "rehash-snapshot",
                         "stack-size",
                         "trace-gc",
-                        "use-idle-notification"
-        });
+                        "use-idle-notification");
 
         @Override
         public Object[] apply(String[] args) {
@@ -397,7 +394,7 @@ public final class Options {
         protected void printHelp(OptionCategory maxCategory) {
             // @formatter:off
             System.out.println();
-            System.out.println("Usage: node [options] [ -e script | script.js ] [arguments]\n");
+            System.out.printf("Usage: node [options] [ -e script | script.js ] [arguments]%n%n");
             System.out.println("Basic Options:");
             printOption("-v, --version",         "print Node.js version");
             printOption("-e, --eval=...",        "evaluate script");
@@ -413,12 +410,12 @@ public final class Options {
         private static void printOption(String option, String description) {
             String opt;
             if (option.length() >= 22) {
-                System.out.println(String.format("%s%s", "  ", option));
+                System.out.printf("%s%s%n", "  ", option);
                 opt = "";
             } else {
                 opt = option;
             }
-            System.out.println(String.format("  %-22s%s", opt, description));
+            System.out.printf("  %-22s%s%n", opt, description);
         }
 
         private static boolean isWasmAvailable() {
