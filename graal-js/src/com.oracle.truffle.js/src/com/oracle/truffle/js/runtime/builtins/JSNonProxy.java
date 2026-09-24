@@ -509,24 +509,50 @@ public abstract class JSNonProxy extends JSClass {
             return true;
         }
 
-        for (Property property : JSDynamicObject.getPropertyArray(thisObj)) {
-            if (!property.isHidden()) {
-                int oldFlags = property.getFlags();
-                int newFlags = oldFlags | JSAttributes.NOT_CONFIGURABLE;
-                if (freeze && ((oldFlags & JSProperty.ACCESSOR) == 0)) {
-                    newFlags |= JSAttributes.NOT_WRITABLE;
+        Property[] properties = JSDynamicObject.getPropertyArray(thisObj);
+        int changedCount = 0;
+        Property lastChanged = null;
+        for (Property property : properties) {
+            if (property.isHidden()) {
+                continue;
+            }
+            if (property.getFlags() != applyIntegrityLevelPropertyFlags(property.getFlags(), freeze)) {
+                changedCount++;
+                lastChanged = property;
+            }
+        }
+        if (changedCount == 1) {
+            int newFlags = applyIntegrityLevelPropertyFlags(lastChanged.getFlags(), freeze);
+            JSDynamicObject.setPropertyFlags(thisObj, lastChanged.getKey(), newFlags);
+        } else if (changedCount > 1) {
+            Object[] keys = new Object[changedCount];
+            int[] flags = new int[changedCount];
+            int index = 0;
+            for (Property property : properties) {
+                if (property.isHidden()) {
+                    continue;
                 }
-                if (newFlags != oldFlags) {
-                    Object key = property.getKey();
-                    JSDynamicObject.setPropertyFlags(thisObj, key, newFlags);
-                    assert JSDynamicObject.getPropertyFlags(thisObj, key, JSProperty.MISSING) == newFlags;
+                int newFlags = applyIntegrityLevelPropertyFlags(property.getFlags(), freeze);
+                if (newFlags != property.getFlags()) {
+                    keys[index] = property.getKey();
+                    flags[index] = newFlags;
+                    index++;
                 }
             }
+            JSDynamicObject.setAllPropertyFlags(thisObj, keys, flags);
         }
         assert testSealedProperties(thisObj) && (!freeze || testFrozenProperties(thisObj));
         boolean result = ordinaryPreventExtensions(thisObj, JSShape.SEALED_FLAG | (freeze ? JSShape.FROZEN_FLAG : 0));
         assert result && thisObj.testIntegrityLevel(freeze);
         return true;
+    }
+
+    private static int applyIntegrityLevelPropertyFlags(int propertyFlags, boolean freeze) {
+        int flags = propertyFlags | JSAttributes.NOT_CONFIGURABLE;
+        if (freeze && (flags & JSProperty.ACCESSOR) == 0) {
+            flags |= JSAttributes.NOT_WRITABLE;
+        }
+        return flags;
     }
 
     public static boolean testIntegrityLevelFast(JSDynamicObject obj, boolean frozen) {

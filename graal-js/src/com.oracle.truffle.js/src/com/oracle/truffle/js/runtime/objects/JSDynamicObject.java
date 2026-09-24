@@ -380,7 +380,7 @@ public abstract sealed class JSDynamicObject extends DynamicObject implements Tr
     }
 
     public static Property[] getPropertyArray(JSDynamicObject obj) {
-        return obj.getShape().getPropertyList().toArray(new Property[0]);
+        return DynamicObject.GetPropertyArrayNode.getUncached().execute(obj);
     }
 
     public static Object getOrNull(JSDynamicObject obj, Object key) {
@@ -405,6 +405,10 @@ public abstract sealed class JSDynamicObject extends DynamicObject implements Tr
 
     public static int getPropertyFlags(JSDynamicObject obj, Object key, int defaultValue) {
         return Properties.getPropertyFlagsUncached(obj, key, defaultValue);
+    }
+
+    public static void setAllPropertyFlags(JSDynamicObject obj, Object[] keys, int[] flags) {
+        DynamicObject.SetAllPropertyFlagsNode.getUncached().execute(obj, keys, flags);
     }
 
     /**
