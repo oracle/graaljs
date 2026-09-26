@@ -57,6 +57,7 @@ local cicommon = import '../ci/common.jsonnet';
     ] + (if std.find('lib:graal-nodejs', super.nativeimages) != [] then ([
       ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', '--no-warning', 'paths', '--output', 'GRAALNODEJS_NATIVE_STANDALONE']],
       ['${STANDALONE_HOME}/bin/node', '-e', "console.log('Hello, World!')"],
+      ['${STANDALONE_HOME}/bin/node', 'test/graal/native-image/preinitialized-context.js'],
       ['${STANDALONE_HOME}/bin/npm', '--version'],
     ] + if 'os' in super && super.os == 'windows' then [] else [
       # Uses node-gyp which requires Visual Studio on Windows.
