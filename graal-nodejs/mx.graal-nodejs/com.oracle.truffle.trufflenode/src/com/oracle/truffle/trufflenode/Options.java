@@ -156,6 +156,7 @@ public final class Options {
                         "harmony-bigint",
                         "harmony-default-parameters",
                         "harmony-dynamic-import",
+                        "harmony-import-attributes",
                         "harmony-import-meta",
                         "harmony-proxies",
                         "harmony-shipping",
@@ -245,10 +246,6 @@ public final class Options {
                     polyglotOptions.put("js.top-level-await", "true");
                     continue;
                 }
-                if ("harmony-import-attributes".equals(normalizedKey)) {
-                    polyglotOptions.put("js.import-attributes", "true");
-                    continue;
-                }
                 if ("harmony-shadow-realm".equals(normalizedKey)) {
                     polyglotOptions.put("js.shadow-realm", "true");
                     continue;
@@ -259,6 +256,10 @@ public final class Options {
                 }
                 if ("js-source-phase-imports".equals(normalizedKey)) {
                     polyglotOptions.put("js.source-phase-imports", "true");
+                    continue;
+                }
+                if ("no-js-source-phase-imports".equals(normalizedKey)) {
+                    polyglotOptions.put("js.source-phase-imports", "false");
                     continue;
                 }
                 if ("allow-natives-syntax".equals(normalizedKey)) {
