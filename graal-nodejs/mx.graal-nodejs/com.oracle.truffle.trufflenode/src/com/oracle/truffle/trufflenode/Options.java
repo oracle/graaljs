@@ -56,6 +56,7 @@ import org.graalvm.options.OptionCategory;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSConfig;
 
@@ -103,8 +104,9 @@ public final class Options {
                         launcherCommonPath.toUri().toURL(),
                         jlinePath.toUri().toURL(),
         };
-        ClassLoader loader = new URLClassLoader(urls, ClassLoader.getSystemClassLoader());
-        return (Class<Function<String[], Object[]>>) loader.loadClass("com.oracle.truffle.trufflenode.Options$OptionsParser");
+        try (URLClassLoader loader = new URLClassLoader(urls, ClassLoader.getSystemClassLoader())) {
+            return (Class<Function<String[], Object[]>>) loader.loadClass("com.oracle.truffle.trufflenode.Options$OptionsParser");
+        }
     }
 
     public Context.Builder getContextBuilder() {
@@ -128,20 +130,20 @@ public final class Options {
         private static final String INSPECT_SUSPEND = "inspect.Suspend";
         private static final String INSPECT_WAIT_ATTACHED = "inspect.WaitAttached";
         private static final String WASM_LANGUAGE_ID = "wasm";
+        private static final boolean IS_WASM_AVAILABLE = TruffleOptions.AOT && isLanguageAvailable(WASM_LANGUAGE_ID);
+        private static final String ENGINE_COMPILATION_OPTION = "engine.Compilation";
+        private static final boolean IS_ENGINE_COMPILATION_OPTION_AVAILABLE = TruffleOptions.AOT && isOptionAvailable(ENGINE_COMPILATION_OPTION);
 
         private Context.Builder contextBuilder;
         private boolean exposeGC;
         private boolean unsafeWasmMemory;
         private boolean auxEngineCacheMode;
 
-        private static final Set<String> AUX_CACHE_OPTIONS = Set.of("engine.Cache",
-                        "engine.CacheLoad",
-                        "engine.CacheStore");
+        private static final Set<String> AUX_CACHE_OPTIONS = Set.of("engine.Cache", "engine.CacheLoad", "engine.CacheStore");
 
         // Options that should not be passed to polyglot engine (they are processed
         // elsewhere or can be ignored without almost any harm).
-        private static final Set<String> IGNORED_OPTIONS = Set.of(new String[]{
-                        "debug-code",
+        private static final Set<String> IGNORED_OPTIONS = Set.of("debug-code",
                         "enable-sharedarraybuffer-per-context",
                         "es-staging",
                         "experimental-modules",
@@ -176,8 +178,7 @@ public final class Options {
                         "rehash-snapshot",
                         "stack-size",
                         "trace-gc",
-                        "use-idle-notification"
-        });
+                        "use-idle-notification");
 
         @Override
         public Object[] apply(String[] args) {
@@ -328,8 +329,8 @@ public final class Options {
                 }
                 unprocessedArguments.add(arg);
             }
-            if ((jitless || wasmJitless) && isOptionAvailable("engine.Compilation")) {
-                polyglotOptions.put("engine.Compilation", "false");
+            if ((jitless || wasmJitless) && isEngineCompilationOptionAvailable()) {
+                polyglotOptions.put(ENGINE_COMPILATION_OPTION, "false");
             }
             if (optWebAssembly == null && jitless && !wasmJitless) {
                 optWebAssembly = Boolean.FALSE;
@@ -393,7 +394,7 @@ public final class Options {
         protected void printHelp(OptionCategory maxCategory) {
             // @formatter:off
             System.out.println();
-            System.out.println("Usage: node [options] [ -e script | script.js ] [arguments]\n");
+            System.out.printf("Usage: node [options] [ -e script | script.js ] [arguments]%n%n");
             System.out.println("Basic Options:");
             printOption("-v, --version",         "print Node.js version");
             printOption("-e, --eval=...",        "evaluate script");
@@ -409,15 +410,18 @@ public final class Options {
         private static void printOption(String option, String description) {
             String opt;
             if (option.length() >= 22) {
-                System.out.println(String.format("%s%s", "  ", option));
+                System.out.printf("%s%s%n", "  ", option);
                 opt = "";
             } else {
                 opt = option;
             }
-            System.out.println(String.format("  %-22s%s", opt, description));
+            System.out.printf("  %-22s%s%n", opt, description);
         }
 
         private static boolean isWasmAvailable() {
+            if (TruffleOptions.AOT) {
+                return IS_WASM_AVAILABLE;
+            }
             return isLanguageAvailable(WASM_LANGUAGE_ID);
         }
 
@@ -425,6 +429,13 @@ public final class Options {
             try (Engine tempEngine = createDefaultEngine()) {
                 return tempEngine.getLanguages().containsKey(languageId);
             }
+        }
+
+        private static boolean isEngineCompilationOptionAvailable() {
+            if (TruffleOptions.AOT) {
+                return IS_ENGINE_COMPILATION_OPTION_AVAILABLE;
+            }
+            return isOptionAvailable(ENGINE_COMPILATION_OPTION);
         }
 
         private static boolean isOptionAvailable(String optionName) {
