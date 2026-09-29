@@ -65,7 +65,6 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.AsyncFromSyncIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.AsyncGeneratorPrototypeBuiltins;
-import com.oracle.truffle.js.builtins.AsyncIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.ConstructorBuiltins;
 import com.oracle.truffle.js.builtins.EnumerateIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.ForInIteratorPrototypeBuiltins;
@@ -719,9 +718,6 @@ public final class JSFunction extends JSNonProxy {
         });
         JSFunctionObject asyncIterator = JSFunction.create(realm, functionData);
         JSObjectUtil.putDataProperty(prototype, Symbol.SYMBOL_ASYNC_ITERATOR, asyncIterator, JSAttributes.getDefaultNotEnumerable());
-        if (context.isOptionExplicitResourceManagement()) {
-            JSObjectUtil.putFunctionFromContainer(realm, prototype, AsyncIteratorPrototypeBuiltins.BUILTINS, Symbol.SYMBOL_ASYNC_DISPOSE);
-        }
         return prototype;
     }
 

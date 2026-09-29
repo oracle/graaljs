@@ -55,7 +55,6 @@ import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.GraalJSException.JSStackTraceElement;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
-import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -195,10 +194,6 @@ public final class JSError extends JSNonProxy {
         JSObjectUtil.putConstructorPrototypeProperty(errorConstructor, classPrototype);
         if (errorType == JSErrorType.Error) {
             JSObjectUtil.putFunctionsFromContainer(realm, errorConstructor, ErrorFunctionBuiltins.BUILTINS);
-            if (realm.getContextOptions().isStackTraceAPI()) {
-                JSObjectUtil.putFunctionFromContainer(realm, errorConstructor, ErrorFunctionBuiltins.BUILTINS, ErrorFunctionBuiltins.ErrorFunction.captureStackTrace.getKey());
-                JSObjectUtil.putDataProperty(errorConstructor, STACK_TRACE_LIMIT_PROPERTY_NAME, JSContextOptions.STACK_TRACE_LIMIT.getValue(realm.getOptions()), JSAttributes.getDefault());
-            }
         }
 
         return new JSConstructor(errorConstructor, classPrototype);

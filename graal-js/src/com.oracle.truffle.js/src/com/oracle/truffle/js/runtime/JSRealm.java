@@ -91,6 +91,7 @@ import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.AbstractModuleSourcePrototype;
+import com.oracle.truffle.js.builtins.AsyncIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.AsyncIteratorHelperPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.AtomicsBuiltins;
 import com.oracle.truffle.js.builtins.ConsoleBuiltins;
@@ -98,6 +99,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltins;
 import com.oracle.truffle.js.builtins.CryptoBuiltins;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltins;
 import com.oracle.truffle.js.builtins.DebugBuiltins;
+import com.oracle.truffle.js.builtins.ErrorFunctionBuiltins;
 import com.oracle.truffle.js.builtins.GlobalBuiltins;
 import com.oracle.truffle.js.builtins.IteratorHelperPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.IteratorPrototypeBuiltins;
@@ -938,7 +940,7 @@ public class JSRealm {
             this.finalizationRegistryPrototype = null;
         }
 
-        if (context.isOptionExplicitResourceManagement()) {
+        if (env.isPreInitialization() || context.isOptionExplicitResourceManagement()) {
             ctor = JSDisposableStack.createConstructor(this);
             this.disposableStackConstructor = ctor.getFunctionObject();
             this.disposableStackPrototype = ctor.getPrototype();
@@ -2054,9 +2056,6 @@ public class JSRealm {
                     }
                     break;
                 case SuppressedError:
-                    if (getContextOptions().isExplicitResourceManagement()) {
-                        putGlobalProperty(Strings.fromJavaString(type.name()), getErrorConstructor(type));
-                    }
                     break;
                 default:
                     putGlobalProperty(Strings.fromJavaString(type.name()), getErrorConstructor(type));
@@ -2150,10 +2149,6 @@ public class JSRealm {
         if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2021) {
             putGlobalProperty(JSWeakRef.CLASS_NAME, getWeakRefConstructor());
             putGlobalProperty(JSFinalizationRegistry.CLASS_NAME, getFinalizationRegistryConstructor());
-        }
-        if (getContextOptions().isExplicitResourceManagement()) {
-            putGlobalProperty(JSDisposableStack.CLASS_NAME, getDisposableStackConstructor());
-            putGlobalProperty(JSAsyncDisposableStack.CLASS_NAME, getAsyncDisposableStackConstructor());
         }
         if (getContextOptions().isGraalBuiltin()) {
             putGraalObject();
@@ -2306,11 +2301,39 @@ public class JSRealm {
         addPrintGlobals();
         addCryptoGlobal();
         addPerformanceGlobal();
+        addStackTraceAPI();
+        addExplicitResourceManagement();
 
         if (isJavaInteropEnabled()) {
             setupJavaInterop();
         }
         addCommonJSGlobals();
+    }
+
+    private void addStackTraceAPI() {
+        if (getContextOptions().isStackTraceAPI()) {
+            JSFunctionObject errorConstructor = getErrorConstructor(JSErrorType.Error);
+            JSObjectUtil.putFunctionFromContainer(this, errorConstructor, ErrorFunctionBuiltins.BUILTINS, ErrorFunctionBuiltins.ErrorFunction.captureStackTrace.getKey());
+            JSObjectUtil.putDataProperty(errorConstructor, JSError.STACK_TRACE_LIMIT_PROPERTY_NAME, JSContextOptions.STACK_TRACE_LIMIT.getValue(getOptions()), JSAttributes.getDefault());
+        }
+    }
+
+    private void addExplicitResourceManagement() {
+        if (getContextOptions().isExplicitResourceManagement()) {
+            putGlobalProperty(Strings.fromJavaString(JSErrorType.SuppressedError.name()), getErrorConstructor(JSErrorType.SuppressedError));
+            putGlobalProperty(JSDisposableStack.CLASS_NAME, getDisposableStackConstructor());
+            putGlobalProperty(JSAsyncDisposableStack.CLASS_NAME, getAsyncDisposableStackConstructor());
+
+            if (getContextOptions().getEcmaScriptVersion() >= 6) {
+                putSymbolProperty(getSymbolConstructor(), Strings.DISPOSE, Symbol.SYMBOL_DISPOSE);
+                putSymbolProperty(getSymbolConstructor(), Strings.ASYNC_DISPOSE, Symbol.SYMBOL_ASYNC_DISPOSE);
+            }
+
+            JSObjectUtil.putFunctionFromContainer(this, getIteratorPrototype(), IteratorPrototypeBuiltins.BUILTINS, Symbol.SYMBOL_DISPOSE);
+            if (getAsyncIteratorPrototype() != null) {
+                JSObjectUtil.putFunctionFromContainer(this, getAsyncIteratorPrototype(), AsyncIteratorPrototypeBuiltins.BUILTINS, Symbol.SYMBOL_ASYNC_DISPOSE);
+            }
+        }
     }
 
     private void addGlobalGlobal() {
@@ -2460,7 +2483,7 @@ public class JSRealm {
         JSObjectUtil.putDataProperty(receiver, key, value, JSAttributes.getDefaultNotEnumerable());
     }
 
-    private void setupPredefinedSymbols(JSDynamicObject symbolFunction) {
+    private static void setupPredefinedSymbols(JSDynamicObject symbolFunction) {
         putSymbolProperty(symbolFunction, Strings.HAS_INSTANCE, Symbol.SYMBOL_HAS_INSTANCE);
         putSymbolProperty(symbolFunction, Strings.IS_CONCAT_SPREADABLE, Symbol.SYMBOL_IS_CONCAT_SPREADABLE);
         putSymbolProperty(symbolFunction, Strings.ITERATOR, Symbol.SYMBOL_ITERATOR);
@@ -2474,10 +2497,6 @@ public class JSRealm {
         putSymbolProperty(symbolFunction, Strings.TO_STRING_TAG, Symbol.SYMBOL_TO_STRING_TAG);
         putSymbolProperty(symbolFunction, Strings.TO_PRIMITIVE, Symbol.SYMBOL_TO_PRIMITIVE);
         putSymbolProperty(symbolFunction, Strings.UNSCOPABLES, Symbol.SYMBOL_UNSCOPABLES);
-        if (getContextOptions().isExplicitResourceManagement()) {
-            putSymbolProperty(symbolFunction, Strings.DISPOSE, Symbol.SYMBOL_DISPOSE);
-            putSymbolProperty(symbolFunction, Strings.ASYNC_DISPOSE, Symbol.SYMBOL_ASYNC_DISPOSE);
-        }
     }
 
     private static void putSymbolProperty(JSDynamicObject symbolFunction, TruffleString name, Symbol symbol) {
@@ -2550,9 +2569,6 @@ public class JSRealm {
     private JSDynamicObject createIteratorPrototype() {
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.getObjectPrototype());
         JSObjectUtil.putDataProperty(prototype, Symbol.SYMBOL_ITERATOR, createIteratorPrototypeSymbolIteratorFunction(this), JSAttributes.getDefaultNotEnumerable());
-        if (getContextOptions().isExplicitResourceManagement()) {
-            JSObjectUtil.putFunctionFromContainer(this, prototype, IteratorPrototypeBuiltins.BUILTINS, Symbol.SYMBOL_DISPOSE);
-        }
         return prototype;
     }
 
@@ -2837,6 +2853,7 @@ public class JSRealm {
         truffleLanguageEnv = newEnv;
         getContext().setAllocationReporter(newEnv);
         getContextOptions().setOptionValues(newEnv.getSandboxPolicy(), newEnv.getOptions());
+        getContext().patchLanguageAndParserOptions(contextOptions);
         getContext().updateStableOptions(contextOptions, StableContextOptionValue.UpdateKind.PATCH);
 
         setOutputStreamsFromEnv(newEnv);
