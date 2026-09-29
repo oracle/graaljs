@@ -437,6 +437,7 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
                     JSContextOptions.CONSOLE,
                     JSContextOptions.PERFORMANCE,
                     JSContextOptions.REGEXP_STATIC_RESULT,
+                    JSContextOptions.STRING_LENGTH_LIMIT,
                     JSContextOptions.TIME_ZONE);
 
     /**
