@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -69,6 +69,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 public abstract class ArgumentsObjectNode extends JavaScriptNode {
     protected final boolean strict;
     private final int leadingArgCount;
+    private final int parameterCount;
     private final JSContext context;
 
     @Child private DynamicObject.PutNode putLengthNode;
@@ -78,9 +79,10 @@ public abstract class ArgumentsObjectNode extends JavaScriptNode {
 
     private static final int THROWER_ACCESSOR_PROPERTY_FLAGS = JSAttributes.notConfigurableNotEnumerable() | JSProperty.ACCESSOR;
 
-    protected ArgumentsObjectNode(JSContext context, boolean strict, int leadingArgCount) {
+    protected ArgumentsObjectNode(JSContext context, boolean strict, int leadingArgCount, int parameterCount) {
         this.strict = strict;
         this.leadingArgCount = leadingArgCount;
+        this.parameterCount = parameterCount;
         this.context = context;
 
         this.putLengthNode = DynamicObject.PutNode.create();
@@ -89,8 +91,8 @@ public abstract class ArgumentsObjectNode extends JavaScriptNode {
         this.putCallerNode = strict && context.getEcmaScriptVersion() < JSConfig.ECMAScript2017 ? DynamicObject.PutNode.create() : null;
     }
 
-    public static JavaScriptNode create(JSContext context, boolean strict, int leadingArgCount) {
-        return ArgumentsObjectNodeGen.create(context, strict, leadingArgCount);
+    public static JavaScriptNode create(JSContext context, boolean strict, int leadingArgCount, int parameterCount) {
+        return ArgumentsObjectNodeGen.create(context, strict, leadingArgCount, parameterCount);
     }
 
     @Idempotent
@@ -130,7 +132,7 @@ public abstract class ArgumentsObjectNode extends JavaScriptNode {
         assert realm == JSFunction.getRealm(callee);
 
         JSObjectFactory factory = context.getNonStrictArgumentsFactory();
-        JSArgumentsObject argumentsObject = JSArgumentsArray.createMapped(factory.getShape(realm), factory.getPrototype(realm), arguments);
+        JSArgumentsObject argumentsObject = JSArgumentsArray.createMapped(factory.getShape(realm), factory.getPrototype(realm), arguments, parameterCount);
         factory.initProto(argumentsObject, realm);
 
         Properties.putWithFlags(putLengthNode, argumentsObject, JSArgumentsArray.LENGTH, arguments.length, JSAttributes.getDefaultNotEnumerable());
@@ -154,6 +156,6 @@ public abstract class ArgumentsObjectNode extends JavaScriptNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return ArgumentsObjectNodeGen.create(context, strict, leadingArgCount);
+        return ArgumentsObjectNodeGen.create(context, strict, leadingArgCount, parameterCount);
     }
 }

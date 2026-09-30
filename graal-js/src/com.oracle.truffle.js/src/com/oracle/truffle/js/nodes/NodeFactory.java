@@ -937,8 +937,8 @@ public class NodeFactory {
         return GlobalObjectNode.create();
     }
 
-    public JavaScriptNode createArgumentsObjectNode(JSContext context, boolean unmapped, int leadingArgumentCount) {
-        return ArgumentsObjectNode.create(context, unmapped, leadingArgumentCount);
+    public JavaScriptNode createArgumentsObjectNode(JSContext context, boolean unmapped, int leadingArgumentCount, int parameterCount) {
+        return ArgumentsObjectNode.create(context, unmapped, leadingArgumentCount, parameterCount);
     }
 
     public JavaScriptNode createThrowError(JSErrorType errorType, TruffleString message) {

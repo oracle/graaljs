@@ -981,7 +981,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
         if (function.needsArguments() && !currentFunction.isDirectArgumentsAccess() && !currentFunction.isDirectEval()) {
             assert !function.isArrow() && !function.isClassFieldInitializer();
-            init.add(prepareArguments());
+            init.add(prepareArguments(function));
         }
 
         int parameterCount = function.getParameters().size();
@@ -1259,10 +1259,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return nodes;
     }
 
-    private JavaScriptNode prepareArguments() {
+    private JavaScriptNode prepareArguments(FunctionNode functionNode) {
         VarRef argumentsVar = environment.findLocalVar(Strings.ARGUMENTS);
         boolean unmappedArgumentsObject = currentFunction().isStrictMode() || !currentFunction().hasSimpleParameterList();
-        JavaScriptNode argumentsObject = factory.createArgumentsObjectNode(context, unmappedArgumentsObject, currentFunction().getLeadingArgumentCount());
+        JavaScriptNode argumentsObject = factory.createArgumentsObjectNode(context, unmappedArgumentsObject, currentFunction().getLeadingArgumentCount(), functionNode.getNumOfParams());
         if (!unmappedArgumentsObject) {
             argumentsObject = environment.findArgumentsVar().createWriteNode(argumentsObject);
         }

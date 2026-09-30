@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,15 +60,15 @@ public final class JSArgumentsArray extends JSAbstractArgumentsArray {
         return new JSArgumentsObject.Unmapped(shape, proto, ScriptArray.createConstantArray(elements), elements, elements.length);
     }
 
-    public static JSArgumentsObject.Mapped createMapped(Shape shape, JSDynamicObject proto, Object[] elements) {
-        return new JSArgumentsObject.Mapped(shape, proto, ScriptArray.createConstantArray(elements), elements, elements.length);
+    public static JSArgumentsObject.Mapped createMapped(Shape shape, JSDynamicObject proto, Object[] elements, int parameterCount) {
+        return new JSArgumentsObject.Mapped(shape, proto, ScriptArray.createConstantArray(elements), elements, elements.length, parameterCount);
     }
 
     @TruffleBoundary
-    public static JSArgumentsObject createNonStrictSlow(JSRealm realm, Object[] elements, JSDynamicObject callee) {
+    public static JSArgumentsObject createNonStrictSlow(JSRealm realm, Object[] elements, JSFunctionObject callee) {
         JSContext context = realm.getContext();
         JSObjectFactory factory = context.getNonStrictArgumentsFactory();
-        JSArgumentsObject argumentsObject = createMapped(factory.getShape(realm), factory.getPrototype(realm), elements);
+        JSArgumentsObject argumentsObject = createMapped(factory.getShape(realm), factory.getPrototype(realm), elements, JSFunction.getFunctionData(callee).getLength());
         factory.initProto(argumentsObject, realm);
 
         JSObjectUtil.putDataProperty(argumentsObject, LENGTH, elements.length, JSAttributes.configurableNotEnumerableWritable());
