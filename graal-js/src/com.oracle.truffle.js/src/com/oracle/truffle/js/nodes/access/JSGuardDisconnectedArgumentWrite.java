@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,18 +64,22 @@ public abstract class JSGuardDisconnectedArgumentWrite extends JavaScriptNode im
     @Child @Executed JavaScriptNode argumentsArrayNode;
     @Child @Executed JavaScriptNode rhsNode;
     @Child private WriteElementNode writeArgumentsElementNode;
+    @Child private JSWriteFrameSlotNode writeUnconnectedArgumentNode;
     private final TruffleString name;
 
-    JSGuardDisconnectedArgumentWrite(int index, WriteElementNode argumentsArrayAccess, JavaScriptNode argumentsArray, JavaScriptNode rhs, TruffleString name) {
+    JSGuardDisconnectedArgumentWrite(int index, WriteElementNode argumentsArrayAccess, JavaScriptNode argumentsArray, JavaScriptNode rhs, JSWriteFrameSlotNode writeUnconnectedArgumentNode,
+                    TruffleString name) {
         this.argumentIndex = index;
         this.argumentsArrayNode = argumentsArray;
         this.rhsNode = rhs;
         this.writeArgumentsElementNode = argumentsArrayAccess;
+        this.writeUnconnectedArgumentNode = writeUnconnectedArgumentNode;
         this.name = name;
     }
 
-    public static JSGuardDisconnectedArgumentWrite create(int index, WriteElementNode argumentsArrayAccess, JavaScriptNode argumentsArray, JavaScriptNode rhs, TruffleString name) {
-        return JSGuardDisconnectedArgumentWriteNodeGen.create(index, argumentsArrayAccess, argumentsArray, rhs, name);
+    public static JSGuardDisconnectedArgumentWrite create(int index, WriteElementNode argumentsArrayAccess, JavaScriptNode argumentsArray, JavaScriptNode rhs,
+                    JSWriteFrameSlotNode writeUnconnectedArgumentNode, TruffleString name) {
+        return JSGuardDisconnectedArgumentWriteNodeGen.create(index, argumentsArrayAccess, argumentsArray, rhs, writeUnconnectedArgumentNode, name);
     }
 
     @Override
@@ -95,11 +99,11 @@ public abstract class JSGuardDisconnectedArgumentWrite extends JavaScriptNode im
     }
 
     @Specialization(guards = "!isArgumentsDisconnected(argumentsArray)")
-    public Object doObject(JSArgumentsObject argumentsArray, Object value,
+    public Object doObject(VirtualFrame frame, JSArgumentsObject argumentsArray, Object value,
                     @Cached @Shared InlinedConditionProfile unconnected) {
         assert JSArgumentsArray.isJSArgumentsObject(argumentsArray);
         if (unconnected.profile(this, argumentIndex >= JSAbstractArgumentsArray.getConnectedArgumentCount(argumentsArray))) {
-            JSAbstractArgumentsArray.disconnectIndex(argumentsArray, argumentIndex, value);
+            writeUnconnectedArgumentNode.executeWrite(frame, value);
         } else {
             writeArgumentsElementNode.executeWithTargetAndIndexAndValue(argumentsArray, argumentIndex, value);
         }
@@ -107,14 +111,14 @@ public abstract class JSGuardDisconnectedArgumentWrite extends JavaScriptNode im
     }
 
     @Specialization(guards = "isArgumentsDisconnected(argumentsArray)")
-    public Object doObjectDisconnected(JSArgumentsObject argumentsArray, Object value,
+    public Object doObjectDisconnected(VirtualFrame frame, JSArgumentsObject argumentsArray, Object value,
                     @Cached @Shared InlinedConditionProfile wasDisconnected,
                     @Cached @Shared InlinedConditionProfile unconnected) {
         assert JSArgumentsArray.isJSArgumentsObject(argumentsArray);
-        if (wasDisconnected.profile(this, JSAbstractArgumentsArray.wasIndexDisconnected(argumentsArray, argumentIndex))) {
+        if (unconnected.profile(this, argumentIndex >= JSAbstractArgumentsArray.getConnectedArgumentCount(argumentsArray))) {
+            writeUnconnectedArgumentNode.executeWrite(frame, value);
+        } else if (wasDisconnected.profile(this, JSAbstractArgumentsArray.wasIndexDisconnected(argumentsArray, argumentIndex))) {
             JSAbstractArgumentsArray.setDisconnectedIndexValue(argumentsArray, argumentIndex, value);
-        } else if (unconnected.profile(this, argumentIndex >= JSAbstractArgumentsArray.getConnectedArgumentCount(argumentsArray))) {
-            JSAbstractArgumentsArray.disconnectIndex(argumentsArray, argumentIndex, value);
         } else {
             writeArgumentsElementNode.executeWithTargetAndIndexAndValue(argumentsArray, argumentIndex, value);
         }
@@ -136,6 +140,6 @@ public abstract class JSGuardDisconnectedArgumentWrite extends JavaScriptNode im
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return JSGuardDisconnectedArgumentWriteNodeGen.create(argumentIndex, cloneUninitialized(writeArgumentsElementNode, materializedTags), cloneUninitialized(argumentsArrayNode, materializedTags),
-                        cloneUninitialized(rhsNode, materializedTags), name);
+                        cloneUninitialized(rhsNode, materializedTags), cloneUninitialized(writeUnconnectedArgumentNode, materializedTags), name);
     }
 }
