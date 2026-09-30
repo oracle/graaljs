@@ -113,6 +113,47 @@ public class MappedArgumentsObjectTest extends JSTest {
     }
 
     @Test
+    public void testNonArrayIndexPropertiesKeepFastArguments() {
+        for (String strict : new String[]{"", "'use strict';"}) {
+            for (String key : new String[]{"4294967295", "4294967296", "9999999999"}) {
+                for (boolean numericDelete : new boolean[]{false, true}) {
+                    JSArgumentsObject arguments = (JSArgumentsObject) testHelper.runNoPolyglot("""
+                                    (function (a) {
+                                        %s
+                                        Object.defineProperty(arguments, '%s', {get() { return 42; }, configurable: true});
+                                        return arguments;
+                                    })(1);
+                                    """.formatted(strict, key));
+                    assertFastArguments(arguments);
+                    assertEquals(42, JSObject.get(arguments, Strings.fromJavaString(key)));
+                    assertTrue(JSObject.getOwnProperty(arguments, Strings.fromJavaString(key)).isAccessorDescriptor());
+                    assertEquals(1, JSObject.get(arguments, JSArgumentsArray.LENGTH));
+                    if (numericDelete) {
+                        assertTrue(JSObject.delete(arguments, Long.parseLong(key), true));
+                    } else {
+                        assertTrue(JSObject.delete(arguments, Strings.fromJavaString(key), true));
+                    }
+                    assertFalse(JSObject.hasOwnProperty(arguments, Strings.fromJavaString(key)));
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testLastArrayIndexStillNeedsSlowArguments() {
+        JSArgumentsObject arguments = (JSArgumentsObject) testHelper.runNoPolyglot("""
+                        (function () {
+                            Object.defineProperty(arguments, '4294967294', {get() { return 42; }, configurable: true});
+                            return arguments;
+                        })();
+                        """);
+        assertFalse(JSArgumentsArray.isJSFastArgumentsObject(arguments));
+        assertEquals(42, JSObject.get(arguments, Strings.constant("4294967294")));
+        assertTrue(JSObject.delete(arguments, Strings.constant("4294967294"), true));
+        assertFalse(JSObject.hasOwnProperty(arguments, Strings.constant("4294967294")));
+    }
+
+    @Test
     public void testRedefineExcessArgument() {
         assertExcessArgumentNotDisconnected("Object.defineProperty(arguments, '%d', {get() { return 42; }})");
     }
@@ -155,6 +196,11 @@ public class MappedArgumentsObjectTest extends JSTest {
         JSArgumentsObject.Mapped arguments = (JSArgumentsObject.Mapped) testHelper.runNoPolyglot(source);
         assertEquals(expectedConnectedCount, arguments.getConnectedArgumentCount());
         assertEquals(expectedLength, JSObject.get(arguments, JSArgumentsArray.LENGTH));
+    }
+
+    private static void assertFastArguments(JSArgumentsObject arguments) {
+        assertTrue(JSArgumentsArray.isJSFastArgumentsObject(arguments));
+        assertFalse(JSAbstractArgumentsArray.hasDisconnectedIndices(arguments));
     }
 
     private void assertExcessArgumentNotDisconnected(String operation) {

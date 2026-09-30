@@ -167,7 +167,7 @@ public abstract class JSAbstractArgumentsArray extends JSAbstractArray {
         long index = JSRuntime.propertyKeyToArrayIndex(key);
         Object oldValue = null;
         boolean indexConnected = false;
-        if (index >= 0) {
+        if (JSRuntime.isArrayIndex(index)) {
             makeSlowArray(thisObj);
             indexConnected = isMappedArguments && isIndexConnected(thisObj, index);
             oldValue = super.get(thisObj, index);
