@@ -72,23 +72,19 @@ public abstract class JSAbstractArgumentsArray extends JSAbstractArray {
     @TruffleBoundary
     @Override
     public boolean delete(JSDynamicObject thisObj, long index, boolean isStrict, boolean resultWhenNotPresent) {
-        if (isMappedArguments(thisObj)) {
-            makeSlowArray(thisObj);
-            return JSObject.delete(thisObj, index, isStrict, resultWhenNotPresent);
-        } else {
+        if (!isMappedArguments(thisObj) || !isIndexConnected(thisObj, index)) {
             return super.delete(thisObj, index, isStrict, resultWhenNotPresent);
         }
-    }
-
-    @TruffleBoundary
-    @Override
-    public boolean delete(JSDynamicObject thisObj, Object key, boolean isStrict, boolean resultWhenNotPresent) {
-        long index = JSRuntime.propertyKeyToArrayIndex(key);
-        if (index >= 0 && JSRuntime.isArrayIndex(index)) {
-            return delete(thisObj, index, isStrict, resultWhenNotPresent);
-        } else {
-            return super.delete(thisObj, key, isStrict, resultWhenNotPresent);
+        ScriptArray arrayType = arrayGetArrayType(thisObj);
+        if (!arrayType.hasElement(thisObj, index)) {
+            return resultWhenNotPresent;
         }
+        Object oldValue = arrayType.getElement(thisObj, index);
+        boolean wasDeleted = super.delete(thisObj, index, isStrict, resultWhenNotPresent);
+        if (wasDeleted) {
+            disconnectIndex(thisObj, index, oldValue);
+        }
+        return wasDeleted;
     }
 
     protected static boolean isMappedArguments(JSDynamicObject thisObj) {

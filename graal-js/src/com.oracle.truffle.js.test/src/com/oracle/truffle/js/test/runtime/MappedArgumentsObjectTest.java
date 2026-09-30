@@ -93,7 +93,7 @@ public class MappedArgumentsObjectTest extends JSTest {
         assertEquals(0, arguments.getConnectedArgumentCount());
         assertEquals(2, JSObject.get(arguments, JSArgumentsArray.LENGTH));
         assertEquals(1, JSObject.get(arguments, 0));
-        assertTrue(arguments.getDisconnectedIndices().isEmpty());
+        assertFastArguments(arguments);
     }
 
     @Test
@@ -109,7 +109,58 @@ public class MappedArgumentsObjectTest extends JSTest {
 
     @Test
     public void testDeleteExcessArgument() {
-        assertExcessArgumentNotDisconnected("delete arguments[%d]");
+        assertExcessArgumentNotDisconnected("delete arguments[%d]", true);
+        assertTrue(testHelper.getJSContext().getFastArgumentsObjectAssumption().isValid());
+    }
+
+    @Test
+    public void testDeleteAbsentArgument() {
+        for (String strict : new String[]{"", "'use strict';"}) {
+            JSArgumentsObject arguments = (JSArgumentsObject) testHelper.runNoPolyglot("""
+                            (function (a, b) {
+                                %s
+                                if (!delete arguments[1] || !delete arguments[100]) {
+                                    throw new Error('deleting an absent argument failed');
+                                }
+                                b = 42;
+                                arguments.saved = b;
+                                return arguments;
+                            })(1);
+                            """.formatted(strict));
+            assertEquals(42, JSObject.get(arguments, Strings.constant("saved")));
+            assertFalse(JSObject.hasOwnProperty(arguments, 1));
+            assertFalse(JSArgumentsArray.INSTANCE.delete(arguments, 100L, false, false));
+            assertFastArguments(arguments);
+        }
+        assertTrue(testHelper.getJSContext().getFastArgumentsObjectAssumption().isValid());
+    }
+
+    @Test
+    public void testRejectedDeleteKeepsFastArguments() {
+        for (String operation : new String[]{"seal", "freeze"}) {
+            JSArgumentsObject.Mapped arguments = (JSArgumentsObject.Mapped) testHelper.runNoPolyglot("""
+                            (function (a) {
+                                Object.%s(arguments);
+                                for (var index of [0, 1]) {
+                                    if (Reflect.deleteProperty(arguments, index)) {
+                                        throw new Error('deleting a sealed argument succeeded');
+                                    }
+                                    try {
+                                        (function (args, i) { 'use strict'; delete args[i]; })(arguments, index);
+                                        throw new Error('strict deletion should have thrown');
+                                    } catch (e) {
+                                        if (!(e instanceof TypeError)) throw e;
+                                    }
+                                }
+                                return arguments;
+                            })(1, 2);
+                            """.formatted(operation));
+            assertEquals(1, JSObject.get(arguments, 0));
+            assertEquals(2, JSObject.get(arguments, 1));
+            assertEquals(2, JSObject.get(arguments, JSArgumentsArray.LENGTH));
+            assertFastArguments(arguments);
+        }
+        assertTrue(testHelper.getJSContext().getFastArgumentsObjectAssumption().isValid());
     }
 
     @Test
@@ -134,9 +185,11 @@ public class MappedArgumentsObjectTest extends JSTest {
                         assertTrue(JSObject.delete(arguments, Strings.fromJavaString(key), true));
                     }
                     assertFalse(JSObject.hasOwnProperty(arguments, Strings.fromJavaString(key)));
+                    assertFastArguments(arguments);
                 }
             }
         }
+        assertTrue(testHelper.getJSContext().getFastArgumentsObjectAssumption().isValid());
     }
 
     @Test
@@ -155,13 +208,13 @@ public class MappedArgumentsObjectTest extends JSTest {
 
     @Test
     public void testRedefineExcessArgument() {
-        assertExcessArgumentNotDisconnected("Object.defineProperty(arguments, '%d', {get() { return 42; }})");
+        assertExcessArgumentNotDisconnected("Object.defineProperty(arguments, '%d', {get() { return 42; }})", false);
     }
 
     @Test
     public void testMakeExcessArgumentNonWritable() {
-        assertExcessArgumentNotDisconnected("Object.defineProperty(arguments, '%1$d', {writable: false}); delete arguments[%1$d]");
-        assertExcessArgumentNotDisconnected("Object.defineProperty(arguments, '%d', {value: 42, writable: false})");
+        assertExcessArgumentNotDisconnected("Object.defineProperty(arguments, '%1$d', {writable: false}); delete arguments[%1$d]", false);
+        assertExcessArgumentNotDisconnected("Object.defineProperty(arguments, '%d', {value: 42, writable: false})", false);
     }
 
     @Test
@@ -175,7 +228,7 @@ public class MappedArgumentsObjectTest extends JSTest {
                             })(1, {});
                             """);
             assertEquals(1, arguments.getConnectedArgumentCount());
-            assertTrue(arguments.getDisconnectedIndices().isEmpty());
+            assertFastArguments(arguments);
         }
     }
 
@@ -203,7 +256,7 @@ public class MappedArgumentsObjectTest extends JSTest {
         assertFalse(JSAbstractArgumentsArray.hasDisconnectedIndices(arguments));
     }
 
-    private void assertExcessArgumentNotDisconnected(String operation) {
+    private void assertExcessArgumentNotDisconnected(String operation, boolean staysFast) {
         for (int parameterCount = 0; parameterCount <= 1; parameterCount++) {
             String parameters = parameterCount == 0 ? "" : "a";
             String actualArguments = parameterCount == 0 ? "{}" : "1, {}";
@@ -214,7 +267,12 @@ public class MappedArgumentsObjectTest extends JSTest {
                             })(%s);
                             """.formatted(parameters, operation.formatted(parameterCount), actualArguments));
             // The escaping arguments object must not retain the old value of an excess argument.
-            assertTrue(arguments.getDisconnectedIndices().isEmpty());
+            if (staysFast) {
+                assertFastArguments(arguments);
+                assertFalse(JSObject.hasOwnProperty(arguments, parameterCount));
+            } else {
+                assertTrue(arguments.getDisconnectedIndices().isEmpty());
+            }
             assertFalse(JSAbstractArgumentsArray.isIndexConnected(arguments, parameterCount));
             assertEquals(parameterCount + 1, JSObject.get(arguments, JSArgumentsArray.LENGTH));
             if (parameterCount != 0) {
