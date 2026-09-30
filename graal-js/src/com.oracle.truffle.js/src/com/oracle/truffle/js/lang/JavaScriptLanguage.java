@@ -429,6 +429,7 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
                     JSContextOptions.TIMER_RESOLUTION,
                     JSContextOptions.SHELL,
                     JSContextOptions.V8_COMPATIBILITY_MODE,
+                    JSContextOptions.SOURCE_PHASE_IMPORTS,
                     JSContextOptions.GLOBAL_PROPERTY,
                     JSContextOptions.GLOBAL_ARGUMENTS,
                     JSContextOptions.DIRECT_BYTE_BUFFER,
