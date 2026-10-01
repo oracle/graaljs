@@ -2324,15 +2324,11 @@ public class JSRealm {
             putGlobalProperty(JSDisposableStack.CLASS_NAME, getDisposableStackConstructor());
             putGlobalProperty(JSAsyncDisposableStack.CLASS_NAME, getAsyncDisposableStackConstructor());
 
-            if (getContextOptions().getEcmaScriptVersion() >= 6) {
-                putSymbolProperty(getSymbolConstructor(), Strings.DISPOSE, Symbol.SYMBOL_DISPOSE);
-                putSymbolProperty(getSymbolConstructor(), Strings.ASYNC_DISPOSE, Symbol.SYMBOL_ASYNC_DISPOSE);
-            }
+            putSymbolProperty(getSymbolConstructor(), Strings.DISPOSE, Symbol.SYMBOL_DISPOSE);
+            putSymbolProperty(getSymbolConstructor(), Strings.ASYNC_DISPOSE, Symbol.SYMBOL_ASYNC_DISPOSE);
 
             JSObjectUtil.putFunctionFromContainer(this, getIteratorPrototype(), IteratorPrototypeBuiltins.BUILTINS, Symbol.SYMBOL_DISPOSE);
-            if (getAsyncIteratorPrototype() != null) {
-                JSObjectUtil.putFunctionFromContainer(this, getAsyncIteratorPrototype(), AsyncIteratorPrototypeBuiltins.BUILTINS, Symbol.SYMBOL_ASYNC_DISPOSE);
-            }
+            JSObjectUtil.putFunctionFromContainer(this, getAsyncIteratorPrototype(), AsyncIteratorPrototypeBuiltins.BUILTINS, Symbol.SYMBOL_ASYNC_DISPOSE);
         }
     }
 
