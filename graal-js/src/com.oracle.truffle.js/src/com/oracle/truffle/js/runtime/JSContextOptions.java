@@ -153,7 +153,7 @@ public final class JSContextOptions {
 
     public static final String SHEBANG_NAME = JS_OPTION_PREFIX + "shebang";
     @Option(name = SHEBANG_NAME, category = OptionCategory.USER, help = "Allow parsing files starting with #!.") //
-    public static final OptionKey<Boolean> SHEBANG = new OptionKey<>(false);
+    public static final OptionKey<Boolean> SHEBANG = new OptionKey<>(true);
 
     public static final String STRICT_NAME = JS_OPTION_PREFIX + "strict";
     @Option(name = STRICT_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, sandbox = SandboxPolicy.UNTRUSTED, help = "Enforce strict mode.") //
@@ -174,12 +174,12 @@ public final class JSContextOptions {
 
     public static final String REGEXP_MATCH_INDICES_NAME = JS_OPTION_PREFIX + "regexp-match-indices";
     @Option(name = REGEXP_MATCH_INDICES_NAME, category = OptionCategory.USER, help = "Enable RegExp Match Indices property.", deprecated = true) //
-    public static final OptionKey<Boolean> REGEXP_MATCH_INDICES = new OptionKey<>(false);
+    public static final OptionKey<Boolean> REGEXP_MATCH_INDICES = new OptionKey<>(true);
     @CompilationFinal private boolean regexpMatchIndices;
 
     public static final String REGEXP_UNICODE_SETS_NAME = JS_OPTION_PREFIX + "regexp-unicode-sets";
     @Option(name = REGEXP_UNICODE_SETS_NAME, category = OptionCategory.USER, help = "Enable RegExp Unicode sets proposal (v flag).") //
-    public static final OptionKey<Boolean> REGEXP_UNICODE_SETS = new OptionKey<>(false);
+    public static final OptionKey<Boolean> REGEXP_UNICODE_SETS = new OptionKey<>(true);
     @CompilationFinal private boolean regexpUnicodeSets;
 
     public static final String REGEXP_STATIC_RESULT_NAME = JS_OPTION_PREFIX + "regexp-static-result";
@@ -408,7 +408,7 @@ public final class JSContextOptions {
 
     public static final String CLASS_FIELDS_NAME = JS_OPTION_PREFIX + "class-fields";
     @Option(name = CLASS_FIELDS_NAME, category = OptionCategory.USER, help = "Enable the class public and private fields proposal.") //
-    public static final OptionKey<Boolean> CLASS_FIELDS = new OptionKey<>(false);
+    public static final OptionKey<Boolean> CLASS_FIELDS = new OptionKey<>(true);
     public static final int CLASS_FIELDS_ES_VERSION = JSConfig.ECMAScript2021;
 
     public static final String REGEX_DUMP_AUTOMATA_NAME = JS_OPTION_PREFIX + "regex.dump-automata";
@@ -566,9 +566,8 @@ public final class JSContextOptions {
     @CompilationFinal private int functionCacheLimit;
 
     public static final String TOP_LEVEL_AWAIT_NAME = JS_OPTION_PREFIX + "top-level-await";
-    @Option(name = TOP_LEVEL_AWAIT_NAME, category = OptionCategory.EXPERT, help = "Enable top-level-await.")
-    // defaulting to ecmascript-version>=2022
-    protected static final OptionKey<Boolean> TOP_LEVEL_AWAIT = new OptionKey<>(false);
+    @Option(name = TOP_LEVEL_AWAIT_NAME, category = OptionCategory.EXPERT, help = "Enable top-level-await.") //
+    protected static final OptionKey<Boolean> TOP_LEVEL_AWAIT = new OptionKey<>(true);
     @CompilationFinal private boolean topLevelAwait;
 
     public static final String USE_UTC_FOR_LEGACY_DATES_NAME = JS_OPTION_PREFIX + "use-utc-for-legacy-dates";
@@ -583,12 +582,12 @@ public final class JSContextOptions {
 
     public static final String NEW_SET_METHODS_NAME = JS_OPTION_PREFIX + "new-set-methods";
     @Option(name = NEW_SET_METHODS_NAME, category = OptionCategory.EXPERT, help = "Enable new Set methods.") //
-    public static final OptionKey<Boolean> NEW_SET_METHODS = new OptionKey<>(false);
+    public static final OptionKey<Boolean> NEW_SET_METHODS = new OptionKey<>(true);
     @CompilationFinal private boolean newSetMethods;
 
     public static final String ATOMICS_WAIT_ASYNC_NAME = JS_OPTION_PREFIX + "atomics-wait-async";
     @Option(name = ATOMICS_WAIT_ASYNC_NAME, category = OptionCategory.EXPERT, help = "Enable Atomics.waitAsync.") //
-    public static final OptionKey<Boolean> ATOMICS_WAIT_ASYNC = new OptionKey<>(false);
+    public static final OptionKey<Boolean> ATOMICS_WAIT_ASYNC = new OptionKey<>(true);
     @CompilationFinal private boolean atomicsWaitAsync;
 
     public static final String TEMPORAL_NAME = JS_OPTION_PREFIX + "temporal";
@@ -598,7 +597,7 @@ public final class JSContextOptions {
 
     public static final String ITERATOR_HELPERS_NAME = JS_OPTION_PREFIX + "iterator-helpers";
     @Option(name = ITERATOR_HELPERS_NAME, category = OptionCategory.EXPERT, help = "Enable JavaScript Iterator Helpers API.") //
-    public static final OptionKey<Boolean> ITERATOR_HELPERS = new OptionKey<>(false);
+    public static final OptionKey<Boolean> ITERATOR_HELPERS = new OptionKey<>(true);
     @CompilationFinal private boolean iteratorHelpers;
 
     public static final String ASYNC_ITERATOR_HELPERS_NAME = JS_OPTION_PREFIX + "async-iterator-helpers";
@@ -682,17 +681,17 @@ public final class JSContextOptions {
     public static final String ERROR_CAUSE_NAME = JS_OPTION_PREFIX + "error-cause";
     @Option(name = ERROR_CAUSE_NAME, category = OptionCategory.EXPERT, help = "" +
                     "Enable the error cause proposal. Allows an error to be chained with a cause using the optional options parameter.") //
-    public static final OptionKey<Boolean> ERROR_CAUSE = new OptionKey<>(false);
+    public static final OptionKey<Boolean> ERROR_CAUSE = new OptionKey<>(true);
     @CompilationFinal private boolean errorCause;
 
     public static final String IMPORT_ATTRIBUTES_NAME = JS_OPTION_PREFIX + "import-attributes";
     @Option(name = IMPORT_ATTRIBUTES_NAME, category = OptionCategory.USER, help = "Enable import attributes") //
-    public static final OptionKey<Boolean> IMPORT_ATTRIBUTES = new OptionKey<>(false);
+    public static final OptionKey<Boolean> IMPORT_ATTRIBUTES = new OptionKey<>(true);
     @CompilationFinal private boolean importAttributes;
 
     public static final String JSON_MODULES_NAME = JS_OPTION_PREFIX + "json-modules";
     @Option(name = JSON_MODULES_NAME, category = OptionCategory.USER, help = "Enable loading of json modules") //
-    public static final OptionKey<Boolean> JSON_MODULES = new OptionKey<>(false);
+    public static final OptionKey<Boolean> JSON_MODULES = new OptionKey<>(true);
     @CompilationFinal private boolean jsonModules;
 
     public static final String IMPORT_TEXT_NAME = JS_OPTION_PREFIX + "import-text";
@@ -731,7 +730,7 @@ public final class JSContextOptions {
 
     public static final String PRIVATE_FIELDS_IN_NAME = JS_OPTION_PREFIX + "private-fields-in";
     @Option(name = PRIVATE_FIELDS_IN_NAME, category = OptionCategory.USER, help = "Enable private field in in operator") //
-    public static final OptionKey<Boolean> PRIVATE_FIELDS_IN = new OptionKey<>(false);
+    public static final OptionKey<Boolean> PRIVATE_FIELDS_IN = new OptionKey<>(true);
     @CompilationFinal private boolean privateFieldsIn;
 
     public static final String ESM_BARE_SPECIFIER_RELATIVE_LOOKUP_NAME = JS_OPTION_PREFIX + "esm-bare-specifier-relative-lookup";
@@ -875,8 +874,9 @@ public final class JSContextOptions {
                         (this.asyncIteratorHelpers || readBooleanOption(ITERATOR_HELPERS, JSConfig.ECMAScript2025));
         this.shadowRealm = getEcmaScriptVersion() >= JSConfig.ECMAScript2015 && readBooleanOption(SHADOW_REALM);
         this.asyncContext = readBooleanOption(ASYNC_CONTEXT);
-        this.explicitResourceManagement = EXPLICIT_RESOURCE_MANAGEMENT.hasBeenSet(optionValues) ? readBooleanOption(EXPLICIT_RESOURCE_MANAGEMENT)
-                        : (v8CompatibilityMode || getEcmaScriptVersion() == JSConfig.StagingECMAScriptVersion);
+        this.explicitResourceManagement = getEcmaScriptVersion() >= JSConfig.ECMAScript2018 &&
+                        (EXPLICIT_RESOURCE_MANAGEMENT.hasBeenSet(optionValues) ? readBooleanOption(EXPLICIT_RESOURCE_MANAGEMENT)
+                                        : (v8CompatibilityMode || getEcmaScriptVersion() == JSConfig.StagingECMAScriptVersion));
         this.operatorOverloading = readBooleanOption(OPERATOR_OVERLOADING);
         this.errorCause = readBooleanOption(ERROR_CAUSE, JSConfig.ECMAScript2022);
         this.importAttributes = readBooleanOption(IMPORT_ATTRIBUTES, JSConfig.ECMAScript2025);

@@ -76,9 +76,6 @@ public final class JSIterator extends JSNonProxy implements JSConstructorFactory
 
         JSObjectUtil.putDataProperty(iteratorPrototype, Symbol.SYMBOL_ITERATOR, createIteratorPrototypeSymbolIteratorFunction(realm), JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putFunctionsFromContainer(realm, iteratorPrototype, IteratorPrototypeBuiltins.BUILTINS);
-        if (realm.getContext().isOptionExplicitResourceManagement()) {
-            JSObjectUtil.putFunctionFromContainer(realm, iteratorPrototype, IteratorPrototypeBuiltins.BUILTINS, Symbol.SYMBOL_DISPOSE);
-        }
         JSObjectUtil.putAccessorsFromContainer(realm, iteratorPrototype, IteratorPrototypeBuiltins.BUILTINS);
         if (realm.getContext().getLanguageOptions().asyncIteratorHelpers()) {
             JSObjectUtil.putFunctionsFromContainer(realm, iteratorPrototype, IteratorPrototypeBuiltins.ASYNC_BUILTINS);

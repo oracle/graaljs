@@ -464,8 +464,9 @@ public class JSContext {
 
     @CompilationFinal private AllocationReporter allocationReporter;
 
-    private final JSLanguageOptions languageOptions;
-    private final JSParserOptions parserOptions;
+    /* May be replaced once when a preinitialized context is patched. */
+    @CompilationFinal private JSLanguageOptions languageOptions;
+    @CompilationFinal private JSParserOptions parserOptions;
 
     private final StableContextOptionValue<Boolean> optionRegexpStaticResult;
     private final StableContextOptionValue<Boolean> optionV8CompatibilityMode;
@@ -1916,6 +1917,15 @@ public class JSContext {
 
     public JSLanguageOptions getLanguageOptions() {
         return languageOptions;
+    }
+
+    void patchLanguageAndParserOptions(JSContextOptions contextOptions) {
+        CompilerAsserts.neverPartOfCompilation();
+        JSLanguageOptions newLanguageOptions = JSLanguageOptions.fromContextOptions(contextOptions);
+        if (!languageOptions.equals(newLanguageOptions)) {
+            languageOptions = newLanguageOptions;
+            parserOptions = JSParserOptions.fromLanguageOptions(newLanguageOptions);
+        }
     }
 
     @Idempotent
