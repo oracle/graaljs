@@ -502,7 +502,6 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             long sourceLen = JSArray.arrayGetLength(array);
             long targetLength = typedArrayLengthNode.execute(this, targetObj, context);
             rangeCheck(0, sourceLen, targetOffset, targetLength, errorBranch, this);
-            int targetOffsetInt = (int) targetOffset;
             int targetElementSize = targetArray.bytesPerElement();
             int targetBufferByteOffset = targetArray.getOffset(targetObj);
             JSArrayBufferObject targetBuffer = targetObj.getArrayBuffer();
@@ -514,9 +513,10 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 Object value = readElementNode.executeWithTargetAndIndex(array, i);
                 // IntegerIndexedElementSet
                 Object numValue = isBigInt ? toBigInt(value) : toNumber(value);
-                if (i < typedArrayLengthNode.execute(this, targetObj, context)) {
-                    int targetIndex = (int) (targetBufferByteOffset + (targetOffsetInt + i) * targetElementSize);
-                    setBufferElementNode.execute(this, targetBuffer, targetIndex, littleEndian, numValue, targetArrayFactory, null);
+                long targetIndex = targetOffset + i;
+                if (targetIndex < typedArrayLengthNode.execute(this, targetObj, context)) {
+                    int targetBufferIndex = (int) (targetBufferByteOffset + targetIndex * targetElementSize);
+                    setBufferElementNode.execute(this, targetBuffer, targetBufferIndex, littleEndian, numValue, targetArrayFactory, null);
                 }
                 TruffleSafepoint.poll(this);
             }
@@ -550,9 +550,10 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 Object value = readElementNode.executeWithTargetAndIndex(array, i);
                 // IntegerIndexedElementSet
                 Object numValue = isBigInt ? toBigInt(value) : toNumber(value);
-                if (i < typedArrayLengthNode.execute(this, targetObj, context)) {
-                    int targetIndex = targetBufferByteOffset + (targetOffsetInt + i) * targetElementSize;
-                    setBufferElementNode.execute(this, targetBuffer, targetIndex, littleEndian, numValue, targetArrayFactory, null);
+                int targetIndex = targetOffsetInt + i;
+                if (targetIndex < typedArrayLengthNode.execute(this, targetObj, context)) {
+                    int targetBufferIndex = targetBufferByteOffset + targetIndex * targetElementSize;
+                    setBufferElementNode.execute(this, targetBuffer, targetBufferIndex, littleEndian, numValue, targetArrayFactory, null);
                 }
                 TruffleSafepoint.poll(this);
             }
