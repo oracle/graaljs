@@ -1491,6 +1491,22 @@ public class WriteElementNode extends JSTargetableNode {
             this.interop = arrayType.isInterop() ? InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit) : InteropLibrary.getUncached();
         }
 
+        protected final boolean isInBounds(JSTypedArrayObject target, TypedArray typedArray, long index, JSContext context, InlinedConditionProfile inBoundsIf) {
+            return inBoundsIf.profile(this, !JSArrayBufferView.isOutOfBounds(target, context) && typedArray.hasElement(target, index));
+        }
+
+        protected final boolean checkWriteOwnInBounds(JSTypedArrayObject target, TypedArray typedArray, long index, WriteElementNode root,
+                        InlinedConditionProfile inBoundsIf) {
+            // [[DefineOwnProperty]] validates the index before TypedArraySetElement converts the value.
+            if (root.writeOwn && !isInBounds(target, typedArray, index, root.context, inBoundsIf)) {
+                if (root.isStrict) {
+                    throw Errors.createTypeErrorCannotRedefineProperty(index);
+                }
+                return false;
+            }
+            return true;
+        }
+
     }
 
     abstract static class TypedIntArrayWriteElementCacheNode extends AbstractTypedArrayWriteElementCacheNode {
@@ -1502,7 +1518,7 @@ public class WriteElementNode extends JSTargetableNode {
         @Specialization(guards = "!target.getArrayBuffer().isImmutable()")
         protected final boolean doTypedIntArrayIntValue(JSTypedArrayObject target, TypedIntArray typedArray, long index, int iValue, WriteElementNode root,
                         @Cached @Shared InlinedConditionProfile inBoundsIf) {
-            if (inBoundsIf.profile(this, !JSArrayBufferView.isOutOfBounds(target, root.context) && typedArray.hasElement(target, index))) {
+            if (isInBounds(target, typedArray, index, root.context, inBoundsIf)) {
                 typedArray.setInt(target, (int) index, iValue, interop);
             } else if (root.writeOwn && root.isStrict) {
                 /*
@@ -1524,6 +1540,9 @@ public class WriteElementNode extends JSTargetableNode {
                         @Cached JSToInt32Node toIntNode,
                         @Cached @Shared InlinedConditionProfile immutableIf,
                         @Cached @Shared InlinedConditionProfile inBoundsIf) {
+            if (!checkWriteOwnInBounds(target, typedArray, index, root, inBoundsIf)) {
+                return true;
+            }
             if (immutableIf.profile(this, target.getArrayBuffer().isImmutable())) {
                 if (root.isStrict) {
                     throw Errors.createTypeErrorImmutableBuffer();
@@ -1531,7 +1550,10 @@ public class WriteElementNode extends JSTargetableNode {
                 return false;
             }
             int iValue = toIntNode.executeInt(value); // could throw
-            return doTypedIntArrayIntValue(target, typedArray, index, iValue, root, inBoundsIf);
+            if (isInBounds(target, typedArray, index, root.context, inBoundsIf)) {
+                typedArray.setInt(target, (int) index, iValue, interop);
+            }
+            return true;
         }
 
         @Specialization(replaces = "doTypedIntArrayIntValue")
@@ -1539,6 +1561,9 @@ public class WriteElementNode extends JSTargetableNode {
                         @Cached JSToDoubleNode toDoubleNode,
                         @Cached @Shared InlinedConditionProfile immutableIf,
                         @Cached @Shared InlinedConditionProfile inBoundsIf) {
+            if (!checkWriteOwnInBounds(target, typedArray, index, root, inBoundsIf)) {
+                return true;
+            }
             if (immutableIf.profile(this, target.getArrayBuffer().isImmutable())) {
                 if (root.isStrict) {
                     throw Errors.createTypeErrorImmutableBuffer();
@@ -1547,7 +1572,10 @@ public class WriteElementNode extends JSTargetableNode {
             }
             double doubleValue = toDoubleNode.executeDouble(value);
             int iValue = Uint8ClampedArray.toInt(doubleValue);
-            return doTypedIntArrayIntValue(target, typedArray, index, iValue, root, inBoundsIf);
+            if (isInBounds(target, typedArray, index, root.context, inBoundsIf)) {
+                typedArray.setInt(target, (int) index, iValue, interop);
+            }
+            return true;
         }
     }
 
@@ -1564,6 +1592,9 @@ public class WriteElementNode extends JSTargetableNode {
         protected final boolean doBigIntArray(JSTypedArrayObject target, TypedBigIntArray typedArray, long index, Object value, WriteElementNode root,
                         @Cached InlinedConditionProfile immutableIf,
                         @Cached InlinedConditionProfile inBoundsIf) {
+            if (!checkWriteOwnInBounds(target, typedArray, index, root, inBoundsIf)) {
+                return true;
+            }
             if (immutableIf.profile(this, target.getArrayBuffer().isImmutable())) {
                 if (root.isStrict) {
                     throw Errors.createTypeErrorImmutableBuffer();
@@ -1571,14 +1602,8 @@ public class WriteElementNode extends JSTargetableNode {
                 return false;
             }
             BigInt biValue = toBigIntNode.executeBigInteger(value); // could throw
-            if (inBoundsIf.profile(this, !JSArrayBufferView.isOutOfBounds(target, root.context) && typedArray.hasElement(target, index))) {
+            if (isInBounds(target, typedArray, index, root.context, inBoundsIf)) {
                 typedArray.setBigInt(target, (int) index, biValue, interop);
-            } else if (root.writeOwn && root.isStrict) {
-                /*
-                 * CreateDataPropertyOrThrow semantics; throw if [[DefineOwnProperty]] returns
-                 * false, i.e. if IsValidIntegerIndex(O, index) is false.
-                 */
-                throw Errors.createTypeErrorCannotRedefineProperty(index);
             }
             /* Else: do nothing, see TypedArraySetElement(O, index, value). */
             return true;
@@ -1596,6 +1621,9 @@ public class WriteElementNode extends JSTargetableNode {
                         @Cached InlinedConditionProfile immutableIf,
                         @Cached InlinedConditionProfile inBoundsIf,
                         @Cached JSToDoubleNode toDouble) {
+            if (!checkWriteOwnInBounds(target, typedArray, index, root, inBoundsIf)) {
+                return true;
+            }
             if (immutableIf.profile(this, target.getArrayBuffer().isImmutable())) {
                 if (root.isStrict) {
                     throw Errors.createTypeErrorImmutableBuffer();
@@ -1603,14 +1631,8 @@ public class WriteElementNode extends JSTargetableNode {
                 return false;
             }
             double dValue = toDouble.executeDouble(value); // could throw
-            if (inBoundsIf.profile(this, !JSArrayBufferView.isOutOfBounds(target, root.context) && typedArray.hasElement(target, index))) {
+            if (isInBounds(target, typedArray, index, root.context, inBoundsIf)) {
                 typedArray.setDouble(target, (int) index, dValue, interop);
-            } else if (root.writeOwn && root.isStrict) {
-                /*
-                 * CreateDataPropertyOrThrow semantics; throw if [[DefineOwnProperty]] returns
-                 * false, i.e. if IsValidIntegerIndex(O, index) is false.
-                 */
-                throw Errors.createTypeErrorCannotRedefineProperty(index);
             }
             /* Else: do nothing, see TypedArraySetElement(O, index, value). */
             return true;
