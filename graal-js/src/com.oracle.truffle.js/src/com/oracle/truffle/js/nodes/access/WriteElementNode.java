@@ -1547,7 +1547,7 @@ public class WriteElementNode extends JSTargetableNode {
                 if (root.isStrict) {
                     throw Errors.createTypeErrorImmutableBuffer();
                 }
-                return false;
+                return true;
             }
             int iValue = toIntNode.executeInt(value); // could throw
             if (isInBounds(target, typedArray, index, root.context, inBoundsIf)) {
@@ -1568,7 +1568,7 @@ public class WriteElementNode extends JSTargetableNode {
                 if (root.isStrict) {
                     throw Errors.createTypeErrorImmutableBuffer();
                 }
-                return false;
+                return true;
             }
             double doubleValue = toDoubleNode.executeDouble(value);
             int iValue = Uint8ClampedArray.toInt(doubleValue);
@@ -1599,7 +1599,7 @@ public class WriteElementNode extends JSTargetableNode {
                 if (root.isStrict) {
                     throw Errors.createTypeErrorImmutableBuffer();
                 }
-                return false;
+                return true;
             }
             BigInt biValue = toBigIntNode.executeBigInteger(value); // could throw
             if (isInBounds(target, typedArray, index, root.context, inBoundsIf)) {
@@ -1628,7 +1628,7 @@ public class WriteElementNode extends JSTargetableNode {
                 if (root.isStrict) {
                     throw Errors.createTypeErrorImmutableBuffer();
                 }
-                return false;
+                return true;
             }
             double dValue = toDouble.executeDouble(value); // could throw
             if (isInBounds(target, typedArray, index, root.context, inBoundsIf)) {
