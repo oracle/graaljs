@@ -514,7 +514,12 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         private JSTypedArrayObject typedArraySpeciesCreateImpl(boolean writeAccessMode, JSTypedArrayObject thisObj, Object... args) {
             var constr = speciesConstructor(thisObj, getDefaultConstructor(getRealm(), thisObj));
-            return typedArrayCreateImpl(writeAccessMode, constr, args);
+            JSTypedArrayObject result = typedArrayCreateImpl(writeAccessMode, constr, args);
+            if (JSArrayBufferView.isBigIntArrayBufferView(result) != JSArrayBufferView.isBigIntArrayBufferView(thisObj)) {
+                errorBranch.enter();
+                throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(this);
+            }
+            return result;
         }
 
         protected final JSTypedArrayObject typedArrayCreateSameType(JSTypedArrayObject thisObj, Object... args) {
