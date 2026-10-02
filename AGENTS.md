@@ -43,7 +43,7 @@ Always run `mx` from a suite directory, not from the repository root. Use `graal
 | Graal Node.js native/runtime code | `graal-nodejs/src/`, `graal-nodejs/lib/` | Mostly upstream Node.js layout and conventions. |
 | Node.js tests | `graal-nodejs/test/README.md`, `graal-nodejs/test/`, `graal-nodejs/BUILDING.md` | Upstream Node.js test harness and subsystem layout. |
 | Graal-specific Node.js tests | `graal-nodejs/test/graal/` | Mocha tests, instrumentation tests, and addon-facing regressions. |
-| User-facing docs | `docs/user/` | Update the nearest page for behavioral changes. |
+| User-facing docs | `docs/user/` | User guides, compatibility notes, and configuration reference. |
 
 ## Conventions
 - `mx` is the primary build, run, and test entrypoint for both suites.
@@ -96,4 +96,3 @@ mx node --debug -e "console.log(process.version)"
 - When fixing Node.js compatibility, add or update tests under the relevant upstream-style subtree in `graal-nodejs/test/`.
 - Never run the full gate locally (e.g., via `mx gate`), create a PR and run all tests on the CI instead.
 - Native addon builds often need the source tree as `nodedir`. If `npm` or `node-gyp` must compile against this checkout, pass `--nodedir=<path-to-graal-nodejs>`.
-- Update `docs/` for user-visible behavior changes.
