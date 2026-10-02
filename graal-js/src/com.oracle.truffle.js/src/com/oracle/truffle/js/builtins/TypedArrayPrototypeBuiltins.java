@@ -409,12 +409,11 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 errorBranch.enter(this);
                 throw Errors.createTypeErrorImmutableBuffer();
             }
-            long targetOffsetLong = toInteger(offset);
-            if (targetOffsetLong < 0 || targetOffsetLong > Integer.MAX_VALUE) {
+            long targetOffset = toInteger(offset);
+            if (targetOffset < 0) {
                 errorBranch.enter(this);
                 throw Errors.createRangeError("out of bounds");
             }
-            int targetOffset = (int) targetOffsetLong;
             SetTypedArrayNode.checkOutOfBounds(targetObj, getContext(), errorBranch, this);
             setTypedArrayNode.execute(targetObj, array, targetOffset, getContext());
             return Undefined.instance;
@@ -433,10 +432,10 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         @Child private JSToNumberNode toNumberNode;
         @Child private JSToBigIntNode toBigIntNode;
 
-        abstract void execute(JSTypedArrayObject targetObj, Object array, int targetOffset, JSContext context);
+        abstract void execute(JSTypedArrayObject targetObj, Object array, long targetOffset, JSContext context);
 
         @Specialization
-        void setTypedArrayFromTypedArray(JSTypedArrayObject targetObj, JSTypedArrayObject array, int targetOffset, JSContext context,
+        void setTypedArrayFromTypedArray(JSTypedArrayObject targetObj, JSTypedArrayObject array, long targetOffset, JSContext context,
                         @Cached CopyTypedArrayElementsNode copyTypedArrayElementsNode,
                         @Shared @Cached TypedArrayLengthNode typedArrayLengthNode,
                         @Shared @Cached InlinedBranchProfile errorBranch,
@@ -449,6 +448,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             long targetLength = typedArrayLengthNode.execute(this, targetObj, context);
 
             rangeCheck(0, sourceLength, targetOffset, targetLength, errorBranch, this);
+            int targetOffsetInt = (int) targetOffset;
 
             int sourceLen = (int) sourceLength;
             JSArrayBufferObject sourceBuffer = JSArrayBufferView.getArrayBuffer(array);
@@ -458,12 +458,13 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
             int sourceElementSize = sourceArray.bytesPerElement();
             int targetElementSize = targetArray.bytesPerElement();
-            int targetByteIndex = targetByteOffset + targetOffset * targetElementSize;
+            int targetByteIndex = targetByteOffset + targetOffsetInt * targetElementSize;
             int srcByteIndex;
             if (sameBufferProf.profile(this, hasSameDataBlock(sourceBuffer, targetBuffer))) {
                 int srcByteLength = sourceLen * sourceElementSize;
+                int targetByteLength = sourceLen * targetElementSize;
 
-                boolean cloneNotNeeded = srcByteOffset + srcByteLength <= targetByteIndex || targetByteIndex + srcByteLength <= srcByteOffset;
+                boolean cloneNotNeeded = srcByteOffset + srcByteLength <= targetByteIndex || targetByteIndex + targetByteLength <= srcByteOffset;
                 if (cloneNotNeeded) {
                     srcByteIndex = srcByteOffset;
                 } else {
@@ -492,7 +493,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization(guards = {"isJSFastArray(array)"})
-        void setTypedArrayFromFastArray(JSTypedArrayObject targetObj, JSArrayObject array, int targetOffset, JSContext context,
+        void setTypedArrayFromFastArray(JSTypedArrayObject targetObj, JSArrayObject array, long targetOffset, JSContext context,
                         @Shared @Cached TypedArrayLengthNode typedArrayLengthNode,
                         @Shared @Cached(parameters = "context") ReadElementNode readElementNode,
                         @Shared @Cached SetBufferElementTypeDispatchNode setBufferElementNode,
@@ -512,9 +513,10 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 Object value = readElementNode.executeWithTargetAndIndex(array, i);
                 // IntegerIndexedElementSet
                 Object numValue = isBigInt ? toBigInt(value) : toNumber(value);
-                if (i < typedArrayLengthNode.execute(this, targetObj, context)) {
-                    int targetIndex = (int) (targetBufferByteOffset + (targetOffset + i) * targetElementSize);
-                    setBufferElementNode.execute(this, targetBuffer, targetIndex, littleEndian, numValue, targetArrayFactory, null);
+                long targetIndex = targetOffset + i;
+                if (targetIndex < typedArrayLengthNode.execute(this, targetObj, context)) {
+                    int targetBufferIndex = (int) (targetBufferByteOffset + targetIndex * targetElementSize);
+                    setBufferElementNode.execute(this, targetBuffer, targetBufferIndex, littleEndian, numValue, targetArrayFactory, null);
                 }
                 TruffleSafepoint.poll(this);
             }
@@ -522,7 +524,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Fallback
-        void setTypedArrayFromArrayLike(JSTypedArrayObject targetObj, Object array, int targetOffset, JSContext context,
+        void setTypedArrayFromArrayLike(JSTypedArrayObject targetObj, Object array, long targetOffset, JSContext context,
                         @Shared @Cached TypedArrayLengthNode typedArrayLengthNode,
                         @Shared @Cached(parameters = {"context"}) ReadElementNode readElementNode,
                         @Shared @Cached SetBufferElementTypeDispatchNode setBufferElementNode,
@@ -535,6 +537,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             Object src = toObjectNode.execute(array);
             long srcLength = getLengthNode.executeLong(src);
             rangeCheck(0, srcLength, targetOffset, targetLength, errorBranch, this);
+            int targetOffsetInt = (int) targetOffset;
 
             int targetElementSize = targetArray.bytesPerElement();
             int targetBufferByteOffset = targetArray.getOffset(targetObj);
@@ -547,9 +550,10 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 Object value = readElementNode.executeWithTargetAndIndex(array, i);
                 // IntegerIndexedElementSet
                 Object numValue = isBigInt ? toBigInt(value) : toNumber(value);
-                if (i < typedArrayLengthNode.execute(this, targetObj, context)) {
-                    int targetIndex = targetBufferByteOffset + (targetOffset + i) * targetElementSize;
-                    setBufferElementNode.execute(this, targetBuffer, targetIndex, littleEndian, numValue, targetArrayFactory, null);
+                int targetIndex = targetOffsetInt + i;
+                if (targetIndex < typedArrayLengthNode.execute(this, targetObj, context)) {
+                    int targetBufferIndex = targetBufferByteOffset + targetIndex * targetElementSize;
+                    setBufferElementNode.execute(this, targetBuffer, targetBufferIndex, littleEndian, numValue, targetArrayFactory, null);
                 }
                 TruffleSafepoint.poll(this);
             }
