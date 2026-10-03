@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -370,16 +370,19 @@ public abstract class InstanceofNode extends JSBinaryNode {
                 proto = getPrototype3Node.execute(proto);
                 if (proto == ctorPrototype) {
                     return true;
+                } else if (proto == Null.instance) {
+                    return false;
                 }
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 lessThan4 = false;
+                return doJSObject4(proto, ctorPrototype, getPrototype3Node, errorBranch, 3);
             }
-            return doJSObject4(left, ctorPrototype, getPrototype3Node, errorBranch);
+            return doJSObject4(left, ctorPrototype, getPrototype3Node, errorBranch, 0);
         }
 
-        private boolean doJSObject4(JSDynamicObject obj, JSObject check, GetPrototypeNode getLoopedPrototypeNode, InlinedBranchProfile errorBranch) {
+        private boolean doJSObject4(JSDynamicObject obj, JSObject check, GetPrototypeNode getLoopedPrototypeNode, InlinedBranchProfile errorBranch, int initialCounter) {
             JSDynamicObject proto = obj;
-            int counter = 0;
+            int counter = initialCounter;
             while ((proto = getLoopedPrototypeNode.execute(proto)) != Null.instance) {
                 counter++;
                 if (counter > context.getLanguageOptions().maxPrototypeChainLength()) {
