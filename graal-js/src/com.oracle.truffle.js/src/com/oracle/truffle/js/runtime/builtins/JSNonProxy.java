@@ -541,7 +541,7 @@ public abstract class JSNonProxy extends JSClass {
             }
             JSDynamicObject.setAllPropertyFlags(thisObj, keys, flags);
         }
-        assert testSealedProperties(thisObj) && (!freeze || testFrozenProperties(thisObj));
+        assert freeze ? testFrozenProperties(thisObj) : testSealedProperties(thisObj);
         boolean result = ordinaryPreventExtensions(thisObj, JSShape.SEALED_FLAG | (freeze ? JSShape.FROZEN_FLAG : 0));
         assert result && thisObj.testIntegrityLevel(freeze);
         return true;
@@ -567,7 +567,7 @@ public abstract class JSNonProxy extends JSClass {
             }
         }
         if ((objectFlags & JSShape.NOT_EXTENSIBLE_FLAG) != 0) {
-            return testSealedProperties(obj) && (!frozen || testFrozenProperties(obj));
+            return frozen ? testFrozenProperties(obj) : testSealedProperties(obj);
         } else {
             return false;
         }
@@ -607,7 +607,8 @@ public abstract class JSNonProxy extends JSClass {
 
     @TruffleBoundary
     private static boolean testFrozenProperties(JSDynamicObject thisObj) {
-        return JSDynamicObject.testProperties(thisObj, p -> p.isHidden() || (p.getFlags() & JSProperty.ACCESSOR) != 0 || (p.getFlags() & JSAttributes.NOT_WRITABLE) != 0);
+        return JSDynamicObject.testProperties(thisObj, p -> p.isHidden() ||
+                        ((p.getFlags() & JSAttributes.NOT_CONFIGURABLE) != 0 && (p.getFlags() & (JSProperty.ACCESSOR | JSAttributes.NOT_WRITABLE)) != 0));
     }
 
     @Override
