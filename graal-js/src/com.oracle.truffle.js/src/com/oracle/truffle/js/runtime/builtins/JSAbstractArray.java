@@ -378,6 +378,9 @@ public abstract class JSAbstractArray extends JSNonProxy {
 
     @Override
     public boolean delete(JSDynamicObject thisObj, long index, boolean isStrict, boolean resultWhenNotPresent) {
+        if (!JSRuntime.isArrayIndex(index)) {
+            return super.delete(thisObj, index, isStrict, resultWhenNotPresent);
+        }
         ScriptArray arrayType = arrayGetArrayType(thisObj);
         if (!resultWhenNotPresent && !arrayType.hasElement(thisObj, index)) {
             return resultWhenNotPresent;

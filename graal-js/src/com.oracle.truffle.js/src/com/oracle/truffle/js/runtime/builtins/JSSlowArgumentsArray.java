@@ -57,8 +57,8 @@ public final class JSSlowArgumentsArray extends JSAbstractArgumentsArray {
     @Override
     public boolean delete(JSDynamicObject thisObj, long index, boolean isStrict, boolean resultWhenNotPresent) {
         boolean isMappedArguments = isMappedArguments(thisObj);
-        boolean indexDisconnected = isMappedArguments && wasIndexDisconnected(thisObj, index);
-        Object oldValue = indexDisconnected ? null : get(thisObj, index);
+        boolean indexConnected = isMappedArguments && isIndexConnected(thisObj, index);
+        Object oldValue = indexConnected ? get(thisObj, index) : null;
 
         boolean wasDeleted;
         ScriptArray arrayType = arrayGetArrayType(thisObj);
@@ -75,7 +75,7 @@ public final class JSSlowArgumentsArray extends JSAbstractArgumentsArray {
             wasDeleted = JSOrdinary.INSTANCE.delete(thisObj, index, isStrict, resultWhenNotPresent);
         }
 
-        if (wasDeleted && isMappedArguments && !indexDisconnected) {
+        if (wasDeleted && indexConnected) {
             disconnectIndex(thisObj, index, oldValue);
         }
         return wasDeleted;

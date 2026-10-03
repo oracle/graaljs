@@ -72,23 +72,19 @@ public abstract class JSAbstractArgumentsArray extends JSAbstractArray {
     @TruffleBoundary
     @Override
     public boolean delete(JSDynamicObject thisObj, long index, boolean isStrict, boolean resultWhenNotPresent) {
-        if (isMappedArguments(thisObj)) {
-            makeSlowArray(thisObj);
-            return JSObject.delete(thisObj, index, isStrict, resultWhenNotPresent);
-        } else {
+        if (!isMappedArguments(thisObj) || !isIndexConnected(thisObj, index)) {
             return super.delete(thisObj, index, isStrict, resultWhenNotPresent);
         }
-    }
-
-    @TruffleBoundary
-    @Override
-    public boolean delete(JSDynamicObject thisObj, Object key, boolean isStrict, boolean resultWhenNotPresent) {
-        long index = JSRuntime.propertyKeyToArrayIndex(key);
-        if (index >= 0 && JSRuntime.isArrayIndex(index)) {
-            return delete(thisObj, index, isStrict, resultWhenNotPresent);
-        } else {
-            return super.delete(thisObj, key, isStrict, resultWhenNotPresent);
+        ScriptArray arrayType = arrayGetArrayType(thisObj);
+        if (!arrayType.hasElement(thisObj, index)) {
+            return resultWhenNotPresent;
         }
+        Object oldValue = arrayType.getElement(thisObj, index);
+        boolean wasDeleted = super.delete(thisObj, index, isStrict, resultWhenNotPresent);
+        if (wasDeleted) {
+            disconnectIndex(thisObj, index, oldValue);
+        }
+        return wasDeleted;
     }
 
     protected static boolean isMappedArguments(JSDynamicObject thisObj) {
@@ -112,8 +108,12 @@ public abstract class JSAbstractArgumentsArray extends JSAbstractArray {
     }
 
     public static int getConnectedArgumentCount(JSDynamicObject argumentsArray) {
-        assert JSArgumentsArray.isJSArgumentsObject(argumentsArray);
         return ((JSArgumentsObject.Mapped) argumentsArray).getConnectedArgumentCount();
+    }
+
+    public static boolean isIndexConnected(JSDynamicObject argumentsArray, long index) {
+        return 0 <= index && index < getConnectedArgumentCount(argumentsArray) &&
+                        (!hasDisconnectedIndices(argumentsArray) || !wasIndexDisconnected(argumentsArray, index));
     }
 
     @TruffleBoundary
@@ -145,6 +145,7 @@ public abstract class JSAbstractArgumentsArray extends JSAbstractArray {
 
     @TruffleBoundary
     public static void disconnectIndex(JSDynamicObject argumentsArray, long index, Object oldValue) {
+        assert isIndexConnected(argumentsArray, index);
         if (!hasDisconnectedIndices(argumentsArray)) {
             JSArgumentsArray.INSTANCE.makeSlowArray(argumentsArray);
         }
@@ -161,10 +162,10 @@ public abstract class JSAbstractArgumentsArray extends JSAbstractArray {
         boolean isMappedArguments = isMappedArguments(thisObj);
         long index = JSRuntime.propertyKeyToArrayIndex(key);
         Object oldValue = null;
-        boolean isIndexConnected = false;
-        if (index >= 0) {
+        boolean indexConnected = false;
+        if (JSRuntime.isArrayIndex(index)) {
             makeSlowArray(thisObj);
-            isIndexConnected = isMappedArguments && !wasIndexDisconnected(thisObj, index);
+            indexConnected = isMappedArguments && isIndexConnected(thisObj, index);
             oldValue = super.get(thisObj, index);
 
             ScriptArray arrayType = arrayGetArrayType(thisObj);
@@ -182,7 +183,7 @@ public abstract class JSAbstractArgumentsArray extends JSAbstractArray {
             return DefinePropertyUtil.reject(doThrow, "not allowed to defineProperty on an arguments object");
         }
 
-        if (isIndexConnected) {
+        if (indexConnected) {
             definePropertyMapped(thisObj, (TruffleString) key, descriptor, index, oldValue, thisObj);
         }
         return true;
@@ -218,11 +219,8 @@ public abstract class JSAbstractArgumentsArray extends JSAbstractArray {
             return null;
         }
         long index = JSRuntime.propertyKeyToArrayIndex(key);
-        if (index >= 0) {
-            boolean isMapped = JSArgumentsArray.isJSFastArgumentsObject(thisObj) || (isMappedArguments(thisObj) && !wasIndexDisconnected(thisObj, index));
-            if (isMapped) {
-                desc.setValue(super.get(thisObj, index));
-            }
+        if (index >= 0 && isMappedArguments(thisObj) && isIndexConnected(thisObj, index)) {
+            desc.setValue(super.get(thisObj, index));
         }
         if (desc.isDataDescriptor() && CALLER.equals(key) && desc.getValue() instanceof JSFunctionObject function && JSFunction.isStrict(function)) {
             throw Errors.createTypeError("caller not allowed in strict mode");

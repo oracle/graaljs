@@ -937,8 +937,8 @@ public class NodeFactory {
         return GlobalObjectNode.create();
     }
 
-    public JavaScriptNode createArgumentsObjectNode(JSContext context, boolean unmapped, int leadingArgumentCount) {
-        return ArgumentsObjectNode.create(context, unmapped, leadingArgumentCount);
+    public JavaScriptNode createArgumentsObjectNode(JSContext context, boolean unmapped, int leadingArgumentCount, int parameterCount) {
+        return ArgumentsObjectNode.create(context, unmapped, leadingArgumentCount, parameterCount);
     }
 
     public JavaScriptNode createThrowError(JSErrorType errorType, TruffleString message) {
@@ -1281,12 +1281,14 @@ public class NodeFactory {
         return CallApplyArgumentsNode.create(callNode);
     }
 
-    public JavaScriptNode createGuardDisconnectedArgumentRead(int index, ReadElementNode readElementNode, JavaScriptNode argumentsArray, JSFrameSlot slot) {
-        return JSGuardDisconnectedArgumentRead.create(index, readElementNode, argumentsArray, (TruffleString) slot.getIdentifier());
+    public JavaScriptNode createGuardDisconnectedArgumentRead(int index, ReadElementNode readElementNode, JavaScriptNode argumentsArray, JavaScriptNode readUnconnectedArgumentNode,
+                    JSFrameSlot slot) {
+        return JSGuardDisconnectedArgumentRead.create(index, readElementNode, argumentsArray, readUnconnectedArgumentNode, (TruffleString) slot.getIdentifier());
     }
 
-    public JavaScriptNode createGuardDisconnectedArgumentWrite(int index, WriteElementNode argumentsArrayAccess, JavaScriptNode argumentsArray, JavaScriptNode rhs, JSFrameSlot slot) {
-        return JSGuardDisconnectedArgumentWrite.create(index, argumentsArrayAccess, argumentsArray, rhs, (TruffleString) slot.getIdentifier());
+    public JavaScriptNode createGuardDisconnectedArgumentWrite(int index, WriteElementNode argumentsArrayAccess, JavaScriptNode argumentsArray, JavaScriptNode rhs,
+                    JSWriteFrameSlotNode writeUnconnectedArgumentNode, JSFrameSlot slot) {
+        return JSGuardDisconnectedArgumentWrite.create(index, argumentsArrayAccess, argumentsArray, rhs, writeUnconnectedArgumentNode, (TruffleString) slot.getIdentifier());
     }
 
     public JavaScriptNode createModuleBody(JavaScriptNode moduleBody) {

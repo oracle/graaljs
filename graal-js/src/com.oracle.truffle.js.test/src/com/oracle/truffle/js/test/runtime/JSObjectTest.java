@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,14 +41,19 @@
 package com.oracle.truffle.js.test.runtime;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.JSErrorType;
+import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.test.JSTest;
 
 public class JSObjectTest extends JSTest {
@@ -131,6 +136,32 @@ public class JSObjectTest extends JSTest {
 
         JSObject.set(obj, Y, 21);
         assertEquals(3, JSObject.ownPropertyKeys(obj).size());
+    }
+
+    @Test
+    public void testDeleteArrayNonIndexProperty() {
+        for (long index : new long[]{-1, 4294967295L, 4294967296L, 9999999999L, 9007199254740991L}) {
+            for (boolean configurable : new boolean[]{false, true}) {
+                for (boolean resultWhenNotPresent : new boolean[]{false, true}) {
+                    JSObject array = JSArray.createEmpty(testHelper.getJSContext(), testHelper.getRealm(), 0);
+                    TruffleString key = Strings.fromLong(index);
+                    JSObject.defineOwnProperty(array, key, PropertyDescriptor.createData(42, true, true, configurable));
+                    assertTrue(JSArray.isJSFastArray(array));
+                    if (configurable) {
+                        assertTrue(JSObject.delete(array, index, false, resultWhenNotPresent));
+                        assertFalse(JSObject.hasOwnProperty(array, key));
+                        assertEquals(resultWhenNotPresent, JSObject.delete(array, index, false, resultWhenNotPresent));
+                    } else {
+                        assertFalse(JSObject.delete(array, index, false, resultWhenNotPresent));
+                        assertThrows(() -> JSObject.delete(array, index, true, resultWhenNotPresent), JSException.class,
+                                        exception -> assertEquals(JSErrorType.TypeError, exception.getErrorType()));
+                        assertEquals(42, JSObject.get(array, key));
+                    }
+                    assertEquals(0, JSArray.arrayGetLength(array));
+                    assertTrue(JSArray.isJSFastArray(array));
+                }
+            }
+        }
     }
 
     @Test

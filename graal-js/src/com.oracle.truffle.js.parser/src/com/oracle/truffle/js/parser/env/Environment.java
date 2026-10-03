@@ -61,6 +61,7 @@ import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.nodes.RepeatableNode;
 import com.oracle.truffle.js.nodes.access.EvalVariableNode;
 import com.oracle.truffle.js.nodes.access.JSTargetableNode;
+import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
@@ -747,7 +748,8 @@ public abstract class Environment {
             JavaScriptNode argumentsVarNode = factory.createReadFrameSlot(frameSlot, createScopeFrameNode());
             if (function().isDirectArgumentsAccess()) {
                 FunctionEnvironment currentFunction = resolvedEnv.function();
-                JavaScriptNode createArgumentsObjectNode = factory.createArgumentsObjectNode(context, isStrictMode(), currentFunction.getLeadingArgumentCount());
+                // Direct arguments access is only enabled for functions with no formal parameters.
+                JavaScriptNode createArgumentsObjectNode = factory.createArgumentsObjectNode(context, isStrictMode(), currentFunction.getLeadingArgumentCount(), 0);
                 JavaScriptNode writeNode = factory.createWriteFrameSlot(frameSlot, createScopeFrameNode(), createArgumentsObjectNode);
                 return factory.createAccessArgumentsArrayDirectly(writeNode, argumentsVarNode, currentFunction.getLeadingArgumentCount());
             } else {
@@ -789,14 +791,16 @@ public abstract class Environment {
         public JavaScriptNode createReadNode() {
             VarRef argumentsObject = findArgumentsObject();
             ReadElementNode readArgumentsObjectElement = factory.createReadElementNode(context, argumentsObject.createReadNode(), factory.createConstantInteger(parameterIndex));
-            return factory.createGuardDisconnectedArgumentRead(parameterIndex, readArgumentsObjectElement, argumentsObject.createReadNode(), frameSlot);
+            JavaScriptNode readUnconnectedArgument = factory.createReadFrameSlot(frameSlot, createScopeFrameNode());
+            return factory.createGuardDisconnectedArgumentRead(parameterIndex, readArgumentsObjectElement, argumentsObject.createReadNode(), readUnconnectedArgument, frameSlot);
         }
 
         @Override
         public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
             VarRef argumentsObject = findArgumentsObject();
             WriteElementNode writeArgumentsObjectElement = factory.createWriteElementNode(argumentsObject.createReadNode(), factory.createConstantInteger(parameterIndex), null, context, false);
-            return factory.createGuardDisconnectedArgumentWrite(parameterIndex, writeArgumentsObjectElement, argumentsObject.createReadNode(), rhs, frameSlot);
+            JSWriteFrameSlotNode writeUnconnectedArgument = factory.createWriteFrameSlot(frameSlot, createScopeFrameNode(), null);
+            return factory.createGuardDisconnectedArgumentWrite(parameterIndex, writeArgumentsObjectElement, argumentsObject.createReadNode(), rhs, writeUnconnectedArgument, frameSlot);
         }
     }
 
