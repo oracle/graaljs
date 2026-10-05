@@ -509,24 +509,50 @@ public abstract class JSNonProxy extends JSClass {
             return true;
         }
 
-        for (Property property : JSDynamicObject.getPropertyArray(thisObj)) {
-            if (!property.isHidden()) {
-                int oldFlags = property.getFlags();
-                int newFlags = oldFlags | JSAttributes.NOT_CONFIGURABLE;
-                if (freeze && ((oldFlags & JSProperty.ACCESSOR) == 0)) {
-                    newFlags |= JSAttributes.NOT_WRITABLE;
-                }
-                if (newFlags != oldFlags) {
-                    Object key = property.getKey();
-                    JSDynamicObject.setPropertyFlags(thisObj, key, newFlags);
-                    assert JSDynamicObject.getPropertyFlags(thisObj, key, JSProperty.MISSING) == newFlags;
-                }
+        Property[] properties = JSDynamicObject.getPropertyArray(thisObj);
+        int changedCount = 0;
+        Property lastChanged = null;
+        for (Property property : properties) {
+            if (property.isHidden()) {
+                continue;
+            }
+            if (property.getFlags() != applyIntegrityLevelPropertyFlags(property.getFlags(), freeze)) {
+                changedCount++;
+                lastChanged = property;
             }
         }
-        assert testSealedProperties(thisObj) && (!freeze || testFrozenProperties(thisObj));
+        if (changedCount == 1) {
+            int newFlags = applyIntegrityLevelPropertyFlags(lastChanged.getFlags(), freeze);
+            JSDynamicObject.setPropertyFlags(thisObj, lastChanged.getKey(), newFlags);
+        } else if (changedCount > 1) {
+            Object[] keys = new Object[changedCount];
+            int[] flags = new int[changedCount];
+            int index = 0;
+            for (Property property : properties) {
+                if (property.isHidden()) {
+                    continue;
+                }
+                int newFlags = applyIntegrityLevelPropertyFlags(property.getFlags(), freeze);
+                if (newFlags != property.getFlags()) {
+                    keys[index] = property.getKey();
+                    flags[index] = newFlags;
+                    index++;
+                }
+            }
+            JSDynamicObject.setAllPropertyFlags(thisObj, keys, flags);
+        }
+        assert freeze ? testFrozenProperties(thisObj) : testSealedProperties(thisObj);
         boolean result = ordinaryPreventExtensions(thisObj, JSShape.SEALED_FLAG | (freeze ? JSShape.FROZEN_FLAG : 0));
         assert result && thisObj.testIntegrityLevel(freeze);
         return true;
+    }
+
+    private static int applyIntegrityLevelPropertyFlags(int propertyFlags, boolean freeze) {
+        int flags = propertyFlags | JSAttributes.NOT_CONFIGURABLE;
+        if (freeze && (flags & JSProperty.ACCESSOR) == 0) {
+            flags |= JSAttributes.NOT_WRITABLE;
+        }
+        return flags;
     }
 
     public static boolean testIntegrityLevelFast(JSDynamicObject obj, boolean frozen) {
@@ -541,7 +567,7 @@ public abstract class JSNonProxy extends JSClass {
             }
         }
         if ((objectFlags & JSShape.NOT_EXTENSIBLE_FLAG) != 0) {
-            return testSealedProperties(obj) && (!frozen || testFrozenProperties(obj));
+            return frozen ? testFrozenProperties(obj) : testSealedProperties(obj);
         } else {
             return false;
         }
@@ -581,7 +607,8 @@ public abstract class JSNonProxy extends JSClass {
 
     @TruffleBoundary
     private static boolean testFrozenProperties(JSDynamicObject thisObj) {
-        return JSDynamicObject.testProperties(thisObj, p -> p.isHidden() || (p.getFlags() & JSProperty.ACCESSOR) != 0 || (p.getFlags() & JSAttributes.NOT_WRITABLE) != 0);
+        return JSDynamicObject.testProperties(thisObj, p -> p.isHidden() ||
+                        ((p.getFlags() & JSAttributes.NOT_CONFIGURABLE) != 0 && (p.getFlags() & (JSProperty.ACCESSOR | JSAttributes.NOT_WRITABLE)) != 0));
     }
 
     @Override

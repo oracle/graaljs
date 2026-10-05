@@ -171,7 +171,7 @@ public final class JSObjectUtil {
         // only javascript flags allowed here
         assert flags == (flags & JSAttributes.ATTRIBUTES_MASK);
 
-        JSDynamicObject.updatePropertyFlags(thisObj, key, (attr) -> (attr & ~JSAttributes.ATTRIBUTES_MASK) | flags);
+        DynamicObject.SetPropertyFlagsNode.getUncached().executeRemoveAndAdd(thisObj, key, JSAttributes.ATTRIBUTES_MASK, flags);
     }
 
     @TruffleBoundary

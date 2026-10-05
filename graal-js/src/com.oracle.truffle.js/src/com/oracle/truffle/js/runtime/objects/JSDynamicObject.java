@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.runtime.objects;
 
 import java.util.List;
-import java.util.function.IntUnaryOperator;
 import java.util.function.Predicate;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -380,7 +379,7 @@ public abstract sealed class JSDynamicObject extends DynamicObject implements Tr
     }
 
     public static Property[] getPropertyArray(JSDynamicObject obj) {
-        return obj.getShape().getPropertyList().toArray(new Property[0]);
+        return DynamicObject.GetPropertyArrayNode.getUncached().execute(obj);
     }
 
     public static Object getOrNull(JSDynamicObject obj, Object key) {
@@ -407,26 +406,8 @@ public abstract sealed class JSDynamicObject extends DynamicObject implements Tr
         return Properties.getPropertyFlagsUncached(obj, key, defaultValue);
     }
 
-    /**
-     * Update property flags, changing the object's shape if need be.
-     *
-     * @param updateFunction An idempotent function that returns the updated property flags based on
-     *            the previous flags.
-     * @return {@code true} if successful, {@code false} if there was no such property or no change
-     *         was made.
-     * @see #setPropertyFlags(JSDynamicObject, Object, int)
-     * @see #getPropertyFlags(JSDynamicObject, Object, int)
-     */
-    public static boolean updatePropertyFlags(JSDynamicObject obj, Object key, IntUnaryOperator updateFunction) {
-        int oldFlags = Properties.getPropertyFlagsUncached(obj, key, JSProperty.MISSING);
-        if (oldFlags == JSProperty.MISSING) {
-            return false;
-        }
-        int newFlags = updateFunction.applyAsInt(oldFlags);
-        if (oldFlags == newFlags) {
-            return false;
-        }
-        return Properties.setPropertyFlagsUncached(obj, key, newFlags);
+    public static void setAllPropertyFlags(JSDynamicObject obj, Object[] keys, int[] flags) {
+        DynamicObject.SetAllPropertyFlagsNode.getUncached().execute(obj, keys, flags);
     }
 
     public static boolean testProperties(JSDynamicObject obj, Predicate<Property> predicate) {
