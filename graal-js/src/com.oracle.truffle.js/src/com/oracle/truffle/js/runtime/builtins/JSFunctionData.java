@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -254,6 +254,19 @@ public final class JSFunctionData {
 
     public boolean isBound() {
         return (flags & IS_BOUND) != 0;
+    }
+
+    public boolean callTargetNeedsRealmTransition() {
+        return !isBound();
+    }
+
+    /**
+     * Whether the outer [[Construct]] target must enter the function Realm. ECMAScript and bound
+     * functions use Realm-neutral adapters that enter the target function Realm only when they
+     * invoke the actual function body. Built-in constructors execute their body directly.
+     */
+    public boolean constructTargetNeedsRealmTransition() {
+        return !isBound() && isBuiltin() && isConstructor();
     }
 
     public int getFlags() {

@@ -98,7 +98,7 @@ public final class SyntheticModuleRecord extends AbstractModuleRecord {
     @Override
     public JSPromiseObject loadRequestedModules(JSRealm realm, Object hostDefinedArg) {
         PromiseCapabilityRecord pc = NewPromiseCapabilityNode.createDefault(realm);
-        JSFunction.call(JSArguments.createOneArg(Undefined.instance, pc.getResolve(), Undefined.instance));
+        JSFunction.callInFunctionRealm(JSArguments.createOneArg(Undefined.instance, pc.getResolve(), Undefined.instance));
         return (JSPromiseObject) pc.getPromise();
     }
 
@@ -119,10 +119,10 @@ public final class SyntheticModuleRecord extends AbstractModuleRecord {
         PromiseCapabilityRecord pc = NewPromiseCapabilityNode.createDefault(realm);
         try {
             evaluateSync(realm);
-            JSFunction.call(JSArguments.createOneArg(Undefined.instance, pc.getResolve(), Undefined.instance));
+            JSFunction.callInFunctionRealm(JSArguments.createOneArg(Undefined.instance, pc.getResolve(), Undefined.instance));
         } catch (AbstractTruffleException e) {
             Object errorObj = e instanceof GraalJSException ? ((GraalJSException) e).getErrorObject() : e;
-            JSFunction.call(JSArguments.createOneArg(Undefined.instance, pc.getReject(), errorObj));
+            JSFunction.callInFunctionRealm(JSArguments.createOneArg(Undefined.instance, pc.getReject(), errorObj));
         }
         return (JSPromiseObject) pc.getPromise();
     }

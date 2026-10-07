@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -131,7 +131,7 @@ public final class WorkerAgent extends JSAgent {
                                 Object deserialized = message.deserialize(realm);
                                 JSObject arg = JSOrdinary.create(context, realm);
                                 JSObject.set(arg, DATA, deserialized);
-                                JSFunction.call(processMessage, Undefined.instance, new Object[]{arg});
+                                JSFunction.callInFunctionRealm(processMessage, Undefined.instance, new Object[]{arg});
                             }
                             processAllPromises(true);
                         }

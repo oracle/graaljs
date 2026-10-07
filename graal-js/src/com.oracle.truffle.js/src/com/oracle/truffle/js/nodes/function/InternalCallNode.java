@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,9 +47,11 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.runtime.builtins.JSFunction;
 
 /**
- * Simple call helper node for internal calls, caching on the call target.
+ * Call helper for internal JS function targets, caching on the call target and entering the function
+ * realm. Arguments must use the JSArguments layout, including the function object.
  */
 public abstract class InternalCallNode extends JavaScriptBaseNode {
     static final int LIMIT = 3;
@@ -69,12 +71,12 @@ public abstract class InternalCallNode extends JavaScriptBaseNode {
     protected static Object directCall(CallTarget callTarget, Object[] arguments,
                     @Cached("callTarget") CallTarget cachedCallTarget,
                     @Cached("create(cachedCallTarget)") DirectCallNode directCallNode) {
-        return directCallNode.call(arguments);
+        return JSFunction.callDirectInFunctionRealm(directCallNode, arguments);
     }
 
     @Specialization
     protected static Object indirectCall(CallTarget callTarget, Object[] arguments,
                     @Cached IndirectCallNode indirectCallNode) {
-        return indirectCallNode.call(callTarget, arguments);
+        return JSFunction.callIndirectInFunctionRealm(callTarget, indirectCallNode, arguments);
     }
 }

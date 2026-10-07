@@ -292,7 +292,7 @@ public final class CommonJSResolution {
                 }
                 JSFunctionObject parse = (JSFunctionObject) realm.getJsonParseFunctionObject();
                 TruffleString jsonString = Strings.fromJavaString(source.getCharacters().toString());
-                Object jsonObj = JSFunction.call(JSArguments.create(Undefined.instance, parse, jsonString));
+                Object jsonObj = JSFunction.callInFunctionRealm(JSArguments.create(Undefined.instance, parse, jsonString));
                 if (jsonObj instanceof JSObject) {
                     return (JSObject) jsonObj;
                 }

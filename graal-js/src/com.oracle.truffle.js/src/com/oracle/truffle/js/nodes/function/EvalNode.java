@@ -208,7 +208,7 @@ public abstract class EvalNode extends JavaScriptNode {
     }
 
     private static boolean isValidCallNode(Node callNode) {
-        return callNode != null && callNode.getRootNode() instanceof AbstractFunctionRootNode functionRoot && functionRoot.getActiveScriptOrModule() != null;
+        return findActiveScriptOrModule(callNode) != null;
     }
 
     @TruffleBoundary

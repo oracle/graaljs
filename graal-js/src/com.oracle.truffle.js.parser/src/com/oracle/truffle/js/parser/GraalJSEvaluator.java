@@ -433,7 +433,7 @@ public final class GraalJSEvaluator implements JSParser {
     @Override
     public AbstractModuleRecord parseJSONModule(JSRealm realm, Source source) {
         assert JSON_MIME_TYPE.equals(source.getMimeType()) || (source.getMimeType() == null && source.getName().endsWith(JSON_SOURCE_NAME_SUFFIX)) : source;
-        Object json = JSFunction.call(JSArguments.createOneArg(Undefined.instance, realm.getJsonParseFunctionObject(), Strings.fromJavaString(source.getCharacters().toString())));
+        Object json = JSFunction.callInFunctionRealm(JSArguments.createOneArg(Undefined.instance, realm.getJsonParseFunctionObject(), Strings.fromJavaString(source.getCharacters().toString())));
         return createDefaultExportSyntheticModule(realm.getContext(), source, json);
     }
 
@@ -552,7 +552,7 @@ public final class GraalJSEvaluator implements JSParser {
                     loaded.setUnlinked();
                 }
             }
-            JSFunction.call(JSArguments.createOneArg(Undefined.instance, state.promiseCapability.getResolve(), Undefined.instance));
+            JSFunction.callInFunctionRealm(JSArguments.createOneArg(Undefined.instance, state.promiseCapability.getResolve(), Undefined.instance));
         }
     }
 
@@ -604,7 +604,7 @@ public final class GraalJSEvaluator implements JSParser {
             innerModuleLoading(realm, state, (AbstractModuleRecord) moduleCompletion.getValue(), recursiveLoad);
         } else {
             state.isLoading = false;
-            JSFunction.call(JSArguments.createOneArg(Undefined.instance, state.promiseCapability.getReject(), moduleCompletion.getValue()));
+            JSFunction.callInFunctionRealm(JSArguments.createOneArg(Undefined.instance, state.promiseCapability.getReject(), moduleCompletion.getValue()));
         }
     }
 
@@ -612,7 +612,7 @@ public final class GraalJSEvaluator implements JSParser {
         var continuation = (ImportCallNode.ContinueDynamicImportPayload) payload;
         PromiseCapabilityRecord promiseCapability = continuation.promiseCapability();
         if (moduleCompletion.isAbrupt()) {
-            JSFunction.call(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), moduleCompletion.getValue()));
+            JSFunction.callInFunctionRealm(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), moduleCompletion.getValue()));
             return;
         }
 
@@ -620,15 +620,15 @@ public final class GraalJSEvaluator implements JSParser {
         if (phase == ImportPhase.Source) {
             try {
                 Object moduleSource = module.getModuleSource();
-                JSFunction.call(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), moduleSource));
+                JSFunction.callInFunctionRealm(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), moduleSource));
             } catch (AbstractTruffleException e) {
-                JSFunction.call(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), getErrorObject(e)));
+                JSFunction.callInFunctionRealm(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), getErrorObject(e)));
             }
             return;
         }
 
         // Perform the remaining steps of ContinueDynamicImport.
-        JSFunction.call(JSArguments.create(Undefined.instance, continuation.continueDynamicImportCallback(), continuation, module));
+        JSFunction.callInFunctionRealm(JSArguments.create(Undefined.instance, continuation.continueDynamicImportCallback(), continuation, module));
     }
 
     @TruffleBoundary
@@ -725,7 +725,7 @@ public final class GraalJSEvaluator implements JSParser {
             assert module.getEvaluationError() == null;
             if (!module.isAsyncEvaluation()) {
                 assert module.getStatus() == Status.Evaluated;
-                JSFunction.call(JSArguments.create(Undefined.instance, capability.getResolve(), Undefined.instance));
+                JSFunction.callInFunctionRealm(JSArguments.create(Undefined.instance, capability.getResolve(), Undefined.instance));
             }
             assert stack.isEmpty();
         } catch (AbstractTruffleException e) {
@@ -743,7 +743,7 @@ public final class GraalJSEvaluator implements JSParser {
         assert module.getStatus() == Status.Evaluated && module.getEvaluationError() == e;
 
         PromiseCapabilityRecord capability = module.getTopLevelCapability();
-        JSFunction.call(JSArguments.create(Undefined.instance, capability.getReject(), getErrorObject(e)));
+        JSFunction.callInFunctionRealm(JSArguments.create(Undefined.instance, capability.getReject(), getErrorObject(e)));
     }
 
     private static Object getErrorObject(AbstractTruffleException e) {
@@ -946,7 +946,7 @@ public final class GraalJSEvaluator implements JSParser {
         module.setStatus(Status.Evaluated);
         if (module.getTopLevelCapability() != null) {
             assert module.getCycleRoot() == module;
-            JSFunction.call(JSArguments.create(Undefined.instance, module.getTopLevelCapability().getResolve(), Undefined.instance));
+            JSFunction.callInFunctionRealm(JSArguments.create(Undefined.instance, module.getTopLevelCapability().getResolve(), Undefined.instance));
         }
         Set<CyclicModuleRecord> execList = new TreeSet<>(new Comparator<CyclicModuleRecord>() {
             @Override
@@ -968,7 +968,7 @@ public final class GraalJSEvaluator implements JSParser {
                     m.setStatus(Status.Evaluated);
                     if (m.getTopLevelCapability() != null) {
                         assert m.getCycleRoot() == m;
-                        JSFunction.call(JSArguments.create(Undefined.instance, m.getTopLevelCapability().getResolve(), Undefined.instance));
+                        JSFunction.callInFunctionRealm(JSArguments.create(Undefined.instance, m.getTopLevelCapability().getResolve(), Undefined.instance));
                     }
                 } catch (AbstractTruffleException ex) {
                     asyncModuleExecutionRejected(realm, m, getErrorObject(ex));
@@ -999,7 +999,7 @@ public final class GraalJSEvaluator implements JSParser {
          */
         if (module.getTopLevelCapability() != null) {
             assert module.getCycleRoot() == module;
-            JSFunction.call((JSFunctionObject) module.getTopLevelCapability().getReject(), Undefined.instance, new Object[]{error});
+            JSFunction.callInFunctionRealm((JSFunctionObject) module.getTopLevelCapability().getReject(), Undefined.instance, new Object[]{error});
         }
         for (CyclicModuleRecord m : module.getAsyncParentModules()) {
             asyncModuleExecutionRejected(realm, m, error);

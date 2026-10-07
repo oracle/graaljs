@@ -210,6 +210,7 @@ import com.oracle.truffle.js.nodes.control.WithNode;
 import com.oracle.truffle.js.nodes.control.YieldNode;
 import com.oracle.truffle.js.nodes.function.AbstractBodyNode;
 import com.oracle.truffle.js.nodes.function.AbstractFunctionArgumentsNode;
+import com.oracle.truffle.js.nodes.function.AbstractFunctionRootNode;
 import com.oracle.truffle.js.nodes.function.BlockScopeNode;
 import com.oracle.truffle.js.nodes.function.CallApplyArgumentsNode;
 import com.oracle.truffle.js.nodes.function.ClassDefinitionNode;
@@ -244,7 +245,6 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
-import com.oracle.truffle.js.runtime.JavaScriptRealmBoundaryRootNode;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
@@ -1038,8 +1038,7 @@ public class NodeFactory {
     public JSFunctionData createFunctionData(JSContext context, int length, TruffleString name, boolean isConstructor, boolean isDerived, boolean isStrict, boolean isBuiltin, boolean needsParentFrame,
                     boolean isGenerator, boolean isAsync, boolean isClassConstructor, boolean strictProperties, boolean needsNewTarget) {
         return JSFunctionData.create(context, null, null, null, length, name, isConstructor, isDerived, isStrict, isBuiltin, needsParentFrame, isGenerator, isAsync,
-                        isClassConstructor,
-                        strictProperties, needsNewTarget, false);
+                        isClassConstructor, strictProperties, needsNewTarget, false);
     }
 
     public JavaScriptNode createAwait(JSContext context, JSFrameSlot stateSlot, JavaScriptNode expression,
@@ -1215,9 +1214,9 @@ public class NodeFactory {
     }
 
     public JavaScriptRootNode createConstructorRequiresNewRoot(JSFunctionData functionData, SourceSection sourceSection) {
-        return new JavaScriptRealmBoundaryRootNode(functionData.getContext().getLanguage(), sourceSection) {
+        return new AbstractFunctionRootNode(functionData.getContext().getLanguage(), sourceSection) {
             @Override
-            protected Object executeInRealm(VirtualFrame frame) {
+            protected Object executeBody(VirtualFrame frame) {
                 JSFunctionObject constructor = JSFrameUtil.getFunctionObject(frame);
                 TruffleString className = JSFunction.getFunctionData(constructor).getName();
                 throw Errors.createTypeErrorClassConstructorRequiresNew(className, this);

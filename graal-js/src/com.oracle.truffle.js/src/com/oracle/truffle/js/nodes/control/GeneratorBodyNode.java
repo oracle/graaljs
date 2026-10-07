@@ -92,7 +92,7 @@ public final class GeneratorBodyNode extends JavaScriptNode {
         }
 
         @Override
-        protected Object executeInRealm(VirtualFrame frame) {
+        protected Object executeBody(VirtualFrame frame) {
             Object[] arguments = frame.getArguments();
             VirtualFrame generatorFrame = JSArguments.getResumeExecutionContext(arguments);
             JSGeneratorObject generatorObject = (JSGeneratorObject) JSArguments.getResumeGeneratorOrPromiseCapability(arguments);

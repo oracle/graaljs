@@ -41,14 +41,26 @@
 package com.oracle.truffle.js.test.builtins;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.js.parser.ir.Module.ImportPhase;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
+import com.oracle.truffle.js.runtime.objects.JSModuleData;
+import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
+import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.test.JSTest;
+import com.oracle.truffle.js.test.TestHelper;
 
 public class RealmBuiltinTest {
 
@@ -100,6 +112,93 @@ public class RealmBuiltinTest {
             Value result = context.eval(JavaScriptLanguage.ID, "let passed = false; try { Realm.eval(1, '6*7'); } catch (e) { passed = e instanceof TypeError; } passed");
             Assert.assertTrue(result.isBoolean());
             Assert.assertTrue(result.asBoolean());
+        }
+    }
+
+    @Test
+    public void testFunctionDataRealmTransitionPolicy() {
+        try (TestHelper helper = new TestHelper()) {
+            helper.enterContext();
+            try {
+                JSObject functions = (JSObject) helper.parse("""
+                                ({ordinary: function () {}, builtin: Array, nonConstructor: Math.abs, symbol: Symbol,
+                                  boundOrdinary: (function () {}).bind(null), boundBuiltin: Array.bind(null)})
+                                """).run(helper.getRealm());
+                assertRealmTransitionPolicy(functions, "ordinary", true, false);
+                assertRealmTransitionPolicy(functions, "builtin", true, true);
+                assertRealmTransitionPolicy(functions, "nonConstructor", true, false);
+                assertRealmTransitionPolicy(functions, "symbol", true, true);
+                assertRealmTransitionPolicy(functions, "boundOrdinary", false, false);
+                assertRealmTransitionPolicy(functions, "boundBuiltin", false, false);
+            } finally {
+                helper.leaveContext();
+            }
+        }
+    }
+
+    private static void assertRealmTransitionPolicy(JSObject functions, String name, boolean call, boolean construct) {
+        JSFunctionObject function = (JSFunctionObject) JSObject.get(functions, Strings.fromJavaString(name));
+        Assert.assertEquals(name, call, function.getFunctionData().callTargetNeedsRealmTransition());
+        Assert.assertEquals(name, construct, function.getFunctionData().constructTargetNeedsRealmTransition());
+    }
+
+    @Test
+    public void testModuleLinkRealm() {
+        try (TestHelper helper = new TestHelper()) {
+            helper.enterContext();
+            try {
+                JSRealm mainRealm = helper.getRealm();
+                JSRealm childRealm = mainRealm.createChildRealm();
+                Source source = Source.newBuilder(JavaScriptLanguage.ID, "export function f() { return globalThis; }", "realm-link.mjs").mimeType(JavaScriptLanguage.MODULE_MIME_TYPE).build();
+                JSModuleData moduleData = helper.getJSContext().getEvaluator().envParseModule(childRealm, source);
+                for (JSRealm moduleRealm : new JSRealm[]{childRealm, mainRealm}) {
+                    JSRealm callerRealm = moduleRealm == childRealm ? mainRealm : childRealm;
+                    JSRealm previousRealm = mainRealm.enterRealm(null, callerRealm);
+                    try {
+                        JSModuleRecord module = new JSModuleRecord(moduleData, moduleRealm.getModuleLoader());
+                        module.loadRequestedModulesSync(moduleRealm, Undefined.instance);
+                        module.link(moduleRealm);
+                        Assert.assertSame(callerRealm, JSRealm.get(null));
+                        JSFunctionObject function = (JSFunctionObject) JSObject.get(module.getModuleNamespace(ImportPhase.Evaluation), Strings.fromJavaString("f"));
+                        Assert.assertSame(moduleRealm, JSFunction.getRealm(function));
+                        Assert.assertSame(moduleRealm.getGlobalObject(), JSFunction.call(function, Undefined.instance, new Object[0]));
+                        Assert.assertSame(callerRealm, JSRealm.get(null));
+                    } finally {
+                        mainRealm.leaveRealm(null, previousRealm);
+                    }
+                }
+            } finally {
+                helper.leaveContext();
+            }
+        }
+    }
+
+    @Test
+    public void testExportedFunctionRealm() {
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.V8_REALM_BUILTIN_NAME, "true").build()) {
+            Value otherGlobal = context.eval(JavaScriptLanguage.ID, "var otherRealm = Realm.create(); Realm.global(otherRealm);");
+            for (String suffix : new String[]{"", ".bind(null)"}) {
+                Value function = context.eval(JavaScriptLanguage.ID, """
+                                Realm.eval(otherRealm, '(function (fail) { if (fail) throw new Error(); return globalThis; })')%s
+                                """.formatted(suffix));
+                Assert.assertEquals(otherGlobal, function.execute(false));
+                Assert.assertThrows(PolyglotException.class, () -> function.execute(true));
+                Assert.assertEquals(0, context.eval(JavaScriptLanguage.ID, "Realm.current()").asInt());
+            }
+        }
+    }
+
+    @Test
+    public void testExportedConstructorRealm() {
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.V8_REALM_BUILTIN_NAME, "true").build()) {
+            Value otherGlobal = context.eval(JavaScriptLanguage.ID, "var otherRealm = Realm.create(); Realm.global(otherRealm);");
+            for (String suffix : new String[]{"", ".bind(null)"}) {
+                Value constructor = context.eval(JavaScriptLanguage.ID, """
+                                Realm.eval(otherRealm, '(function Constructor() { this.global = globalThis; })')%s
+                                """.formatted(suffix));
+                Assert.assertEquals(otherGlobal, constructor.newInstance().getMember("global"));
+                Assert.assertEquals(0, context.eval(JavaScriptLanguage.ID, "Realm.current()").asInt());
+            }
         }
     }
 

@@ -48,12 +48,10 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.graalvm.polyglot.io.ByteSequence;
 
 import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.dsl.Bind;
@@ -3935,11 +3933,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 return null;
             }
             JSFunctionObject function = (JSFunctionObject) functionParam;
-            CallTarget callTarget = JSFunction.getCallTarget(function);
-            if (!(callTarget instanceof RootCallTarget)) {
+            RootNode rootNode = JSFunction.getFunctionRootNode(function);
+            if (rootNode == null) {
                 return null;
             }
-            RootNode rootNode = ((RootCallTarget) callTarget).getRootNode();
             SourceSection sourceSection = rootNode.getSourceSection();
             if (sourceSection == null || !sourceSection.isAvailable() || sourceSection.getSource().isInternal()) {
                 return null;
@@ -3958,7 +3955,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         if (i != 0) {
                             sb.append(',');
                         }
-                        Object json = JSFunction.call(stringify, Undefined.instance, new Object[]{argument});
+                        Object json = JSFunction.callInFunctionRealm(stringify, Undefined.instance, new Object[]{argument});
                         sb.append(JSRuntime.toString(json));
                     }
                 } else {

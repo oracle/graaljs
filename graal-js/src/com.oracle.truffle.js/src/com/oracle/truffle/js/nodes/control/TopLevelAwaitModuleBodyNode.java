@@ -59,6 +59,7 @@ import com.oracle.truffle.js.nodes.promise.AsyncRootNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
+import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
@@ -84,7 +85,7 @@ public final class TopLevelAwaitModuleBodyNode extends JavaScriptNode {
         }
 
         @Override
-        public Object executeInRealm(VirtualFrame frame) {
+        protected Object executeBody(VirtualFrame frame) {
             Object[] arguments = frame.getArguments();
             VirtualFrame asyncFrame = JSArguments.getResumeExecutionContext(arguments);
             PromiseCapabilityRecord promiseCapability = (PromiseCapabilityRecord) JSArguments.getResumeGeneratorOrPromiseCapability(arguments);
@@ -175,7 +176,7 @@ public final class TopLevelAwaitModuleBodyNode extends JavaScriptNode {
             writeAsyncContextNode.executeWrite(moduleFrame, AsyncRootNode.createAsyncContext(asyncCallNode.getCallTarget(), promiseCapability, moduleFrame));
         }
         Object unusedInitialResult = null;
-        asyncCallNode.call(JSArguments.createResumeArguments(moduleFrame, promiseCapability, Completion.Type.Normal, unusedInitialResult));
+        JSFunction.callDirectInFunctionRealm(asyncCallNode, JSArguments.createResumeArguments(moduleFrame, promiseCapability, Completion.Type.Normal, unusedInitialResult));
         if (promiseCapability == null) {
             // no capability provided: we are initializing the module.
             return Undefined.instance;

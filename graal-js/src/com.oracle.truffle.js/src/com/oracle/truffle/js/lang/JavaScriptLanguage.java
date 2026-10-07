@@ -259,7 +259,7 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
                     arguments[i] = importValueNode.executeWithTarget(arguments[i]);
                 }
                 arguments = program.argumentsToRunWithArguments(realm, arguments);
-                Object result = directCallNode.call(arguments);
+                Object result = JSFunction.callDirectInFunctionRealm(directCallNode, arguments);
                 return exportValueNode.execute(result);
             } finally {
                 interopBoundaryExit(realm);

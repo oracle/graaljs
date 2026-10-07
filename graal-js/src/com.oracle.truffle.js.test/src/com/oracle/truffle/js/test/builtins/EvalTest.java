@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.io.ByteArrayOutputStream;
@@ -89,6 +90,27 @@ public class EvalTest {
                                 "test.js").buildLiteral());
             } catch (PolyglotException e) {
                 assertThat(e.getPolyglotStackTrace().iterator().next().getSourceLocation().getSource().getName(), containsString("test.js:2"));
+            }
+        }
+    }
+
+    @Test
+    public void testEvalCallerInResumedGenerator() {
+        for (String call : new String[]{"(0, eval)('throw new Error();');", "new Function('throw new Error();')();"}) {
+            try (Context context = JSTest.newContextBuilder().option(JSContextOptions.V8_COMPATIBILITY_MODE_NAME, "true").build()) {
+                Source source = Source.newBuilder(JavaScriptLanguage.ID, """
+                                function* caller() {
+                                    yield;
+                                    %s
+                                }
+                                const it = caller();
+                                it.next();
+                                it.next();
+                                //# sourceURL=renamed.js
+                                """.formatted(call), "original.js").buildLiteral();
+                PolyglotException exception = assertThrows(PolyglotException.class, () -> context.eval(source));
+                assertThat(exception.getPolyglotStackTrace().iterator().next().getSourceLocation().getSource().getName(),
+                                containsString("eval at caller (renamed.js:3:"));
             }
         }
     }

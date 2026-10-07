@@ -216,7 +216,7 @@ public abstract class JSAgent {
                 JSDynamicObject resolve = (JSDynamicObject) wr.getPromiseCapability().getResolve();
                 assert JSFunction.isJSFunction(resolve);
                 Object result = wr.getResult();
-                JSFunction.call(JSArguments.createOneArg(Undefined.instance, resolve, result));
+                JSFunction.callInFunctionRealm(JSArguments.createOneArg(Undefined.instance, resolve, result));
             }
         }
         return checkWaiterRecords;

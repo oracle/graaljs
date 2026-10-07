@@ -40,9 +40,7 @@
  */
 package com.oracle.truffle.js.builtins;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -472,12 +470,10 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @TruffleBoundary
         private static TruffleString toStringDefaultTarget(JSFunctionObject fnObj) {
-            CallTarget ct = JSFunction.getCallTarget(fnObj);
-            if (!(ct instanceof RootCallTarget)) {
-                return Strings.fromJavaString(ct.toString());
+            RootNode rn = JSFunction.getFunctionRootNode(fnObj);
+            if (rn == null) {
+                return Strings.fromJavaString(JSFunction.getCallTarget(fnObj).toString());
             }
-            RootCallTarget dct = (RootCallTarget) ct;
-            RootNode rn = dct.getRootNode();
             SourceSection ssect = rn.getSourceSection();
             TruffleString result;
             if (ssect == null || !ssect.isAvailable() || ssect.getSource().isInternal()) {

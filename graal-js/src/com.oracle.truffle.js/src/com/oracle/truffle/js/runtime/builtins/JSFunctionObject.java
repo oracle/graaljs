@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,10 +40,8 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -190,10 +188,9 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
             function = boundFunction.getBoundTargetFunction();
         }
         if (JSFunction.isJSFunction(function)) {
-            CallTarget ct = JSFunction.getCallTarget((JSFunctionObject) function);
-
-            if (ct instanceof RootCallTarget) {
-                return ((RootCallTarget) ct).getRootNode().getSourceSection();
+            RootNode rootNode = JSFunction.getFunctionRootNode((JSFunctionObject) function);
+            if (rootNode != null) {
+                return rootNode.getSourceSection();
             }
         }
         return null;
@@ -249,8 +246,8 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
     @Override
     @TruffleBoundary
     public TruffleString toDisplayStringImpl(boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
-        RootNode rn = ((RootCallTarget) JSFunction.getCallTarget(this)).getRootNode();
-        SourceSection ssect = rn.getSourceSection();
+        RootNode rn = JSFunction.getFunctionRootNode(this);
+        SourceSection ssect = rn == null ? null : rn.getSourceSection();
         TruffleString source;
         if (ssect == null || !ssect.isAvailable() || ssect.getSource().isInternal()) {
             source = Strings.concatAll(Strings.FUNCTION_SPC, JSFunction.getName(this), Strings.FUNCTION_NATIVE_CODE_BODY);

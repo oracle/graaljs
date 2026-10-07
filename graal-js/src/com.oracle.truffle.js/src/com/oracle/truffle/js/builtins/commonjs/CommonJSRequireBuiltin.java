@@ -264,7 +264,7 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
             try {
                 debugStackPush(moduleIdentifier);
                 log("executing '", filenameBuiltin, "' for '", moduleIdentifier, "'");
-                JSFunction.call(JSArguments.create(moduleExecutableFunction, moduleExecutableFunction, exportsBuiltin, requireBuiltin, moduleBuiltin, filenameBuiltin,
+                JSFunction.callInFunctionRealm(JSArguments.create(moduleExecutableFunction, moduleExecutableFunction, exportsBuiltin, requireBuiltin, moduleBuiltin, filenameBuiltin,
                                 Strings.fromJavaString(dirnameBuiltin), env));
                 JSObject.set(moduleBuiltin, Strings.LOADED_PROPERTY_NAME, true);
                 log("done '", moduleIdentifier, "'");
@@ -305,7 +305,7 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
                 JSFunctionObject parse = (JSFunctionObject) realm.getJsonParseFunctionObject();
                 assert source != null;
                 TruffleString jsonString = Strings.fromJavaString(source.getCharacters().toString());
-                Object jsonObj = JSFunction.call(JSArguments.create(Undefined.instance, parse, jsonString));
+                Object jsonObj = JSFunction.callInFunctionRealm(JSArguments.create(Undefined.instance, parse, jsonString));
 
                 JSObject moduleBuiltin = createModuleBuiltin(realm, jsonObj, true, source);
                 log("adding to cache ", normalizedPath);
