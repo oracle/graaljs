@@ -518,9 +518,9 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
                 /*
                  * Once the awaited promise is fulfilled (f.) or rejected (r.), either (f.) resume
-                 * at the suspended Await point, or (r.) run the abrupt completion handler closing
-                 * the async iterator (if any) and rejecting the promise returned by Array.fromAsync
-                 * with the Await error, respectively.
+                 * at the suspended Await point, or (r.) run the appropriate abrupt completion
+                 * handler and reject the promise returned by Array.fromAsync with the Await error,
+                 * respectively.
                  */
                 var resumeAwait = JSFrameUtil.getFunctionObject(frame);
                 var rejectAwait = createIfAbruptHandler(args);
@@ -562,6 +562,26 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 }
                 return getErrorObjectNode.execute(ex);
             }
+
+            static JSFunctionData createIfAbruptReturnImpl(JSContext context) {
+                return JSFunctionData.createCallOnly(context, new IfAbruptReturnNode(context).getCallTarget(), 1, Strings.EMPTY_STRING);
+            }
+
+            private static class IfAbruptReturnNode extends AsyncIteratorRootNode<ArrayFromAsyncArgs> {
+
+                IfAbruptReturnNode(JSContext context) {
+                    super(context);
+                }
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    var args = getArgs(frame);
+                    var promiseCapability = args.promiseCapability;
+                    Object error = valueNode.execute(frame);
+                    callReject(promiseCapability, error);
+                    return promiseCapability.getPromise();
+                }
+            }
         }
 
         protected static final class ArrayFromAsyncIteratorResumptionRootNode extends ArrayFromAsyncResumptionRootNode<ArrayFromAsyncIteratorArgs> {
@@ -597,8 +617,10 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 Object result = args.result;
                 boolean mapping = args.mapping;
                 long k = args.resultIndex;
+                boolean closeOnAbrupt = false;
                 returnNow: try {
                     for (int state = args.state; k < JSRuntime.MAX_SAFE_INTEGER_LONG; ++k, state = STATE_START) {
+                        closeOnAbrupt = false;
                         Object mappedValue;
                         if (state < STATE_AWAIT_MAPPED_VALUE) {
                             Object nextResult;
@@ -616,6 +638,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                             }
                             Object nextValue = iteratorValueNode.execute(nextResult);
                             if (mapping) {
+                                closeOnAbrupt = true;
                                 mappedValue = callMapFn(args.mapFn, args.thisArg, nextValue, k);
                                 mappedValue = suspendAwait(frame, args, mappedValue, STATE_AWAIT_MAPPED_VALUE, k);
                             } else {
@@ -624,21 +647,32 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                         } else {
                             mappedValue = resumeAwait(frame, args, STATE_AWAIT_MAPPED_VALUE);
                         }
+                        closeOnAbrupt = true;
                         createDataPropertyOrThrow(result, k, mappedValue);
                     }
                     assert k >= JSRuntime.MAX_SAFE_INTEGER_LONG : k;
+                    closeOnAbrupt = true;
                     throw Errors.createTypeErrorIndexTooLarge();
                 } catch (YieldException e) {
                     assert e.isAwait() && args.state != STATE_START;
                 } catch (AbstractTruffleException e) {
                     Object error = getErrorObject(e);
-                    asyncIteratorCloseNode.executeAbruptReject(iteratorRecord.getIterator(), error, promiseCapability);
+                    if (closeOnAbrupt) {
+                        asyncIteratorCloseNode.executeAbruptReject(iteratorRecord.getIterator(), error, promiseCapability);
+                    } else {
+                        callReject(promiseCapability, error);
+                    }
                 }
                 return promiseCapability.getPromise();
             }
 
             @Override
             protected JSFunctionObject createIfAbruptHandler(ArrayFromAsyncIteratorArgs args) {
+                if (args.state == STATE_AWAIT_NEXT_RESULT) {
+                    return createFunctionWithArgs(args, context.getOrCreateBuiltinFunctionData(
+                                    BuiltinFunctionKey.ArrayFromAsyncAwaitIfAbruptReturn, ArrayFromAsyncResumptionRootNode::createIfAbruptReturnImpl));
+                }
+                assert args.state == STATE_AWAIT_MAPPED_VALUE;
                 return createFunctionWithArgs(args, context.getOrCreateBuiltinFunctionData(
                                 BuiltinFunctionKey.ArrayFromAsyncAwaitIfAbruptClose, ArrayFromAsyncIteratorResumptionRootNode::createIfAbruptCloseImpl));
             }
@@ -726,32 +760,13 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             @Override
             protected JSFunctionObject createIfAbruptHandler(ArrayFromAsyncArrayLikeArgs args) {
                 return createFunctionWithArgs(args, context.getOrCreateBuiltinFunctionData(
-                                BuiltinFunctionKey.ArrayFromAsyncAwaitIfAbruptReturn, ArrayFromAsyncArrayLikeResumptionRootNode::createIfAbruptReturnImpl));
+                                BuiltinFunctionKey.ArrayFromAsyncAwaitIfAbruptReturn, ArrayFromAsyncResumptionRootNode::createIfAbruptReturnImpl));
             }
 
             static JSFunctionData createFunctionImpl(JSContext context) {
                 return JSFunctionData.createCallOnly(context, new ArrayFromAsyncArrayLikeResumptionRootNode(context).getCallTarget(), 1, Strings.EMPTY_STRING);
             }
 
-            static JSFunctionData createIfAbruptReturnImpl(JSContext context) {
-                return JSFunctionData.createCallOnly(context, new IfAbruptReturnNode(context).getCallTarget(), 1, Strings.EMPTY_STRING);
-            }
-
-            private static class IfAbruptReturnNode extends AsyncIteratorRootNode<ArrayFromAsyncArrayLikeArgs> {
-
-                IfAbruptReturnNode(JSContext context) {
-                    super(context);
-                }
-
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    var args = getArgs(frame);
-                    var promiseCapability = args.promiseCapability;
-                    Object error = valueNode.execute(frame);
-                    callReject(promiseCapability, error);
-                    return promiseCapability.getPromise();
-                }
-            }
         }
     }
 }

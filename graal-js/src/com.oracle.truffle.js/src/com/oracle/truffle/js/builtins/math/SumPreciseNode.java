@@ -79,13 +79,13 @@ public abstract class SumPreciseNode extends MathOperation {
 
         boolean negativeZero = true;
         SmallAccumulator acc = new SmallAccumulator();
-        try {
-            while (true) {
-                Object next = iteratorStepNode.execute(iter);
-                if (next == Boolean.FALSE) {
-                    break;
-                }
-                Object nextValue = iteratorValueNode.execute(next);
+        while (true) {
+            Object next = iteratorStepNode.execute(iter);
+            if (next == Boolean.FALSE) {
+                break;
+            }
+            Object nextValue = iteratorValueNode.execute(next);
+            try {
                 if (isNumberNode.execute(this, nextValue)) {
                     double doubleValue = toDoubleNode.execute(this, nextValue);
                     if (!JSRuntime.isNegativeZero(doubleValue)) {
@@ -96,13 +96,13 @@ public abstract class SumPreciseNode extends MathOperation {
                     errorBranch.enter(this);
                     throw Errors.createTypeErrorNotANumber(nextValue);
                 }
+            } catch (AbstractTruffleException ex) {
+                errorBranch.enter(this);
+                iteratorCloseNode.executeAbrupt(iter);
+                throw ex;
             }
-            return negativeZero ? -0d : acc.round();
-        } catch (AbstractTruffleException ex) {
-            errorBranch.enter(this);
-            iteratorCloseNode.executeAbrupt(iter);
-            throw ex;
         }
+        return negativeZero ? -0d : acc.round();
     }
 
 }

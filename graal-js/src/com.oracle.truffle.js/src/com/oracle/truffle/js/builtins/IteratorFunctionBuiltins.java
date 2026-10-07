@@ -233,9 +233,7 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
         protected final Object next(JSIteratorHelperObject thisObj,
                         @Cached GetIteratorFromMethodNode getIteratorFromMethodNode,
                         @Cached IteratorStepNode iteratorStepNode,
-                        @Cached IteratorValueNode iteratorValueNode,
-                        @Cached("create(context)") IteratorCloseNode iteratorCloseNode,
-                        @Cached InlinedBranchProfile errorBranch) {
+                        @Cached IteratorValueNode iteratorValueNode) {
             ConcatArgs args = getArgs(thisObj);
             var iterables = args.iterables;
             int iterableIndex = args.iterableIndex;
@@ -248,22 +246,16 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
                     args.innerAlive = true;
                 }
 
-                try {
-                    assert args.innerAlive && iterator != null;
-                    Object result = iteratorStepNode.execute(iterator);
-                    if (result == Boolean.FALSE) {
-                        args.innerAlive = false;
-                        args.innerIterator = null;
-                        args.iterableIndex = ++iterableIndex;
-                    } else {
-                        Object innerValue = iteratorValueNode.execute(result);
-                        return createResultContinue(thisObj, innerValue);
-                        // Note: Abrupt completion is handled by IteratorHelperReturnNode.
-                    }
-                } catch (AbstractTruffleException ex) {
-                    errorBranch.enter(this);
-                    iteratorCloseNode.executeAbrupt(iterator);
-                    throw ex;
+                assert args.innerAlive && iterator != null;
+                Object result = iteratorStepNode.execute(iterator);
+                if (result == Boolean.FALSE) {
+                    args.innerAlive = false;
+                    args.innerIterator = null;
+                    args.iterableIndex = ++iterableIndex;
+                } else {
+                    Object innerValue = iteratorValueNode.execute(result);
+                    return createResultContinue(thisObj, innerValue);
+                    // Note: Abrupt completion is handled by IteratorHelperReturnNode.
                 }
             }
             return createResultDone(thisObj);
