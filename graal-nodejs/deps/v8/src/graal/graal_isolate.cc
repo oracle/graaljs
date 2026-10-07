@@ -452,7 +452,7 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
     }
 
 #ifdef __POSIX__
-    void* jvm_handle = dlopen(jvmlib_path.c_str(), RTLD_NOW);
+    void* jvm_handle = dlopen(jvmlib_path.c_str(), RTLD_NOW | RTLD_GLOBAL);
     if (jvm_handle == NULL) {
         fprintf(stderr, "jvm library could not be loaded: %s\n", dlerror());
         exit(1);
