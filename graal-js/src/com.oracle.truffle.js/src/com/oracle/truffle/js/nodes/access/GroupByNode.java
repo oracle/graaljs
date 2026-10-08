@@ -99,13 +99,13 @@ public abstract class GroupByNode extends JavaScriptBaseNode {
         Map<Object, List<Object>> groups = initGroups();
         IteratorRecord iteratorRecord = getIteratorNode.execute(node, items);
         long k = 0;
-        try {
-            while (true) {
-                Object next = iteratorStepNode.execute(iteratorRecord);
-                if (next == Boolean.FALSE) {
-                    return groups;
-                }
-                Object value = iteratorValueNode.execute(next);
+        while (true) {
+            Object next = iteratorStepNode.execute(iteratorRecord);
+            if (next == Boolean.FALSE) {
+                return groups;
+            }
+            Object value = iteratorValueNode.execute(next);
+            try {
                 Object key = callNode.executeCall(JSArguments.create(Undefined.instance, callbackfn, value, toIntOrDoubleNode.execute(node, k)));
                 if (toPropertyKeyNode != null) { // toPropertyKeyCoercion
                     key = toPropertyKeyNode.execute(key);
@@ -115,11 +115,11 @@ public abstract class GroupByNode extends JavaScriptBaseNode {
                 }
                 addValueToKeyedGroup(groups, key, value);
                 k++;
+            } catch (AbstractTruffleException ex) {
+                errorBranch.enter(node);
+                iteratorCloseNode.executeAbrupt(iteratorRecord);
+                throw ex;
             }
-        } catch (AbstractTruffleException ex) {
-            errorBranch.enter(node);
-            iteratorCloseNode.executeAbrupt(iteratorRecord);
-            throw ex;
         }
     }
 

@@ -1153,13 +1153,13 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
             // AddEntriesFromIterable
             IteratorRecord iteratorRecord = getIteratorNode.execute(this, iterable);
-            try {
-                while (true) {
-                    Object next = iteratorStepNode.execute(iteratorRecord);
-                    if (next == Boolean.FALSE) {
-                        return target;
-                    }
-                    Object nextItem = iteratorValueNode.execute(next);
+            while (true) {
+                Object next = iteratorStepNode.execute(iteratorRecord);
+                if (next == Boolean.FALSE) {
+                    return target;
+                }
+                Object nextItem = iteratorValueNode.execute(next);
+                try {
                     if (!isObjectNode.executeBoolean(nextItem)) {
                         errorBranch.enter(this);
                         throw Errors.createTypeErrorIteratorResultNotObject(nextItem, this);
@@ -1169,11 +1169,11 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
                     Object propertyKey = toPropertyKeyNode.execute(k);
                     JSRuntime.createDataPropertyOrThrow(target, propertyKey, v);
+                } catch (AbstractTruffleException ex) {
+                    errorBranch.enter(this);
+                    iteratorCloseNode.executeAbrupt(iteratorRecord);
+                    throw ex;
                 }
-            } catch (AbstractTruffleException ex) {
-                errorBranch.enter(this);
-                iteratorCloseNode.executeAbrupt(iteratorRecord);
-                throw ex;
             }
         }
 
