@@ -13,7 +13,7 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
     WEBSITE_GIT: "",
   },
 
-  local overlay = '3cae10abb97df48de23cee121e5689188d4550f7',
+  local overlay = '6001a48f0e89d22c29345f72204b38331a1c86f9',
 
   local no_overlay = 'cb733e564850cd37b685fcef6f3c16b59802b22c',
 
