@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,11 +42,11 @@ package com.oracle.truffle.js.nodes.binary;
 
 import java.util.Set;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.Node;
@@ -54,89 +54,74 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.Truncatable;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Strings;
 
+@GenerateCached(false)
 @NodeInfo(shortName = "-")
-public abstract class JSSubtractNode extends JSBinaryNode implements Truncatable {
+public abstract class JSSubtractNode extends JSBinaryNode {
 
-    @CompilationFinal boolean truncate;
-
-    protected JSSubtractNode(boolean truncate, JavaScriptNode left, JavaScriptNode right) {
+    protected JSSubtractNode(JavaScriptNode left, JavaScriptNode right) {
         super(left, right);
-        this.truncate = truncate;
     }
 
     public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right, boolean truncate) {
-        return JSSubtractNodeGen.create(truncate, left, right);
+        return createUnoptimized(left, right, truncate);
     }
 
     public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right) {
         return create(left, right, false);
     }
 
-    public abstract Object execute(Object a, Object b);
-
-    @Specialization(rewriteOn = ArithmeticException.class)
-    protected int doInt(int a, int b) {
-        if (truncate) {
-            return a - b;
-        } else {
-            return Math.subtractExact(a, b);
-        }
+    public static JSSubtractNode createUnoptimized(JavaScriptNode left, JavaScriptNode right, boolean truncate) {
+        return truncate ? JSSubtractTruncNodeGen.create(left, right) : JSSubtractNormalNodeGen.create(left, right);
     }
 
-    @Specialization(replaces = "doInt")
-    protected double doDouble(double a, double b) {
+    @NeverDefault
+    public static JSSubtractNode create() {
+        return createUnoptimized(null, null, false);
+    }
+
+    public abstract Object execute(Object a, Object b);
+
+    @Specialization
+    public static double doDouble(double a, double b) {
         return a - b;
     }
 
-    @Specialization()
-    protected BigInt doBigInt(BigInt a, BigInt b) {
+    @Specialization
+    public static BigInt doBigInt(BigInt a, BigInt b) {
         return a.subtract(b);
     }
 
     @InliningCutoff
     @Specialization(guards = {"hasOverloadedOperators(a) || hasOverloadedOperators(b)"})
-    protected Object doOverloaded(Object a, Object b,
+    public static Object doOverloaded(Object a, Object b,
                     @Cached("createNumeric(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
         return overloadedOperatorNode.execute(a, b);
     }
 
-    protected TruffleString getOverloadedOperatorName() {
+    public static TruffleString getOverloadedOperatorName() {
         return Strings.SYMBOL_MINUS;
     }
 
     @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {"doDouble", "doBigInt"})
-    protected static Object doGeneric(Object a, Object b,
+    public static Object doGeneric(Object a, Object b,
                     @Bind Node node,
                     @Cached JSToNumericNode toNumericA,
                     @Cached JSToNumericNode toNumericB,
-                    @Cached("copyRecursive()") JavaScriptNode subtract,
+                    @Cached("createRecursive()") JSSubtractNode subtract,
                     @Cached InlinedBranchProfile mixedNumericTypes) {
-
         Object castA = toNumericA.execute(a);
         Object castB = toNumericB.execute(b);
         ensureBothSameNumericType(castA, castB, node, mixedNumericTypes);
-        return ((JSSubtractNode) subtract).execute(castA, castB);
-    }
-
-    public final JavaScriptNode copyRecursive() {
-        return create(null, null, truncate);
-    }
-
-    @Override
-    public void setTruncate() {
-        CompilerAsserts.neverPartOfCompilation();
-        if (!truncate) {
-            truncate = true;
-        }
+        return subtract.execute(castA, castB);
     }
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return JSSubtractNodeGen.create(cloneUninitialized(getLeft(), materializedTags), cloneUninitialized(getRight(), materializedTags), truncate);
+        boolean truncate = this instanceof JSSubtractTruncNode;
+        return createUnoptimized(cloneUninitialized(getLeft(), materializedTags), cloneUninitialized(getRight(), materializedTags), truncate);
     }
 }

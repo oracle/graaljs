@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -74,12 +74,12 @@ public abstract class JSRightShiftNode extends JSBinaryNode {
     }
 
     public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right) {
-        Truncatable.truncate(left);
-        Truncatable.truncate(right);
+        JavaScriptNode lhs = Truncatable.truncate(left);
+        JavaScriptNode rhs = Truncatable.truncate(right);
         if (JSConfig.UseSuperOperations && (right instanceof JSConstantIntegerNode)) {
-            return JSRightShiftConstantNode.create(left, right);
+            return JSRightShiftConstantNode.create(lhs, rhs);
         }
-        return JSRightShiftNodeGen.create(left, right);
+        return JSRightShiftNodeGen.create(lhs, rhs);
     }
 
     public abstract Object execute(Object a, Object b);

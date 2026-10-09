@@ -357,7 +357,7 @@ public class NodeFactory {
     public JavaScriptNode createBinary(JSContext context, BinaryOperation operation, JavaScriptNode left, JavaScriptNode right) {
         switch (operation) {
             case ADD:
-                return JSAddNode.create(left, right, false);
+                return JSAddNode.create(left, right);
             case SUBTRACT:
                 return JSSubtractNode.create(left, right, false);
             case MULTIPLY:
