@@ -517,10 +517,10 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @TruffleBoundary
         @Specialization
         public Object doLocale(JSLocaleObject localeObject) {
-            ULocale locale = localeObject.getInternalState().getULocaleForRegionPreference();
-            String calendar = locale.getUnicodeLocaleType("ca");
+            String calendar = localeObject.getInternalState().getCalendar();
             String[] calendars;
             if (calendar == null) {
+                ULocale locale = localeObject.getInternalState().getULocaleForRegionPreference();
                 calendars = IntlUtil.availableCalendars(locale, true);
             } else {
                 calendars = new String[]{calendar};
@@ -544,10 +544,10 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @TruffleBoundary
         @Specialization
         public Object doLocale(JSLocaleObject localeObject) {
-            ULocale locale = localeObject.getInternalState().getULocale();
-            String collation = locale.getUnicodeLocaleType("co");
+            String collation = localeObject.getInternalState().getCollation();
             String[] collations;
             if (collation == null) {
+                ULocale locale = localeObject.getInternalState().getULocale();
                 collations = IntlUtil.availableCollations(locale, true);
             } else {
                 collations = new String[]{collation};
@@ -571,9 +571,9 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @TruffleBoundary
         @Specialization
         public Object doLocale(JSLocaleObject localeObject) {
-            ULocale locale = localeObject.getInternalState().getULocaleForRegionPreference();
-            String hourCycle = locale.getUnicodeLocaleType("hc");
+            String hourCycle = localeObject.getInternalState().getHourCycle();
             if (hourCycle == null) {
+                ULocale locale = localeObject.getInternalState().getULocaleForRegionPreference();
                 DateTimePatternGenerator patternGenerator = DateTimePatternGenerator.getInstance(locale);
                 hourCycle = IntlUtil.toJSHourCycle(patternGenerator.getDefaultHourCycle());
             }
@@ -596,9 +596,9 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @TruffleBoundary
         @Specialization
         public Object doLocale(JSLocaleObject localeObject) {
-            ULocale locale = localeObject.getInternalState().getULocale();
-            String numberingSystem = locale.getUnicodeLocaleType("nu");
+            String numberingSystem = localeObject.getInternalState().getNumberingSystem();
             if (numberingSystem == null) {
+                ULocale locale = localeObject.getInternalState().getULocale();
                 numberingSystem = NumberingSystem.getInstance(locale).getName();
             }
             return JSArray.createConstantObjectArray(getContext(), getRealm(), new Object[]{Strings.fromJavaString(numberingSystem)});
