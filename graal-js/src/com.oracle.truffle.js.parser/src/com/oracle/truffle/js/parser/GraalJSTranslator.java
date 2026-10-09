@@ -1281,9 +1281,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         assert !currentFunction().getNonArrowParentFunction().isDerivedConstructor();
         VarRef thisVar = environment.findThisVar();
         boolean isLexicalThis = functionNode.isArrow();
-        JavaScriptNode getThisNode = isLexicalThis ? factory.createAccessLexicalThis() : factory.createAccessThis();
-        if (!environment.isStrictMode() && !isLexicalThis) {
-            getThisNode = factory.createPrepareThisBinding(context, getThisNode);
+        JavaScriptNode getThisNode;
+        if (isLexicalThis) {
+            getThisNode = factory.createAccessLexicalThis();
+        } else if (environment.isStrictMode()) {
+            getThisNode = factory.createAccessThis();
+        } else {
+            getThisNode = factory.createPrepareThisBinding();
         }
         if (functionNode.isClassConstructor()) {
             getThisNode = initializeInstanceElements(getThisNode);

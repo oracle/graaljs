@@ -919,19 +919,19 @@ public class NodeFactory {
     /**
      * @param functionNode used by snapshot recording.
      */
-    public JSFunctionExpressionNode createFunctionExpression(JSFunctionData function, FunctionRootNode functionNode, JSFrameSlot blockScopeSlot) {
+    public JSFunctionExpressionNode createFunctionExpression(JSFunctionData function, JavaScriptRootNode functionNode, JSFrameSlot blockScopeSlot) {
         return JSFunctionExpressionNode.create(function, blockScopeSlot);
     }
 
     /**
      * @param functionNode used by snapshot recording.
      */
-    public JSFunctionExpressionNode createFunctionExpressionLexicalThis(JSFunctionData function, FunctionRootNode functionNode, JSFrameSlot blockScopeSlot, JavaScriptNode thisNode) {
+    public JSFunctionExpressionNode createFunctionExpressionLexicalThis(JSFunctionData function, JavaScriptRootNode functionNode, JSFrameSlot blockScopeSlot, JavaScriptNode thisNode) {
         return JSFunctionExpressionNode.createLexicalThis(function, blockScopeSlot, thisNode);
     }
 
-    public JavaScriptNode createPrepareThisBinding(JSContext context, JavaScriptNode child) {
-        return JSPrepareThisNode.createPrepareThisBinding(context, child);
+    public JavaScriptNode createPrepareThisBinding() {
+        return JSPrepareThisNode.create();
     }
 
     public JavaScriptNode createGlobalObject() {
