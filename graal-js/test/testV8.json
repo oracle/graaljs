@@ -824,9 +824,45 @@
     "runInIsolation" : true,
     "comment" : "GC stress test"
   }, {
+    "filePath" : "mjsunit/huge-typedarrays-copy-within.js",
+    "runInIsolation" : true,
+    "comment" : "Allocates an almost 2 GiB array buffer; run separately from other memory-intensive tests."
+  }, {
+    "filePath" : "mjsunit/huge-typedarrays-entries-keys-values.js",
+    "runInIsolation" : true,
+    "comment" : "Allocates an almost 2 GiB array buffer; run separately from other memory-intensive tests."
+  }, {
+    "filePath" : "mjsunit/huge-typedarrays-every.js",
+    "runInIsolation" : true,
+    "comment" : "Allocates an almost 2 GiB array buffer; run separately from other memory-intensive tests."
+  }, {
+    "filePath" : "mjsunit/huge-typedarrays-fill.js",
+    "runInIsolation" : true,
+    "comment" : "Allocates an almost 2 GiB array buffer; run separately from other memory-intensive tests."
+  }, {
+    "filePath" : "mjsunit/huge-typedarrays-find.js",
+    "runInIsolation" : true,
+    "comment" : "Allocates an almost 2 GiB array buffer; run separately from other memory-intensive tests."
+  }, {
     "filePath" : "mjsunit/huge-typedarrays-helpers.js",
     "status" : "SKIP",
     "comment" : "Helper file; skipped by upstream mjsunit.status."
+  }, {
+    "filePath" : "mjsunit/huge-typedarrays-includes-indexof.js",
+    "runInIsolation" : true,
+    "comment" : "Allocates an almost 2 GiB array buffer; run separately from other memory-intensive tests."
+  }, {
+    "filePath" : "mjsunit/huge-typedarrays-simple-accessors.js",
+    "runInIsolation" : true,
+    "comment" : "Allocates an almost 2 GiB array buffer; run separately from other memory-intensive tests."
+  }, {
+    "filePath" : "mjsunit/huge-typedarrays-some.js",
+    "runInIsolation" : true,
+    "comment" : "Allocates an almost 2 GiB array buffer; run separately from other memory-intensive tests."
+  }, {
+    "filePath" : "mjsunit/huge-typedarrays-subarray.js",
+    "runInIsolation" : true,
+    "comment" : "Allocates an almost 2 GiB array buffer; run separately from other memory-intensive tests."
   }, {
     "filePath" : "mjsunit/ic-megadom-2.js",
     "status" : "FAIL",
