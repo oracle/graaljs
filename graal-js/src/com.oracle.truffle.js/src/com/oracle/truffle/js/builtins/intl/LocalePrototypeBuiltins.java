@@ -42,6 +42,7 @@ package com.oracle.truffle.js.builtins.intl;
 
 import java.util.Set;
 
+import org.graalvm.shadowed.com.ibm.icu.lang.UScript;
 import org.graalvm.shadowed.com.ibm.icu.text.DateTimePatternGenerator;
 import org.graalvm.shadowed.com.ibm.icu.text.NumberingSystem;
 import org.graalvm.shadowed.com.ibm.icu.util.Calendar;
@@ -663,9 +664,26 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @TruffleBoundary
-        private static TruffleString direction(JSLocaleObject localeObject) {
-            ULocale locale = localeObject.getInternalState().getULocale();
-            return locale.isRightToLeft() ? IntlUtil.KEY_RTL : IntlUtil.KEY_LTR;
+        private static Object direction(JSLocaleObject localeObject) {
+            String script = localeObject.getInternalState().getScript();
+            if (script.isEmpty()) {
+                ULocale locale = localeObject.getInternalState().getULocale();
+                script = ULocale.addLikelySubtags(locale).getScript();
+                if (script.isEmpty()) {
+                    return Undefined.instance;
+                }
+            }
+
+            int scriptCode = UScript.getCodeFromName(script);
+            // These scripts have unknown direction in CLDR script metadata.
+            if (scriptCode == UScript.COMMON || scriptCode == UScript.INHERITED || scriptCode == UScript.UNKNOWN || scriptCode == UScript.BRAILLE) {
+                return Undefined.instance;
+            }
+            // ICU exposes missing script metadata as NOT_ENCODED.
+            if (UScript.getUsage(scriptCode) == UScript.ScriptUsage.NOT_ENCODED) {
+                return Undefined.instance;
+            }
+            return UScript.isRightToLeft(scriptCode) ? IntlUtil.KEY_RTL : IntlUtil.KEY_LTR;
         }
 
     }
