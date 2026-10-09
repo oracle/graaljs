@@ -61,6 +61,8 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSConfig;
 
 public final class Options {
+    private static final String JLINE_DUMB_TERMINAL_PROPERTY = "org.graalvm.shadowed.org.jline.terminal.dumb";
+
     private final Context.Builder contextBuilder;
     private final boolean exposeGC;
     private final boolean unsafeWasmMemory;
@@ -87,8 +89,21 @@ public final class Options {
                 parser = clazz.getDeclaredConstructor().newInstance();
             }
         }
-        Object[] result = parser.apply(args);
-        return new Options((Context.Builder) result[0], (Boolean) result[1], (Boolean) result[2], (Boolean) result[3]);
+
+        // The native image excludes JLine's FFM provider. Allow launcher help to fall back
+        // silently when determining the terminal width.
+        boolean enableDumbTerminalFallback = JSConfig.SubstrateVM && System.getProperty(JLINE_DUMB_TERMINAL_PROPERTY) == null;
+        if (enableDumbTerminalFallback) {
+            System.setProperty(JLINE_DUMB_TERMINAL_PROPERTY, "true");
+        }
+        try {
+            Object[] result = parser.apply(args);
+            return new Options((Context.Builder) result[0], (Boolean) result[1], (Boolean) result[2], (Boolean) result[3]);
+        } finally {
+            if (enableDumbTerminalFallback) {
+                System.clearProperty(JLINE_DUMB_TERMINAL_PROPERTY);
+            }
+        }
     }
 
     @SuppressWarnings("unchecked")
