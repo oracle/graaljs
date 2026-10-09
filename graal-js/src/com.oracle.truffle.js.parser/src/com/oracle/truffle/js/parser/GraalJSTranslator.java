@@ -174,6 +174,7 @@ import com.oracle.truffle.js.parser.env.FunctionEnvironment;
 import com.oracle.truffle.js.parser.env.FunctionEnvironment.JumpTargetCloseable;
 import com.oracle.truffle.js.parser.env.GlobalEnvironment;
 import com.oracle.truffle.js.parser.env.PrivateEnvironment;
+import com.oracle.truffle.js.parser.env.StrictEnvironment;
 import com.oracle.truffle.js.parser.env.WithEnvironment;
 import com.oracle.truffle.js.parser.internal.ir.debug.PrintVisitor;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -3885,7 +3886,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         Scope classHeadScope = classNode.getClassHeadScope();
         Scope classBodyScope = classNode.getScope();
         boolean needsScope = classHeadScope.hasDeclarations() || classBodyScope.hasDeclarations();
-        try (EnvironmentCloseable blockEnv = new EnvironmentCloseable(needsScope ? newClassEnvironment(classHeadScope) : environment)) {
+        try (EnvironmentCloseable strictEnv = new EnvironmentCloseable(new StrictEnvironment(environment, factory, context));
+                        EnvironmentCloseable blockEnv = new EnvironmentCloseable(needsScope ? newClassEnvironment(classHeadScope) : environment)) {
             TruffleString className = null;
             Symbol classNameSymbol = null;
             IdentNode ident = classNode.getIdent();

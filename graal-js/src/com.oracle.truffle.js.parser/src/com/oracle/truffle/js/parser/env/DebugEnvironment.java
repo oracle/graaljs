@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,14 +54,9 @@ public class DebugEnvironment extends Environment {
     private final Object scope;
 
     public DebugEnvironment(Environment parent, NodeFactory factory, JSContext context, Object scope) {
-        super(parent, factory, context);
+        super(parent, factory, context, true);
         this.scope = scope;
         assert InteropLibrary.getUncached().isScope(scope) : scope;
-    }
-
-    @Override
-    public boolean isStrictMode() {
-        return true;
     }
 
     public boolean hasMember(TruffleString name) {
