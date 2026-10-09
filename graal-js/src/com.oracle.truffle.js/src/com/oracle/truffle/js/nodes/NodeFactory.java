@@ -161,6 +161,7 @@ import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode.JSToPropertyKeyWrapperNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode.JSToStringWrapperNode;
+import com.oracle.truffle.js.nodes.cast.ToArrayIndexWrapperNode;
 import com.oracle.truffle.js.nodes.cast.WithStatementToObjectNode;
 import com.oracle.truffle.js.nodes.control.AbstractBlockNode;
 import com.oracle.truffle.js.nodes.control.AsyncDisposeResourcesWrapperNode;
@@ -1376,6 +1377,10 @@ public class NodeFactory {
 
     public JavaScriptNode createGetPrivateBrand(JSContext context, JavaScriptNode constructorNode) {
         return JSAndNode.create(constructorNode, PropertyNode.createGetHidden(context, constructorNode, JSFunction.PRIVATE_BRAND_ID));
+    }
+
+    public JavaScriptNode createToArrayIndexNoString(JavaScriptNode key) {
+        return ToArrayIndexWrapperNode.create(key);
     }
 
     public JavaScriptNode createToPropertyKey(JavaScriptNode key) {

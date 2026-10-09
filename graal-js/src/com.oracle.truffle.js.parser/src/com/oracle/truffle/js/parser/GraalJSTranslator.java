@@ -3161,7 +3161,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 JavaScriptNode preparedIndex = factory.createExprBlock(
                                 computedSuperPropertyReference ? factory.createEmpty() : keyTemp.createWriteNode(elem),
                                 factory.createRequireObjectCoercible(targetTemp.createReadNode()),
-                                keyTemp.createWriteNode(factory.createToPropertyKey(keyTemp.createReadNode())));
+                                keyTemp.createWriteNode(factory.createToArrayIndexNoString(keyTemp.createReadNode())));
                 JavaScriptNode readNode = tagExpression(factory.createReadElementNode(context, target1, preparedIndex), indexNode);
                 JavaScriptNode writeNode = factory.createCompoundWriteElementNode(target2, readIndex, assignedValue, null, context, environment.isStrictMode());
                 assignedNode = factory.createBinary(context, binaryOp, readNode, writeNode);
