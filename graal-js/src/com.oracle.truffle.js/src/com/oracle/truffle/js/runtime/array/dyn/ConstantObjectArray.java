@@ -240,6 +240,9 @@ public final class ConstantObjectArray extends AbstractConstantArray {
     public ScriptArray removeRangeImpl(JSDynamicObject object, long start, long end) {
         Object[] array = getArray(object);
         if ((array.length - (end - start)) == 0) {
+            // Keep the constant-array backing store from retaining removed elements after the
+            // array becomes empty.
+            arraySetArray(object, ScriptArray.EMPTY_OBJECT_ARRAY);
             AbstractConstantEmptyArray.setCapacity(object, 0);
         } else {
             Object[] newArray = new Object[array.length - (int) (end - start)];
