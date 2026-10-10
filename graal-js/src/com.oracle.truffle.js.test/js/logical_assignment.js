@@ -88,6 +88,46 @@ function testLogicalAssignmentRetainsTarget() {
 
 testLogicalAssignmentRetainsTarget();
 
+function testLogicalAssignmentGetterRetainsTarget(operator, initialValue, shouldAssign) {
+    var events = [];
+    var replacement = {property: 99};
+    var target;
+    var original = {
+        get property() {
+            events.push('get');
+            target = replacement;
+            return initialValue;
+        },
+        set property(value) {
+            events.push('set');
+            assertSame(original, this);
+            assertSame(42, value);
+        }
+    };
+    target = original;
+    function rhs() {
+        events.push('rhs');
+        return 42;
+    }
+    var result;
+    switch (operator) {
+        case '&&=': result = target.property &&= rhs(); break;
+        case '||=': result = target.property ||= rhs(); break;
+        case '??=': result = target.property ??= rhs(); break;
+    }
+    assertSame(shouldAssign ? 42 : initialValue, result);
+    assertSame(shouldAssign ? 'get,rhs,set' : 'get', events.join(','));
+    assertSame(99, replacement.property);
+}
+
+testLogicalAssignmentGetterRetainsTarget('&&=', true, true);
+testLogicalAssignmentGetterRetainsTarget('&&=', false, false);
+testLogicalAssignmentGetterRetainsTarget('||=', false, true);
+testLogicalAssignmentGetterRetainsTarget('||=', true, false);
+testLogicalAssignmentGetterRetainsTarget('??=', null, true);
+testLogicalAssignmentGetterRetainsTarget('??=', undefined, true);
+testLogicalAssignmentGetterRetainsTarget('??=', false, false);
+
 var conversionCount = 0;
 var key = {
     [Symbol.toPrimitive]: function() {

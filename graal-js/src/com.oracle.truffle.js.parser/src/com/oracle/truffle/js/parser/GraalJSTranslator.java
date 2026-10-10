@@ -3070,7 +3070,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                                 accessNode.getBase());
                 target1 = tagExpression(factory.createSuperPropertyReference(targetTemp.createReadNode(), factory.copy(superTarget.getThisValue())), accessNode.getBase());
                 target2 = tagExpression(factory.createSuperPropertyReference(targetTemp.createReadNode(), factory.copy(superTarget.getThisValue())), accessNode.getBase());
-            } else if (target instanceof RepeatableNode) {
+            } else if (!isLogicalOp(binaryOp) && target instanceof RepeatableNode) {
                 target1 = target;
                 target2 = factory.copy(target);
             } else {
