@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -200,8 +200,9 @@ public final class ConstantObjectArray extends AbstractConstantArray {
         Object[] array = getArray(object);
         AbstractObjectArray newArray;
         if (holes) {
-            int arrayOffset = (int) firstElementIndex(object);
-            int usedLength = (int) lastElementIndex(object) + 1 - arrayOffset;
+            int lastElementIndex = (int) lastElementIndex(object);
+            int arrayOffset = lastElementIndex < 0 ? 0 : (int) firstElementIndex(object);
+            int usedLength = lastElementIndex + 1 - arrayOffset;
             int holeCount = countHoles(object);
             newArray = HolesObjectArray.makeHolesObjectArray(object, array.length, ArrayCopy.objectToObject(array), 0, arrayOffset, usedLength, holeCount, integrityLevel);
         } else {
