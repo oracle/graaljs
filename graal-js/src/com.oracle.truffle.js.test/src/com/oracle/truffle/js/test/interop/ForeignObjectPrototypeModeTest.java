@@ -76,6 +76,7 @@ import com.oracle.truffle.js.test.interop.ForeignObjectPrototypeTest.TestTruffle
 import com.oracle.truffle.js.test.interop.ForeignObjectPrototypeTest.TestTruffleHash;
 import com.oracle.truffle.js.test.interop.ForeignObjectPrototypeTest.TestTruffleNumber;
 import com.oracle.truffle.js.test.interop.ForeignObjectPrototypeTest.TestTruffleString;
+import com.oracle.truffle.js.test.polyglot.ForeignNull;
 
 @RunWith(Parameterized.class)
 public class ForeignObjectPrototypeModeTest {
@@ -146,6 +147,57 @@ public class ForeignObjectPrototypeModeTest {
     public void testGenericHostObject() {
         try (Context context = newContextBuilder(mode).build()) {
             assertPrototype(context, mode, new Object());
+        }
+    }
+
+    /**
+     * Checks that Reflect.getPrototypeOf agrees with Object.getPrototypeOf and invokes proxy traps once.
+     */
+    @Test
+    public void testReflectGetPrototypeOf() {
+        try (Context context = newContextBuilder(mode).allowHostAccess(HostAccess.ALL).build()) {
+            Value check = context.eval(ID, "(o) => Reflect.getPrototypeOf(o) === Object.getPrototypeOf(o)");
+            for (Object foreign : List.of(ProxyObject.fromMap(Map.of("answer", 42)), new Object(),
+                            ProxyArray.fromArray(1, 2), new int[]{1, 2}, Instant.now(), new TestTruffleHash(),
+                            (ProxyExecutable) args -> 42, new RuntimeException("test"), ProxyIterable.from(List.of(1, 2)),
+                            ProxyIterator.from(List.of(1, 2).iterator()))) {
+                assertTrue(check.execute(foreign).asBoolean());
+            }
+            for (String expression : List.of("({})", "[]", "Object.create(null)", "Object(true)", "Object(1)", "Object('test')", "new Proxy({}, {})")) {
+                assertTrue(check.execute(context.eval(ID, expression)).asBoolean());
+            }
+            assertTrue(context.eval(ID, """
+                            let calls = 0;
+                            const proto = {};
+                            const proxy = new Proxy({}, {getPrototypeOf() { calls++; return proto; }});
+                            Reflect.getPrototypeOf(proxy) === proto && calls === 1;
+                            """).asBoolean());
+        }
+    }
+
+    /**
+     * Checks that Reflect.getPrototypeOf rejects JS and foreign primitives, as well as revoked proxies.
+     */
+    @Test
+    public void testReflectGetPrototypeOfRejectsPrimitives() {
+        try (Context context = newContextBuilder(mode).build()) {
+            Value check = context.eval(ID, """
+                            (value) => {
+                                try {
+                                    Reflect.getPrototypeOf(value);
+                                    return false;
+                                } catch (e) {
+                                    return e instanceof TypeError;
+                                }
+                            }
+                            """);
+            for (String expression : List.of("null", "undefined", "true", "1", "'test'", "1n", "Symbol()")) {
+                assertTrue(check.execute(context.eval(ID, expression)).asBoolean());
+            }
+            for (Object foreign : List.of(new ForeignNull(), new TestTruffleString(), new TestTruffleBoolean(), new TestTruffleNumber())) {
+                assertTrue(check.execute(foreign).asBoolean());
+            }
+            assertTrue(check.execute(context.eval(ID, "const p = Proxy.revocable({}, {}); p.revoke(); p.proxy;")).asBoolean());
         }
     }
 

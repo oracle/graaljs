@@ -20,6 +20,6 @@ assertTrue(foreign instanceof Object);
 assertThrows(() => Object.setPrototypeOf(foreign, {}), TypeError);
 assertThrows(() => Object.setPrototypeOf({}, foreign), TypeError);
 
-assertThrows(() => Reflect.getPrototypeOf(foreign), TypeError);
+assertSame(Object.getPrototypeOf(foreign), Reflect.getPrototypeOf(foreign));
 assertThrows(() => Reflect.setPrototypeOf(foreign, {}), TypeError);
 assertThrows(() => Reflect.setPrototypeOf({}, foreign), TypeError);

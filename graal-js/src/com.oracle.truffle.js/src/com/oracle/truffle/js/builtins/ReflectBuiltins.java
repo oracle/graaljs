@@ -68,6 +68,7 @@ import com.oracle.truffle.js.builtins.ReflectBuiltinsFactory.ReflectSetNodeGen;
 import com.oracle.truffle.js.builtins.ReflectBuiltinsFactory.ReflectSetPrototypeOfNodeGen;
 import com.oracle.truffle.js.builtins.helper.ListSizeNode;
 import com.oracle.truffle.js.nodes.access.FromPropertyDescriptorNode;
+import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.access.IsExtensibleNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.JSGetOwnPropertyNode;
@@ -373,9 +374,24 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         }
 
         @Specialization
-        protected Object reflectGetPrototypeOf(Object target) {
-            ensureJSObject(target);
-            return JSObject.getPrototype((JSDynamicObject) target);
+        protected JSDynamicObject getPrototypeOfJSObject(JSObject target,
+                        @Cached GetPrototypeNode getPrototypeNode) {
+            return getPrototypeNode.execute(target);
+        }
+
+        @Specialization(guards = "!isJSObject(target)")
+        protected JSDynamicObject getPrototypeOfNonObject(Object target,
+                        @Cached IsObjectNode isObjectNode,
+                        @Cached ForeignObjectPrototypeNode foreignObjectPrototypeNode) {
+            if (!isObjectNode.executeBoolean(target)) {
+                errorBranch.enter();
+                throw Errors.createTypeErrorCalledOnNonObject();
+            }
+            assert JSRuntime.isForeignObject(target);
+            if (getContext().getLanguageOptions().hasForeignObjectPrototype()) {
+                return foreignObjectPrototypeNode.execute(target);
+            }
+            return Null.instance;
         }
     }
 
