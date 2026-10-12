@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -202,7 +202,7 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
             if (!(propertyName instanceof Symbol) && interop.isMemberExisting(object, Strings.toJavaString(toStringNode.executeString(propertyName)))) {
                 return true;
             }
-            if (getLanguage().getJSContext().getLanguageOptions().hasForeignObjectPrototype()) {
+            if (!hasOwnProperty && getLanguage().getJSContext().getLanguageOptions().hasForeignObjectPrototype()) {
                 JSDynamicObject prototype = foreignObjectPrototypeNode.execute(object);
                 return hasInPrototype.executeBoolean(prototype, propertyName);
             } else {

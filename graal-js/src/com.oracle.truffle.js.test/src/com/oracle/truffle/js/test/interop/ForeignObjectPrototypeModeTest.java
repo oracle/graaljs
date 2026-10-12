@@ -321,6 +321,66 @@ public class ForeignObjectPrototypeModeTest {
     }
 
     /**
+     * Checks own versus inherited properties, including symbols and shadowing, without invoking getters.
+     */
+    @Test
+    public void testOwnPropertyChecks() {
+        Map<String, Object> members = new LinkedHashMap<>(Map.of("answer", 42));
+        try (Context context = newContextBuilder(mode).build()) {
+            ProxyObject foreign = ProxyObject.fromMap(members);
+            context.getBindings(ID).putMember("foreign", foreign);
+            context.eval(ID, """
+                            Object.defineProperty(Object.prototype, 'inheritedAnswer', {
+                                get() { throw new Error('Property existence checks must not invoke getters'); }
+                            });
+                            Object.prototype[Symbol.iterator] = () => {};
+                            """);
+            Value check = context.eval(ID, """
+                            (o, key, expected) => Object.hasOwn(o, key) === expected &&
+                                Object.prototype.hasOwnProperty.call(o, key) === expected
+                            """);
+            assertTrue(check.execute(foreign, "answer", true).asBoolean());
+            assertTrue(check.execute(foreign, "missing", false).asBoolean());
+            assertTrue(check.execute(foreign, "inheritedAnswer", false).asBoolean());
+            assertTrue(check.execute(foreign, "toString", false).asBoolean());
+            assertTrue(check.execute(foreign, context.eval(ID, "Symbol.iterator"), false).asBoolean());
+            assertEquals(isEnabled(mode), context.eval(ID, "'inheritedAnswer' in foreign").asBoolean());
+            assertEquals(isEnabled(mode), context.eval(ID, "'toString' in foreign").asBoolean());
+            assertEquals(isEnabled(mode), context.eval(ID, "Symbol.iterator in foreign").asBoolean());
+
+            members.put("inheritedAnswer", 84);
+            members.put("toString", "own member");
+            assertTrue(check.execute(foreign, "inheritedAnswer", true).asBoolean());
+            assertTrue(check.execute(foreign, "toString", true).asBoolean());
+            assertEquals(84, context.eval(ID, "foreign.inheritedAnswer").asInt());
+            members.remove("inheritedAnswer");
+            assertTrue(check.execute(foreign, "inheritedAnswer", false).asBoolean());
+            assertEquals(isEnabled(mode), context.eval(ID, "'inheritedAnswer' in foreign").asBoolean());
+
+            assertTrue(check.execute(context.eval(ID, "Object.create({inherited: 42})"), "inherited", false).asBoolean());
+            assertTrue(check.execute(context.eval(ID, "({own: 42})"), "own", true).asBoolean());
+        }
+    }
+
+    /**
+     * Checks that foreign arrays inherit methods and symbols without treating them as own properties.
+     */
+    @Test
+    public void testArrayInheritedPropertiesNotOwn() {
+        try (Context context = newContextBuilder(mode).build()) {
+            context.getBindings(ID).putMember("foreign", ProxyArray.fromArray(1, 2));
+            Value check = context.eval(ID, """
+                            (key, enabled) => !Object.hasOwn(foreign, key) &&
+                                !Object.prototype.hasOwnProperty.call(foreign, key) &&
+                                (key in foreign) === enabled
+                            """);
+            assertTrue(check.execute("map", isEnabled(mode)).asBoolean());
+            assertTrue(check.execute("toString", isEnabled(mode)).asBoolean());
+            assertTrue(check.execute(context.eval(ID, "Symbol.iterator"), isEnabled(mode)).asBoolean());
+        }
+    }
+
+    /**
      * Checks that specialized foreign prototype chains are preserved in specialized-only mode.
      */
     @Test
