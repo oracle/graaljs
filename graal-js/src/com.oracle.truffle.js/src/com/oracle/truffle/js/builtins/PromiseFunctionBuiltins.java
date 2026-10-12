@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.PromiseCombinatorKeyedNodeGen;
 import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.PromiseCombinatorNodeGen;
 import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.PromiseTryNodeGen;
@@ -334,7 +335,7 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
     public abstract static class PromiseTryNode extends JSBuiltinNode {
         @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
         @Child private JSFunctionCallNode callCallbackFnNode;
-        @Child private JSFunctionCallNode callResolveNode;
+        @Child private PromiseResolveNode promiseResolveNode;
         @Child private JSFunctionCallNode callRejectNode;
         @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
 
@@ -342,19 +343,26 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
             super(context, builtin);
             this.newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
             this.callCallbackFnNode = JSFunctionCallNode.createCall();
-            this.callResolveNode = JSFunctionCallNode.createCall();
+            this.promiseResolveNode = PromiseResolveNode.create(context);
         }
 
         @Specialization
-        protected final Object doObject(Object constructor, Object callbackfn, Object[] args) {
-            PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.execute(constructor);
-            try {
-                Object status = callCallbackFnNode.executeCall(JSArguments.create(Undefined.instance, callbackfn, args));
-                callResolveNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), status));
-            } catch (AbstractTruffleException ex) {
-                rejectPromise(ex, promiseCapability);
+        protected final Object doObject(Object constructor, Object callbackfn, Object[] args,
+                        @Cached IsObjectNode isObjectNode,
+                        @Cached InlinedBranchProfile errorBranch) {
+            if (!isObjectNode.executeBoolean(constructor)) {
+                errorBranch.enter(this);
+                throw Errors.createTypeErrorNotAnObject(constructor, this);
             }
-            return promiseCapability.getPromise();
+            Object status;
+            try {
+                status = callCallbackFnNode.executeCall(JSArguments.create(Undefined.instance, callbackfn, args));
+            } catch (AbstractTruffleException ex) {
+                PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.execute(constructor);
+                rejectPromise(ex, promiseCapability);
+                return promiseCapability.getPromise();
+            }
+            return promiseResolveNode.execute(constructor, status);
         }
 
         private void rejectPromise(AbstractTruffleException ex, PromiseCapabilityRecord promiseCapability) {

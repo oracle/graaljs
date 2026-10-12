@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -239,7 +239,7 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
     }
 
     private static void setUnicodeLocaleKeywordHelper(Locale.Builder builder, String key, String type) {
-        builder.setUnicodeLocaleKeyword(key, "true".equals(type) ? "" : type);
+        builder.setUnicodeLocaleKeyword(key, "true".equalsIgnoreCase(type) ? "" : type);
     }
 
     private static String weekDayToString(String fw) {

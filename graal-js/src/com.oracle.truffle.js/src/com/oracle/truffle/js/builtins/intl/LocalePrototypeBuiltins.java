@@ -42,6 +42,7 @@ package com.oracle.truffle.js.builtins.intl;
 
 import java.util.Set;
 
+import org.graalvm.shadowed.com.ibm.icu.lang.UScript;
 import org.graalvm.shadowed.com.ibm.icu.text.DateTimePatternGenerator;
 import org.graalvm.shadowed.com.ibm.icu.text.NumberingSystem;
 import org.graalvm.shadowed.com.ibm.icu.util.Calendar;
@@ -517,10 +518,10 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @TruffleBoundary
         @Specialization
         public Object doLocale(JSLocaleObject localeObject) {
-            ULocale locale = localeObject.getInternalState().getULocaleForRegionPreference();
-            String calendar = locale.getUnicodeLocaleType("ca");
+            String calendar = localeObject.getInternalState().getCalendar();
             String[] calendars;
             if (calendar == null) {
+                ULocale locale = localeObject.getInternalState().getULocaleForRegionPreference();
                 calendars = IntlUtil.availableCalendars(locale, true);
             } else {
                 calendars = new String[]{calendar};
@@ -544,10 +545,10 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @TruffleBoundary
         @Specialization
         public Object doLocale(JSLocaleObject localeObject) {
-            ULocale locale = localeObject.getInternalState().getULocale();
-            String collation = locale.getUnicodeLocaleType("co");
+            String collation = localeObject.getInternalState().getCollation();
             String[] collations;
             if (collation == null) {
+                ULocale locale = localeObject.getInternalState().getULocale();
                 collations = IntlUtil.availableCollations(locale, true);
             } else {
                 collations = new String[]{collation};
@@ -571,9 +572,9 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @TruffleBoundary
         @Specialization
         public Object doLocale(JSLocaleObject localeObject) {
-            ULocale locale = localeObject.getInternalState().getULocaleForRegionPreference();
-            String hourCycle = locale.getUnicodeLocaleType("hc");
+            String hourCycle = localeObject.getInternalState().getHourCycle();
             if (hourCycle == null) {
+                ULocale locale = localeObject.getInternalState().getULocaleForRegionPreference();
                 DateTimePatternGenerator patternGenerator = DateTimePatternGenerator.getInstance(locale);
                 hourCycle = IntlUtil.toJSHourCycle(patternGenerator.getDefaultHourCycle());
             }
@@ -596,9 +597,9 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @TruffleBoundary
         @Specialization
         public Object doLocale(JSLocaleObject localeObject) {
-            ULocale locale = localeObject.getInternalState().getULocale();
-            String numberingSystem = locale.getUnicodeLocaleType("nu");
+            String numberingSystem = localeObject.getInternalState().getNumberingSystem();
             if (numberingSystem == null) {
+                ULocale locale = localeObject.getInternalState().getULocale();
                 numberingSystem = NumberingSystem.getInstance(locale).getName();
             }
             return JSArray.createConstantObjectArray(getContext(), getRealm(), new Object[]{Strings.fromJavaString(numberingSystem)});
@@ -663,9 +664,26 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @TruffleBoundary
-        private static TruffleString direction(JSLocaleObject localeObject) {
-            ULocale locale = localeObject.getInternalState().getULocale();
-            return locale.isRightToLeft() ? IntlUtil.KEY_RTL : IntlUtil.KEY_LTR;
+        private static Object direction(JSLocaleObject localeObject) {
+            String script = localeObject.getInternalState().getScript();
+            if (script.isEmpty()) {
+                ULocale locale = localeObject.getInternalState().getULocale();
+                script = ULocale.addLikelySubtags(locale).getScript();
+                if (script.isEmpty()) {
+                    return Undefined.instance;
+                }
+            }
+
+            int scriptCode = UScript.getCodeFromName(script);
+            // These scripts have unknown direction in CLDR script metadata.
+            if (scriptCode == UScript.COMMON || scriptCode == UScript.INHERITED || scriptCode == UScript.UNKNOWN || scriptCode == UScript.BRAILLE) {
+                return Undefined.instance;
+            }
+            // ICU exposes missing script metadata as NOT_ENCODED.
+            if (UScript.getUsage(scriptCode) == UScript.ScriptUsage.NOT_ENCODED) {
+                return Undefined.instance;
+            }
+            return UScript.isRightToLeft(scriptCode) ? IntlUtil.KEY_RTL : IntlUtil.KEY_LTR;
         }
 
     }
