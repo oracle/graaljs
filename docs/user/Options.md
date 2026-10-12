@@ -66,7 +66,7 @@ See [ScriptEngine Implementation](ScriptEngine.md) on how to use experimental op
 
 The following stable options are frequently relevant:
    * `--js.ecmascript-version`: emulate a specific ECMAScript version. Integer value (`5`, `6`, etc., `2015`-`2027`), `"latest"` (latest supported version of the spec, including finished proposals), or `"staging"` (latest version including supported unfinished proposals). Default is `"latest"`.
-   * `--js.foreign-object-prototype`: provide JavaScript's default prototype to foreign objects that mimic JavaScript's own types (foreign Arrays, Objects, and Functions). Boolean value, default is `true`.
+   * `--js.foreign-object-prototype`: provide foreign objects with JavaScript prototypes that correspond to their types, such as Array, Object, and Function. Accepted values are `true` (default, use intermediate foreign prototypes), `false` (disable foreign prototypes), and `specialized-only` (use `Object.prototype` directly for generic foreign objects, while retaining specialized foreign prototypes for arrays, functions, maps, and other supported types).
    * `--js.intl-402`: enable ECMAScript Internationalization API. Boolean value, default is `true`.
    * `--js.regexp-static-result`: provide static `RegExp` properties containing the results of the last successful match, for example, `RegExp.$1` (legacy). Boolean value, default is `true`.
    * `--js.strict`: enable strict mode for all scripts. Boolean value, default is `false`.

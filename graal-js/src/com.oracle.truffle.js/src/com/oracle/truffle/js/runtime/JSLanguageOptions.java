@@ -44,6 +44,7 @@ import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.SandboxPolicy;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.js.runtime.JSContextOptions.ForeignObjectPrototypeMode;
 import com.oracle.truffle.js.runtime.JSContextOptions.UnhandledRejectionsTrackingMode;
 
 /**
@@ -77,7 +78,7 @@ public record JSLanguageOptions(
                 boolean regexStepExecution,
                 boolean regexAlwaysEager,
                 boolean scriptEngineGlobalScopeImport,
-                boolean hasForeignObjectPrototype,
+                ForeignObjectPrototypeMode foreignObjectPrototypeMode,
                 boolean hasForeignHashProperties,
                 long functionArgumentsLimit,
                 boolean test262Mode,
@@ -135,6 +136,10 @@ public record JSLanguageOptions(
                 boolean worker,
                 String locale) {
 
+    public boolean hasForeignObjectPrototype() {
+        return foreignObjectPrototypeMode != ForeignObjectPrototypeMode.NONE;
+    }
+
     public static JSLanguageOptions fromOptionValues(SandboxPolicy sandboxPolicy, OptionValues optionValues) {
         return fromContextOptions(JSContextOptions.fromOptionValues(sandboxPolicy, optionValues));
     }
@@ -160,7 +165,7 @@ public record JSLanguageOptions(
         boolean regexStepExecution = options.isRegexStepExecution();
         boolean regexAlwaysEager = options.isRegexAlwaysEager();
         boolean scriptEngineGlobalScopeImport = options.isScriptEngineGlobalScopeImport();
-        boolean hasForeignObjectPrototype = options.hasForeignObjectPrototype();
+        ForeignObjectPrototypeMode foreignObjectPrototypeMode = options.getForeignObjectPrototypeMode();
         boolean hasForeignHashProperties = options.hasForeignHashProperties();
         long functionArgumentsLimit = options.getFunctionArgumentsLimit();
         boolean test262Mode = options.isTest262Mode();
@@ -244,7 +249,7 @@ public record JSLanguageOptions(
                         regexStepExecution,
                         regexAlwaysEager,
                         scriptEngineGlobalScopeImport,
-                        hasForeignObjectPrototype,
+                        foreignObjectPrototypeMode,
                         hasForeignHashProperties,
                         functionArgumentsLimit,
                         test262Mode,

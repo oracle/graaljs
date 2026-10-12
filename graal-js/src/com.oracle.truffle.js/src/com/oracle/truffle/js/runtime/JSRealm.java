@@ -1211,7 +1211,8 @@ public class JSRealm {
         this.foreignBooleanPrototype = JSOrdinary.createInit(this, this.booleanPrototype);
         this.foreignErrorPrototype = JSError.createForeignErrorPrototype(this);
         this.foreignFunctionPrototype = JSOrdinary.createInit(this, this.functionPrototype);
-        this.foreignObjectPrototype = JSOrdinary.createInit(this, this.objectPrototype);
+        this.foreignObjectPrototype = context.getLanguageOptions().foreignObjectPrototypeMode() == JSContextOptions.ForeignObjectPrototypeMode.SPECIALIZED_ONLY ? this.objectPrototype
+                        : JSOrdinary.createInit(this, this.objectPrototype);
     }
 
     private void initializeTypedArrayConstructors() {
