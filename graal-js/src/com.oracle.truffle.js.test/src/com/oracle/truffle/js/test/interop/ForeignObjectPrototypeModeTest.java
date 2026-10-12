@@ -62,6 +62,7 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
+import org.graalvm.polyglot.proxy.ProxyHashMap;
 import org.graalvm.polyglot.proxy.ProxyIterable;
 import org.graalvm.polyglot.proxy.ProxyIterator;
 import org.graalvm.polyglot.proxy.ProxyObject;
@@ -198,6 +199,81 @@ public class ForeignObjectPrototypeModeTest {
                 assertTrue(check.execute(foreign).asBoolean());
             }
             assertTrue(check.execute(context.eval(ID, "const p = Proxy.revocable({}, {}); p.revoke(); p.proxy;")).asBoolean());
+        }
+    }
+
+    /**
+     * Checks the __proto__ getter for foreign and JS values, primitive boxing, and proxy traps.
+     */
+    @Test
+    public void testProtoGetter() {
+        try (Context context = newContextBuilder(mode).allowHostAccess(HostAccess.ALL).build()) {
+            Value check = context.eval(ID, """
+                            (o, enabled) => {
+                                const getter = Object.getOwnPropertyDescriptor(Object.prototype, '__proto__').get;
+                                return getter.call(o) === Object.getPrototypeOf(o) &&
+                                    (!enabled || o.__proto__ === Object.getPrototypeOf(o));
+                            }
+                            """);
+            for (Object foreign : List.of(ProxyObject.fromMap(Map.of("answer", 42)), new Object(),
+                            ProxyArray.fromArray(1, 2), new int[]{1, 2}, Instant.now(), ProxyHashMap.from(new LinkedHashMap<>()),
+                            (ProxyExecutable) args -> 42, new RuntimeException("test"), ProxyIterable.from(List.of(1, 2)),
+                            ProxyIterator.from(List.of(1, 2).iterator()))) {
+                assertTrue(foreign.getClass().getName(), check.execute(foreign, isEnabled(mode)).asBoolean());
+            }
+            for (String expression : List.of("({})", "[]", "true", "1", "'test'", "1n", "Symbol()", "new Proxy({}, {})")) {
+                assertTrue(check.execute(context.eval(ID, expression), true).asBoolean());
+            }
+            assertTrue(check.execute(context.eval(ID, "Object.create(null)"), false).asBoolean());
+            Value checkBoxed = context.eval(ID, """
+                            (o, expected) => Object.getOwnPropertyDescriptor(Object.prototype, '__proto__').get.call(o) === expected && o.__proto__ === expected
+                            """);
+            assertTrue(checkBoxed.execute(new TestTruffleString(), context.eval(ID, "String.prototype")).asBoolean());
+            assertTrue(checkBoxed.execute(new TestTruffleBoolean(), context.eval(ID, "Boolean.prototype")).asBoolean());
+            assertTrue(checkBoxed.execute(new TestTruffleNumber(), context.eval(ID, "Number.prototype")).asBoolean());
+            assertTrue(context.eval(ID, """
+                            let calls = 0;
+                            const proto = {};
+                            const proxy = new Proxy({}, {getPrototypeOf() { calls++; return proto; }});
+                            proxy.__proto__ === proto && calls === 1;
+                            """).asBoolean());
+        }
+    }
+
+    /**
+     * Checks that the __proto__ getter rejects JS and foreign nullish values and revoked proxies.
+     */
+    @Test
+    public void testProtoGetterRejectsNullish() {
+        try (Context context = newContextBuilder(mode).build()) {
+            Value check = context.eval(ID, """
+                            (value) => {
+                                const getter = Object.getOwnPropertyDescriptor(Object.prototype, '__proto__').get;
+                                try {
+                                    getter.call(value);
+                                    return false;
+                                } catch (e) {
+                                    return e instanceof TypeError;
+                                }
+                            }
+                            """);
+            for (String expression : List.of("null", "undefined")) {
+                assertTrue(check.execute(context.eval(ID, expression)).asBoolean());
+            }
+            assertTrue(check.execute(new ForeignNull()).asBoolean());
+            assertTrue(check.execute(context.eval(ID, "const p = Proxy.revocable({}, {}); p.revoke(); p.proxy;")).asBoolean());
+        }
+    }
+
+    /**
+     * Checks that an own __proto__ member shadows the getter without changing the foreign prototype.
+     */
+    @Test
+    public void testProtoMemberShadowsGetter() {
+        try (Context context = newContextBuilder(mode).build()) {
+            ProxyObject foreign = ProxyObject.fromMap(Map.of("__proto__", "own member"));
+            assertEquals("own member", context.eval(ID, "(o) => o.__proto__").execute(foreign).asString());
+            assertPrototype(context, mode, foreign);
         }
     }
 

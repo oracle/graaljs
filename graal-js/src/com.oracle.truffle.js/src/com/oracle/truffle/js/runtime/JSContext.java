@@ -81,6 +81,7 @@ import com.oracle.truffle.js.nodes.ThrowTypeErrorRootNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.nodes.promise.BuiltinPromiseRejectionTracker;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
@@ -2037,12 +2038,16 @@ public class JSContext {
         CallTarget callTarget = new JavaScriptRootNode(getLanguage()) {
             @Child private JSToObjectNode toObjectNode = JSToObjectNode.create();
             @Child private GetPrototypeNode getPrototypeNode = GetPrototypeNode.create();
+            @Child private ForeignObjectPrototypeNode foreignObjectPrototypeNode = ForeignObjectPrototypeNode.create();
 
             @Override
             public Object execute(VirtualFrame frame) {
                 Object obj = toObjectNode.execute(JSArguments.getThisObject(frame.getArguments()));
                 if (JSDynamicObject.isJSDynamicObject(obj)) {
                     return getPrototypeNode.execute(obj);
+                }
+                if (JSRuntime.isForeignObject(obj) && getLanguageOptions().hasForeignObjectPrototype()) {
+                    return foreignObjectPrototypeNode.execute(obj);
                 }
                 return Null.instance;
             }

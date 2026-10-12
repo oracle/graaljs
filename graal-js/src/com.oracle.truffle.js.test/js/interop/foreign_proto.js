@@ -11,7 +11,7 @@ let foreign = Polyglot.createForeignDynamicObject();
 
 // Test the __proto__ getter and setter functions with foreign objects.
 let {get, set} = Object.getOwnPropertyDescriptor(Object.prototype, '__proto__');
-assertSame(null, get.call(foreign));
+assertSame(Object.getPrototypeOf(foreign), get.call(foreign));
 assertSame(undefined, set.call(foreign, {}));
 assertSame(undefined, set.call({}, foreign));
 
