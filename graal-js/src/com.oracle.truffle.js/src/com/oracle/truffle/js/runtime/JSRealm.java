@@ -81,6 +81,7 @@ import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -242,6 +243,7 @@ import com.oracle.truffle.js.runtime.util.TemporalConstants;
  * Container for JavaScript globals (i.e. an ECMAScript 6 Realm object).
  */
 @SuppressFBWarnings(value = "AT", justification = "JSRealm mutable state is accessed by the owning JavaScript agent; these fields are not cross-thread synchronization primitives.")
+@Bind.DefaultExpression("get($node)")
 public class JSRealm {
 
     public static final TruffleString POLYGLOT_CLASS_NAME = Strings.constant("Polyglot");
