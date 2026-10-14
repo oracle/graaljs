@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,13 @@
  */
 package com.oracle.truffle.js.test.instrumentation;
 
+import static org.junit.Assert.assertTrue;
+
 import org.junit.Test;
 
+import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
+import com.oracle.truffle.api.nodes.NodeUtil;
+import com.oracle.truffle.js.nodes.access.WithVarWrapperNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryOperationTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.EvalCallTag;
@@ -70,6 +75,25 @@ public class EvalTest extends FineGrainedAccessTest {
                 prop.input(42);
             }).exit();
         }).exit();
+    }
+
+    @Test
+    public void overriddenEvalWithInstrumentedReceiver() {
+        evalWithTag("""
+                        var receiver = {eval: function(value) {
+                            'use strict';
+                            if (this !== receiver) throw new Error('Lost eval receiver');
+                            return value;
+                        }};
+                        with (receiver) { eval(42); }
+                        """, EvalCallTag.class);
+
+        enter(EvalCallTag.class, (e, eval) -> {
+            WithVarWrapperNode reference = NodeUtil.findFirstNodeInstance(e.context.getInstrumentedNode(), WithVarWrapperNode.class);
+            assertTrue(reference != null && reference.getParent() instanceof WrapperNode);
+            eval.input(assertJSFunctionInput);
+            eval.input(42);
+        }).exit(assertReturnValue(42));
     }
 
     @Test

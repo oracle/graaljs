@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -55,14 +54,18 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSFrameSlot;
+import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ScriptNode;
+import com.oracle.truffle.js.nodes.access.JSTargetableNode;
+import com.oracle.truffle.js.nodes.access.WithVarWrapperNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.EvalCallTag;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Evaluator;
@@ -80,7 +83,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public abstract class EvalNode extends JavaScriptNode {
     private final JSContext context;
-    @Child @Executed protected JavaScriptNode functionNode;
+    @Child protected JavaScriptNode functionNode;
     @Child protected AbstractFunctionArgumentsNode arguments;
     @Child protected DirectEvalNode directEvalNode;
 
@@ -104,8 +107,44 @@ public abstract class EvalNode extends JavaScriptNode {
         }
     }
 
+    @Override
+    public final Object execute(VirtualFrame frame) {
+        Object receiver;
+        Object evalFunction;
+        if (functionNode instanceof JSTargetableNode reference && JSNodeUtil.getWrappedNode(reference) instanceof WithVarWrapperNode) {
+            receiver = reference.evaluateTarget(frame);
+            evalFunction = reference.executeWithTarget(frame, receiver);
+        } else {
+            receiver = Undefined.instance;
+            evalFunction = functionNode.execute(frame);
+        }
+        return executeEvaluated(frame, evalFunction, receiver);
+    }
+
+    @Override
+    public final int executeInt(VirtualFrame frame) throws UnexpectedResultException {
+        return super.executeInt(frame);
+    }
+
+    @Override
+    public final double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
+        return super.executeDouble(frame);
+    }
+
+    @Override
+    public final boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException {
+        return super.executeBoolean(frame);
+    }
+
+    @Override
+    public final void executeVoid(VirtualFrame frame) {
+        super.executeVoid(frame);
+    }
+
+    protected abstract Object executeEvaluated(VirtualFrame frame, Object evalFunction, Object receiver);
+
     @Specialization(guards = {"!isEvalOverridden(evalFunction)"})
-    protected Object evalNotOverridden(VirtualFrame frame, @SuppressWarnings("unused") Object evalFunction) {
+    protected Object evalNotOverridden(VirtualFrame frame, @SuppressWarnings("unused") Object evalFunction, @SuppressWarnings("unused") Object receiver) {
         int argCount = arguments.getCount(frame);
         Object[] args = new Object[argCount];
         args = arguments.executeFillObjectArray(frame, args, 0);
@@ -114,10 +153,10 @@ public abstract class EvalNode extends JavaScriptNode {
     }
 
     @Specialization(guards = {"isEvalOverridden(evalFunction)"})
-    protected Object evalOverridden(VirtualFrame frame, Object evalFunction,
+    protected Object evalOverridden(VirtualFrame frame, Object evalFunction, Object receiver,
                     @Cached("createCall()") JSFunctionCallNode redirectCall) {
         int argCount = arguments.getCount(frame);
-        Object[] args = JSArguments.createInitial(Undefined.instance, evalFunction, argCount);
+        Object[] args = JSArguments.createInitial(receiver, evalFunction, argCount);
         args = arguments.executeFillObjectArray(frame, args, JSArguments.RUNTIME_ARGUMENT_COUNT);
         return redirectCall.executeCall(args);
     }

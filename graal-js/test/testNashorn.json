@@ -352,9 +352,6 @@
     "status" : "SKIP",
     "comment" : "non-deterministic failures because of multi-threading"
   }, {
-    "filePath" : "basic/JDK-8048071.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "basic/JDK-8049086.js",
     "status" : "SKIP",
     "comment" : "using jdk.nashorn.api.scripting.JSObject"
