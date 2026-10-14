@@ -1199,6 +1199,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             }
 
             @Override
+            public boolean enterWithNode(WithNode withNode) {
+                directArgumentsAccess = false;
+                return false;
+            }
+
+            @Override
             public boolean enterFunctionNode(FunctionNode nestedFunctionNode) {
                 if (nestedFunctionNode == functionNode) {
                     return true;
