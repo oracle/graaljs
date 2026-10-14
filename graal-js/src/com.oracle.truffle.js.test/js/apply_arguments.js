@@ -101,3 +101,60 @@ function verifyArguments(args) {
     }
     assertSameContent([6, 7], forward(6, 7));
 })();
+
+(function testSharedMaterializedArguments() {
+    let savedArguments;
+    let getterReads = 0;
+    function materialize() {}
+    materialize.apply = function (_thisArgument, args) {
+        savedArguments = args;
+        const first = args[0];
+        Object.defineProperty(args, '0', {
+            configurable: true,
+            get() {
+                getterReads++;
+                return first * 10;
+            }
+        });
+        delete args[1];
+        args[2] = 99;
+        args.length = 3;
+    };
+    function collect() {
+        return Array.prototype.slice.call(arguments);
+    }
+    function observe() {}
+    observe.apply = function (_thisArgument, args) {
+        assertSame(savedArguments, args);
+    };
+    function forward() {
+        materialize.apply(null, arguments);
+        const result = collect.apply(null, arguments);
+        observe.apply(null, arguments);
+        return result;
+    }
+
+    assertSameContent([10, undefined, 99], forward(1, 2));
+    assertSame(1, getterReads);
+    const firstArguments = savedArguments;
+    assertSameContent([30, undefined, 99], forward(3, 4));
+    assertSame(2, getterReads);
+    assertFalse(firstArguments === savedArguments);
+})();
+
+(function testMaterializationDuringArgumentEvaluation() {
+    function materialize() {}
+    materialize.apply = function (_thisArgument, args) {
+        args[0] = 42;
+        return null;
+    };
+    function collect() {
+        return Array.prototype.slice.call(arguments);
+    }
+    function forward() {
+        return collect.apply(materialize.apply(null, arguments), arguments);
+    }
+
+    assertSameContent([42, 2], forward(1, 2));
+    assertSameContent([42, 4], forward(3, 4));
+})();
