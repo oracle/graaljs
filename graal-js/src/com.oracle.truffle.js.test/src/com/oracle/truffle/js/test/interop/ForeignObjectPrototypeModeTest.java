@@ -77,6 +77,7 @@ import com.oracle.truffle.js.test.interop.ForeignObjectPrototypeTest.TestTruffle
 import com.oracle.truffle.js.test.interop.ForeignObjectPrototypeTest.TestTruffleHash;
 import com.oracle.truffle.js.test.interop.ForeignObjectPrototypeTest.TestTruffleNumber;
 import com.oracle.truffle.js.test.interop.ForeignObjectPrototypeTest.TestTruffleString;
+import com.oracle.truffle.js.test.polyglot.ForeignBoxedObject;
 import com.oracle.truffle.js.test.polyglot.ForeignNull;
 
 @RunWith(Parameterized.class)
@@ -317,6 +318,75 @@ public class ForeignObjectPrototypeModeTest {
             } else {
                 assertTrue(context.eval(ID, "foreign.inheritedAnswer === undefined").asBoolean());
             }
+        }
+    }
+
+    @Test
+    public void testHasOwnPropertyForeignPrimitives() {
+        try (Context context = newContextBuilder(mode).build()) {
+            Value check = context.eval(ID, """
+                            (value, key, expected) =>
+                                Object.prototype.hasOwnProperty.call(value, key) === expected &&
+                                Object.hasOwn(value, key) === expected
+                            """);
+            Object string = ForeignBoxedObject.createNew("abc");
+            for (Object key : new Object[]{"length", "0", 0, "2", 2}) {
+                assertTrue(check.execute(string, key, true).asBoolean());
+            }
+            for (Object key : new Object[]{"3", 3, "-1", "constructor", "toString"}) {
+                assertTrue(check.execute(string, key, false).asBoolean());
+            }
+            Object emptyString = new TestTruffleString();
+            assertTrue(check.execute(emptyString, "length", true).asBoolean());
+            assertTrue(check.execute(emptyString, "0", false).asBoolean());
+            for (Object primitive : new Object[]{new TestTruffleBoolean(), new TestTruffleNumber()}) {
+                for (String key : new String[]{"length", "0", "constructor", "toString"}) {
+                    assertTrue(check.execute(primitive, key, false).asBoolean());
+                }
+            }
+            Value checkKeyConversion = context.eval(ID, """
+                            value => {
+                                let conversions = 0;
+                                const key = { [Symbol.toPrimitive](hint) {
+                                    if (hint !== 'string') throw new Error('Unexpected hint');
+                                    conversions++;
+                                    return 'length';
+                                }};
+                                return Object.prototype.hasOwnProperty.call(value, key) && conversions === 1 &&
+                                    !Object.prototype.hasOwnProperty.call(value, Symbol.iterator);
+                            }
+                            """);
+            assertTrue(checkKeyConversion.execute(string).asBoolean());
+        }
+    }
+
+    @Test
+    public void testHasOwnPropertyForeignNullCoercionOrder() {
+        try (Context context = newContextBuilder(mode).build()) {
+            context.getBindings(ID).putMember("foreignNull", new ForeignNull());
+            assertTrue(context.eval(ID, """
+                            (() => {
+                                for (const value of [null, undefined, foreignNull]) {
+                                    let converted = false;
+                                    const key = { [Symbol.toPrimitive]() { converted = true; return 'length'; } };
+                                    try {
+                                        Object.prototype.hasOwnProperty.call(value, key);
+                                        return false;
+                                    } catch (error) {
+                                        if (!(error instanceof TypeError) || !converted) return false;
+                                    }
+                                    const marker = {};
+                                    const throwingKey = { [Symbol.toPrimitive]() { throw marker; } };
+                                    try {
+                                        Object.prototype.hasOwnProperty.call(value, throwingKey);
+                                        return false;
+                                    } catch (error) {
+                                        if (error !== marker) return false;
+                                    }
+                                }
+                                return true;
+                            })()
+                            """).asBoolean());
         }
     }
 

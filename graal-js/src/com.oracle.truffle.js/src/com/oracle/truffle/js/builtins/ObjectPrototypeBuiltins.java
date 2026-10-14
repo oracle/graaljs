@@ -471,22 +471,23 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         public ObjectPrototypeHasOwnPropertyNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
+            this.hasOwnPropertyNode = JSHasPropertyNode.create(true);
         }
 
         @Specialization
         protected boolean doJSObjectTStringKey(JSObject thisObj, TruffleString propertyName) {
-            return getHasOwnPropertyNode().executeBoolean(thisObj, propertyName);
+            return hasOwnPropertyNode.executeBoolean(thisObj, propertyName);
         }
 
         @Specialization
         protected boolean doJSObjectIntKey(JSObject thisObj, int index) {
-            return getHasOwnPropertyNode().executeBoolean(thisObj, index);
+            return hasOwnPropertyNode.executeBoolean(thisObj, index);
         }
 
         @Specialization(replaces = {"doJSObjectTStringKey", "doJSObjectIntKey"})
         protected boolean doJSObjectAnyKey(JSObject thisObj, Object propName) {
             Object key = getToPropertyKeyNode().execute(propName);
-            return getHasOwnPropertyNode().executeBoolean(thisObj, key);
+            return hasOwnPropertyNode.executeBoolean(thisObj, key);
         }
 
         @Specialization(guards = "isNullOrUndefined(thisObj)")
@@ -504,7 +505,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected boolean hasOwnPropertyPrimitive(Object thisObj, Object propName) {
             Object key = getToPropertyKeyNode().execute(propName);
             JSDynamicObject obj = toJSObject(thisObj);
-            return getHasOwnPropertyNode().executeBoolean(obj, key);
+            return hasOwnPropertyNode.executeBoolean(obj, key);
         }
 
         @Specialization
@@ -524,15 +525,9 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "isForeignObject(thisObj)")
         protected boolean hasOwnPropertyForeign(Object thisObj, Object propName) {
-            return getHasOwnPropertyNode().executeBoolean(thisObj, propName);
-        }
-
-        public JSHasPropertyNode getHasOwnPropertyNode() {
-            if (hasOwnPropertyNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                hasOwnPropertyNode = insert(JSHasPropertyNode.create(true));
-            }
-            return hasOwnPropertyNode;
+            Object key = getToPropertyKeyNode().execute(propName);
+            Object obj = toObject(thisObj);
+            return hasOwnPropertyNode.executeBoolean(obj, key);
         }
 
         protected JSToPropertyKeyNode getToPropertyKeyNode() {
