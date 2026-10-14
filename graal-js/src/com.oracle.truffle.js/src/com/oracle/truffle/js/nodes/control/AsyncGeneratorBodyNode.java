@@ -141,6 +141,11 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
                     } catch (AbstractTruffleException e) {
                         asyncGeneratorReject(generatorObject, e);
                     }
+                    // Resolving a yielded result can synchronously re-enter the generator through a
+                    // then getter. The nested resumption owns the queue while it is executing.
+                    if (generatorObject.getAsyncGeneratorState() == AsyncGeneratorState.Executing) {
+                        return Undefined.instance;
+                    }
                     // AsyncGeneratorResolve/AsyncGeneratorReject => AsyncGeneratorResumeNext
                     Object nextCompletion = asyncGeneratorResumeNextNode.execute(generatorObject);
                     if (nextCompletion instanceof Completion) {
