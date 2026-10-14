@@ -59,6 +59,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.array.TypedArrayLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
+import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -192,22 +193,26 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
     @Specialization(guards = "isForeignObject(object)", limit = "InteropLibraryLimit")
     public boolean foreignObject(Object object, Object propertyName,
                     @CachedLibrary("object") InteropLibrary interop,
+                    @Cached ToArrayIndexNode toArrayIndexNode,
                     @Cached JSToStringNode toStringNode,
+                    @Cached TruffleString.ToJavaStringNode toJavaStringNode,
                     @Cached ForeignObjectPrototypeNode foreignObjectPrototypeNode,
                     @Cached JSHasPropertyNode hasInPrototype) {
-        if (propertyName instanceof Number && interop.hasArrayElements(object)) {
-            long index = JSRuntime.longValue((Number) propertyName);
-            return index >= 0 && index < JSInteropUtil.getArraySize(object, interop, this);
+        Object key = propertyName;
+        if (interop.hasArrayElements(object)) {
+            key = toArrayIndexNode.execute(propertyName);
+            if (key instanceof Long index) {
+                return index < JSInteropUtil.getArraySize(object, interop, this);
+            }
+        }
+        if (!(key instanceof Symbol) && interop.isMemberExisting(object, toJavaStringNode.execute(toStringNode.executeString(key)))) {
+            return true;
+        }
+        if (!hasOwnProperty && getLanguage().getJSContext().getLanguageOptions().hasForeignObjectPrototype()) {
+            JSDynamicObject prototype = foreignObjectPrototypeNode.execute(object);
+            return hasInPrototype.executeBoolean(prototype, key);
         } else {
-            if (!(propertyName instanceof Symbol) && interop.isMemberExisting(object, Strings.toJavaString(toStringNode.executeString(propertyName)))) {
-                return true;
-            }
-            if (!hasOwnProperty && getLanguage().getJSContext().getLanguageOptions().hasForeignObjectPrototype()) {
-                JSDynamicObject prototype = foreignObjectPrototypeNode.execute(object);
-                return hasInPrototype.executeBoolean(prototype, propertyName);
-            } else {
-                return false;
-            }
+            return false;
         }
     }
 

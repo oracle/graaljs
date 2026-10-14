@@ -322,6 +322,59 @@ public class ForeignObjectPrototypeModeTest {
     }
 
     @Test
+    public void testHasOwnPropertyForeignArrayIndices() {
+        testForeignArrayIndices("Object.prototype.hasOwnProperty.call(value, key)", true);
+    }
+
+    @Test
+    public void testObjectHasOwnForeignArrayIndices() {
+        testForeignArrayIndices("Object.hasOwn(value, key)", true);
+    }
+
+    @Test
+    public void testInForeignArrayIndices() {
+        testForeignArrayIndices("key in value", false);
+    }
+
+    private void testForeignArrayIndices(String operation, boolean ownOnly) {
+        try (Context context = newContextBuilder(mode).allowHostAccess(HostAccess.ALL).build()) {
+            Value check = context.eval(ID, "(value, key) => " + operation);
+            Value checkKeyConversion = context.eval(ID, """
+                            (check, value, propertyKey, expected) => {
+                                let conversions = 0;
+                                const key = {
+                                    [Symbol.toPrimitive](hint) {
+                                        if (hint !== 'string') throw new Error('Expected string hint');
+                                        conversions++;
+                                        return propertyKey;
+                                    }
+                                };
+                                return check(value, key) === expected && conversions === 1;
+                            }
+                            """);
+            for (Object array : new Object[]{ProxyArray.fromArray(41, 42), new int[]{41, 42}}) {
+                for (Object key : new Object[]{0, -0.0, 1, "0", "1", context.eval(ID, "0n")}) {
+                    assertTrue(String.valueOf(key), check.execute(array, key).asBoolean());
+                }
+                for (Object key : new Object[]{2, "2", -1, "-1", 0.5, "0.5", "", "00", "01", "1.0", "1e0", "+1", " 1", "-0", "4294967295", "missing"}) {
+                    assertFalse(String.valueOf(key), check.execute(array, key).asBoolean());
+                }
+                boolean hasPrototypeProperty = !ownOnly && isEnabled(mode);
+                assertEquals(hasPrototypeProperty, check.execute(array, "map").asBoolean());
+                Value iteratorSymbol = context.eval(ID, "Symbol.iterator");
+                assertEquals(hasPrototypeProperty, check.execute(array, iteratorSymbol).asBoolean());
+                assertTrue(checkKeyConversion.execute(check, array, "1", true).asBoolean());
+                assertTrue(checkKeyConversion.execute(check, array, "map", hasPrototypeProperty).asBoolean());
+                assertTrue(checkKeyConversion.execute(check, array, iteratorSymbol, hasPrototypeProperty).asBoolean());
+            }
+            for (Object array : new Object[]{ProxyArray.fromArray(), new int[0]}) {
+                assertFalse(check.execute(array, 0).asBoolean());
+                assertFalse(check.execute(array, "0").asBoolean());
+            }
+        }
+    }
+
+    @Test
     public void testHasOwnPropertyForeignPrimitives() {
         try (Context context = newContextBuilder(mode).build()) {
             Value check = context.eval(ID, """
