@@ -1353,7 +1353,7 @@ public final class JSRuntime {
 
     public static boolean isForeignObject(TruffleObject value) {
         return !JSDynamicObject.isJSDynamicObject(value) && !(value instanceof Symbol) && !(value instanceof SafeInteger) &&
-                        !(value instanceof BigInt) && !Strings.isTString(value);
+                        !(value instanceof BigInt);
     }
 
     private static boolean equalInterop(Object a, Object b) {
