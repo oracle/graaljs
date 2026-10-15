@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,20 +62,21 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
+import com.oracle.truffle.js.runtime.JSContextOptions.ForeignObjectPrototypeMode;
 import com.oracle.truffle.js.test.JSTest;
 
 @RunWith(Parameterized.class)
 public class ForeignObjectToPrimitiveTest {
 
     @Parameters(name = "{0}")
-    public static List<Boolean> data() {
-        return List.of(Boolean.FALSE, Boolean.TRUE);
+    public static List<ForeignObjectPrototypeMode> data() {
+        return List.of(ForeignObjectPrototypeMode.values());
     }
 
-    @Parameter(value = 0) public boolean foreignObjectPrototype;
+    @Parameter(value = 0) public ForeignObjectPrototypeMode foreignObjectPrototype;
 
     private Context newContext() {
-        return JSTest.newContextBuilder(ID).option(FOREIGN_OBJECT_PROTOTYPE_NAME, Boolean.toString(foreignObjectPrototype)).allowHostAccess(HostAccess.ALL).build();
+        return JSTest.newContextBuilder(ID).option(FOREIGN_OBJECT_PROTOTYPE_NAME, foreignObjectPrototype.toString()).allowHostAccess(HostAccess.ALL).build();
     }
 
     @Test

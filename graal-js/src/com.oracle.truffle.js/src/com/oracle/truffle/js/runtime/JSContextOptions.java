@@ -434,10 +434,32 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT = new OptionKey<>(false);
     @CompilationFinal private boolean scriptEngineGlobalScopeImport;
 
+    public enum ForeignObjectPrototypeMode {
+        NONE,
+        DEFAULT,
+        SPECIALIZED_ONLY;
+
+        @Override
+        public String toString() {
+            return switch (this) {
+                case NONE -> "false";
+                case DEFAULT -> "true";
+                case SPECIALIZED_ONLY -> "specialized-only";
+            };
+        }
+    }
+
     public static final String FOREIGN_OBJECT_PROTOTYPE_NAME = JS_OPTION_PREFIX + "foreign-object-prototype";
-    @Option(name = FOREIGN_OBJECT_PROTOTYPE_NAME, category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Non-JS objects have prototype (Object/Function/Array.prototype) set.") //
-    public static final OptionKey<Boolean> FOREIGN_OBJECT_PROTOTYPE = new OptionKey<>(true);
-    @CompilationFinal private boolean hasForeignObjectPrototype;
+    @Option(name = FOREIGN_OBJECT_PROTOTYPE_NAME, category = OptionCategory.EXPERT, stability = OptionStability.STABLE, usageSyntax = "true|false|specialized-only", help = "Set prototypes for non-JS objects. " +
+                    "'true' uses intermediate foreign prototypes (default), 'false' disables them, and 'specialized-only' uses Object.prototype directly for generic foreign objects while preserving specialized foreign prototypes.") //
+    public static final OptionKey<ForeignObjectPrototypeMode> FOREIGN_OBJECT_PROTOTYPE = new OptionKey<>(ForeignObjectPrototypeMode.DEFAULT,
+                    new OptionType<>("foreign-object-prototype", value -> switch (value) {
+                        case "false" -> ForeignObjectPrototypeMode.NONE;
+                        case "true" -> ForeignObjectPrototypeMode.DEFAULT;
+                        case "specialized-only" -> ForeignObjectPrototypeMode.SPECIALIZED_ONLY;
+                        default -> throw new IllegalArgumentException("Expected one of 'true', 'false', or 'specialized-only'.");
+                    }));
+    @CompilationFinal private ForeignObjectPrototypeMode foreignObjectPrototypeMode;
 
     public static final String FOREIGN_HASH_PROPERTIES_NAME = JS_OPTION_PREFIX + "foreign-hash-properties";
     @Option(name = FOREIGN_HASH_PROPERTIES_NAME, category = OptionCategory.EXPERT, help = "Allow getting/setting non-JS hash entries using the `[]` and `.` operators.") //
@@ -843,7 +865,7 @@ public final class JSContextOptions {
         this.regexStepExecution = readBooleanOption(REGEX_STEP_EXECUTION);
         this.regexAlwaysEager = readBooleanOption(REGEX_ALWAYS_EAGER);
         this.scriptEngineGlobalScopeImport = readBooleanOption(SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT);
-        this.hasForeignObjectPrototype = readBooleanOption(FOREIGN_OBJECT_PROTOTYPE);
+        this.foreignObjectPrototypeMode = FOREIGN_OBJECT_PROTOTYPE.getValue(optionValues);
         this.hasForeignHashProperties = readBooleanOption(FOREIGN_HASH_PROPERTIES);
         this.functionArgumentsLimit = readLongOption(FUNCTION_ARGUMENTS_LIMIT);
         this.test262Mode = readBooleanOption(TEST262_MODE);
@@ -1073,7 +1095,11 @@ public final class JSContextOptions {
     }
 
     public boolean hasForeignObjectPrototype() {
-        return hasForeignObjectPrototype;
+        return foreignObjectPrototypeMode != ForeignObjectPrototypeMode.NONE;
+    }
+
+    public ForeignObjectPrototypeMode getForeignObjectPrototypeMode() {
+        return foreignObjectPrototypeMode;
     }
 
     public boolean hasForeignHashProperties() {
