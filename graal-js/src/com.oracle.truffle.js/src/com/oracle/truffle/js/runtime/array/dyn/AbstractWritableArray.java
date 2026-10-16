@@ -775,6 +775,9 @@ public abstract class AbstractWritableArray extends DynamicArray {
                     moveRangePrepared(object, endIntl, 0, length);
                 }
                 indexOffsetNew = start;
+                // The remaining elements moved towards zero, including any unused prefix.
+                arrayOffsetNew = Math.max(0, arrayOffset - endIntl);
+                setArrayOffset(object, arrayOffsetNew);
             }
 
             setIndexOffset(object, indexOffsetNew);
