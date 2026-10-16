@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.interop;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -47,10 +49,35 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 public abstract class JSInteropCallNode extends JavaScriptBaseNode {
+    private static final int MAX_EXPLODED_ARGUMENT_COUNT = 8;
+
     protected JSInteropCallNode() {
     }
 
+    @ExplodeLoop
     protected static Object[] prepare(Object[] args, ImportValueNode importValueNode) {
+        if (!CompilerDirectives.isPartialEvaluationConstant(args.length) || args.length > MAX_EXPLODED_ARGUMENT_COUNT) {
+            return prepareGeneric(args, importValueNode);
+        }
+        // Expose each argument's type and copy-on-change decision to partial evaluation.
+        Object[] newArgs = args;
+        boolean copy = false;
+        for (int i = 0; i < args.length; i++) {
+            Object arg = args[i];
+            Object newArg = importValueNode.executeWithTarget(arg);
+            if (copy) {
+                newArgs[i] = newArg;
+            } else if (newArg != arg) {
+                newArgs = new Object[args.length];
+                System.arraycopy(args, 0, newArgs, 0, i);
+                newArgs[i] = newArg;
+                copy = true;
+            }
+        }
+        return newArgs;
+    }
+
+    private static Object[] prepareGeneric(Object[] args, ImportValueNode importValueNode) {
         Object[] newArgs = args;
         boolean copy = false;
         for (int i = 0; i < args.length; i++) {
