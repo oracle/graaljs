@@ -70,7 +70,7 @@ public abstract class AbstractDoubleArray extends AbstractWritableArray {
     @Override
     public final ScriptArray setElementImpl(JSDynamicObject object, long index, Object value, boolean strict) {
         assert JSRuntime.isArrayIndex(index) : index;
-        if (injectBranchProbability(FASTPATH_PROBABILITY, (value instanceof Integer || value instanceof Double) && isSupported(object, (int) index))) {
+        if (injectBranchProbability(FASTPATH_PROBABILITY, (value instanceof Integer || value instanceof Double) && isSupported(object, index))) {
             double doubleValue = JSRuntime.doubleValue((Number) value);
             if (injectBranchProbability(SLOWPATH_PROBABILITY, HolesDoubleArray.isHoleValue(doubleValue))) {
                 return toObject(object, index, value).setElementImpl(object, index, value, strict);
