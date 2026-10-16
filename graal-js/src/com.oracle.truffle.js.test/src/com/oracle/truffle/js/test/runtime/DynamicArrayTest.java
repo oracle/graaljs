@@ -40,10 +40,13 @@
  */
 package com.oracle.truffle.js.test.runtime;
 
+import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArray;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArrayOffset;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetUsedLength;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertSame;
 
 import org.junit.Ignore;
 import org.junit.Test;
@@ -455,6 +458,21 @@ public class DynamicArrayTest extends JSTest {
         arrayObject.setArrayType(array = array.setLength(arrayObject, 2, false));
         assertEquals(Undefined.instance, array.getElement(arrayObject, 2));
         assertEquals(Undefined.instance, array.getElement(arrayObject, 5));
+    }
+
+    @Test
+    public void testSetLengthZeroReleasesBackingStore() {
+        for (String source : new String[]{
+                        "globalThis.array = []; array.push({}, {}); array",
+                        "globalThis.array = ['x', 'y']; array[0] = 'z'; array",
+                        "globalThis.array = []; array[3] = {}; array[7] = {}; array"}) {
+            JSArrayObject arrayObject = (JSArrayObject) testHelper.runNoPolyglot(source);
+            assertNotSame(ScriptArray.EMPTY_OBJECT_ARRAY, arrayGetArray(arrayObject));
+
+            testHelper.runNoPolyglot("array.length = 0");
+
+            assertSame(ScriptArray.EMPTY_OBJECT_ARRAY, arrayGetArray(arrayObject));
+        }
     }
 
     @Test

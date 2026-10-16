@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -497,6 +497,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
     public final ScriptArray setLengthImpl(JSDynamicObject object, long length, Node node, SetLengthProfileAccess profile) {
         if (profile.lengthZero(node, length == 0)) {
             arraySetLength(object, length);
+            arraySetArray(object, ScriptArray.EMPTY_OBJECT_ARRAY);
             return ConstantEmptyArray.createConstantEmptyArray();
         } else if (profile.lengthLess(node, length < length(object))) {
             setLengthLess(object, length, node, profile);
