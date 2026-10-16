@@ -46,6 +46,7 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetUse
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 
 import org.junit.Ignore;
@@ -60,6 +61,7 @@ import com.oracle.truffle.js.runtime.array.dyn.AbstractIntArray;
 import com.oracle.truffle.js.runtime.array.dyn.AbstractWritableArray.SetSupportedProfileAccess;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantObjectArray;
 import com.oracle.truffle.js.runtime.array.dyn.ContiguousIntArray;
+import com.oracle.truffle.js.runtime.array.dyn.ContiguousObjectArray;
 import com.oracle.truffle.js.runtime.array.dyn.HolesDoubleArray;
 import com.oracle.truffle.js.runtime.array.dyn.HolesIntArray;
 import com.oracle.truffle.js.runtime.array.dyn.ZeroBasedIntArray;
@@ -458,6 +460,24 @@ public class DynamicArrayTest extends JSTest {
         arrayObject.setArrayType(array = array.setLength(arrayObject, 2, false));
         assertEquals(Undefined.instance, array.getElement(arrayObject, 2));
         assertEquals(Undefined.instance, array.getElement(arrayObject, 5));
+    }
+
+    @Test
+    public void testContiguousRangeRemovalClearsVacatedStorage() {
+        JSArrayObject arrayObject = createEmptyArray();
+        Object first = new Object();
+        Object last = new Object();
+        Object[] storage = {null, null, null, first, last, null};
+        ScriptArray array = ContiguousObjectArray.makeContiguousObjectArray(arrayObject, 16, storage, 10, 3, 2, 0);
+        arrayObject.setArrayType(array);
+
+        assertSame(ContiguousObjectArray.class, arrayObject.getArrayType().getClass());
+        arrayObject.setArrayType(array.removeRange(arrayObject, 11, 12));
+
+        assertSame(storage, arrayGetArray(arrayObject));
+        assertSame(first, arrayObject.getArrayType().getElement(arrayObject, 12));
+        assertSame(last, arrayObject.getArrayType().getElement(arrayObject, 13));
+        assertNull(storage[4]);
     }
 
     @Test

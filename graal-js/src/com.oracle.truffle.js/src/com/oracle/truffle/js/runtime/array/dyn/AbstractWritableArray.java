@@ -749,7 +749,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
         int usedStartIntl = Math.max(arrayOffset, startIntl);
         int usedEndIntl = Math.min(arrayOffset + usedLength, endIntl);
 
-        int usedDelta = usedEndIntl - usedStartIntl;
+        int usedDelta = Math.max(0, usedEndIntl - usedStartIntl);
         int newUsedLength = usedLength - usedDelta;
         if (usedDelta > 0) {
             arraySetUsedLength(object, newUsedLength);
@@ -790,9 +790,11 @@ public abstract class AbstractWritableArray extends DynamicArray {
             }
         }
 
-        if (usedDelta > 0) {
+        int newUsedEnd = arrayOffsetNew + newUsedLength;
+        int oldUsedEnd = arrayOffset + usedLength;
+        if (newUsedEnd < oldUsedEnd) {
             // Unused part of the internal array should not keep objects alive
-            fillWithHoles(getArrayObject(object), arrayOffsetNew + newUsedLength, arrayOffset + usedLength);
+            fillWithHoles(getArrayObject(object), newUsedEnd, oldUsedEnd);
         }
 
         return this;
