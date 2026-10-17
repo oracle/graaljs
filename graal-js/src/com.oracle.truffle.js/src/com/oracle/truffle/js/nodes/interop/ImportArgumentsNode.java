@@ -49,7 +49,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 
 @GenerateUncached
 public abstract class ImportArgumentsNode extends JavaScriptBaseNode {
-    static final int MAX_CACHED_ARGUMENT_COUNT = 8;
+    static final int MAX_CACHED_ARGUMENT_COUNT = 16;
 
     public abstract Object[] execute(Object[] arguments);
 

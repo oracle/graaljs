@@ -61,7 +61,7 @@ import com.oracle.truffle.js.test.TestHelper;
 
 public class InteropArgumentsTest extends ParameterizedInteropLibraryTest {
 
-    private static final int[] ARITIES = {0, 1, 3, 8, 9, 32};
+    private static final int[] ARITIES = {0, 1, 3, 8, 9, 15, 16, 17, 32};
 
     @Test
     public void testUnchangedArgumentsKeepArrayIdentity() {
@@ -73,7 +73,7 @@ public class InteropArgumentsTest extends ParameterizedInteropLibraryTest {
             }
             assertSame(arguments, node.execute(arguments));
             if (run.isCached()) {
-                assertEquals(arity <= 8 ? arity : 1, NodeUtil.findAllNodeInstances(node, ImportValueNode.class).size());
+                assertEquals(arity <= 16 ? arity : 1, NodeUtil.findAllNodeInstances(node, ImportValueNode.class).size());
             }
         }
     }
@@ -147,7 +147,7 @@ public class InteropArgumentsTest extends ParameterizedInteropLibraryTest {
         if (run.isCached()) {
             assertEquals(3, NodeUtil.findAllNodeInstances(node, ImportValueNode.class).size());
         }
-        for (int arity : new int[]{1, 8, 9, 0, 3}) {
+        for (int arity : new int[]{1, 8, 9, 16, 17, 0, 3}) {
             Object[] arguments = new Object[arity];
             Arrays.fill(arguments, "converted");
             Object[] imported = node.execute(arguments);
