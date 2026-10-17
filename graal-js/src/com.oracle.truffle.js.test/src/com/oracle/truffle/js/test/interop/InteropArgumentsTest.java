@@ -44,16 +44,18 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assume.assumeTrue;
 
 import java.util.Arrays;
+import java.util.List;
 
 import org.junit.Test;
 
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.nodes.interop.ImportArgumentsNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
-import com.oracle.truffle.js.nodes.interop.JSInteropCallNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.test.TestHelper;
 
@@ -61,35 +63,26 @@ public class InteropArgumentsTest extends ParameterizedInteropLibraryTest {
 
     private static final int[] ARITIES = {0, 1, 3, 8, 9, 32};
 
-    private static final class ImportArgumentsNode extends JSInteropCallNode {
-        @Child private ImportValueNode importValueNode;
-
-        ImportArgumentsNode(boolean cached) {
-            this.importValueNode = cached ? ImportValueNode.create() : ImportValueNode.getUncached();
-        }
-
-        Object[] execute(Object[] arguments) {
-            return prepare(arguments, importValueNode);
-        }
-    }
-
     @Test
     public void testUnchangedArgumentsKeepArrayIdentity() {
-        ImportArgumentsNode node = RootNode.createConstantNode("import arguments").insert(new ImportArgumentsNode(run.isCached()));
         for (int arity : ARITIES) {
+            ImportArgumentsNode node = adoptNode(run.isCached() ? ImportArgumentsNode.create() : ImportArgumentsNode.getUncached());
             Object[] arguments = new Object[arity];
             for (int i = 0; i < arity; i++) {
                 arguments[i] = i;
             }
             assertSame(arguments, node.execute(arguments));
+            if (run.isCached()) {
+                assertEquals(arity <= 8 ? arity : 1, NodeUtil.findAllNodeInstances(node, ImportValueNode.class).size());
+            }
         }
     }
 
     @Test
     public void testCopyOnFirstChangedArgument() {
-        ImportArgumentsNode node = RootNode.createConstantNode("import arguments").insert(new ImportArgumentsNode(run.isCached()));
         for (int arity : ARITIES) {
             for (int changedIndex = 0; changedIndex < arity; changedIndex++) {
+                ImportArgumentsNode node = adoptNode(run.isCached() ? ImportArgumentsNode.create() : ImportArgumentsNode.getUncached());
                 Object[] arguments = new Object[arity];
                 for (int i = 0; i < arity; i++) {
                     arguments[i] = i == changedIndex ? "converted" : i;
@@ -111,10 +104,10 @@ public class InteropArgumentsTest extends ParameterizedInteropLibraryTest {
 
     @Test
     public void testMultipleChangedArguments() {
-        ImportArgumentsNode node = RootNode.createConstantNode("import arguments").insert(new ImportArgumentsNode(run.isCached()));
         Object[] values = {true, "first", (byte) 7, (short) 8, 1.5f, 'x', "last", false, 42};
         Object[] expected = {true, Strings.fromJavaString("first"), 7, 8, 1.5d, Strings.fromJavaString("x"), Strings.fromJavaString("last"), false, 42};
         for (int arity : new int[]{3, 8, 9}) {
+            ImportArgumentsNode node = adoptNode(run.isCached() ? ImportArgumentsNode.create() : ImportArgumentsNode.getUncached());
             Object[] arguments = Arrays.copyOf(values, arity);
             Object[] original = arguments.clone();
             Object[] imported = node.execute(arguments);
@@ -125,6 +118,61 @@ public class InteropArgumentsTest extends ParameterizedInteropLibraryTest {
     }
 
     @Test
+    public void testIndependentArgumentProfiles() {
+        assumeTrue(run.isCached());
+        ImportArgumentsNode node = adoptNode(ImportArgumentsNode.create());
+        node.execute(new Object[]{42, "text", true});
+        List<ImportValueNode> importNodes = NodeUtil.findAllNodeInstances(node, ImportValueNode.class);
+        assertEquals(3, importNodes.size());
+        for (int i = 0; i < importNodes.size(); i++) {
+            for (int j = i + 1; j < importNodes.size(); j++) {
+                assertNotSame(importNodes.get(i), importNodes.get(j));
+            }
+            assertEquals(i == 1 ? 1 : 0, NodeUtil.findAllNodeInstances(importNodes.get(i), TruffleString.FromJavaStringNode.class).size());
+        }
+        node.execute(new Object[]{"changed", "text", true});
+        List<ImportValueNode> updatedImportNodes = NodeUtil.findAllNodeInstances(node, ImportValueNode.class);
+        for (int i = 0; i < importNodes.size(); i++) {
+            assertSame(importNodes.get(i), updatedImportNodes.get(i));
+            assertEquals(i < 2 ? 1 : 0, NodeUtil.findAllNodeInstances(importNodes.get(i), TruffleString.FromJavaStringNode.class).size());
+        }
+    }
+
+    @Test
+    public void testArityChangesUseGenericImport() {
+        ImportArgumentsNode node = adoptNode(run.isCached() ? ImportArgumentsNode.create() : ImportArgumentsNode.getUncached());
+        Object[] empty = new Object[0];
+        assertSame(empty, node.execute(empty));
+        node.execute(new Object[]{42, "text", true});
+        if (run.isCached()) {
+            assertEquals(3, NodeUtil.findAllNodeInstances(node, ImportValueNode.class).size());
+        }
+        for (int arity : new int[]{1, 8, 9, 0, 3}) {
+            Object[] arguments = new Object[arity];
+            Arrays.fill(arguments, "converted");
+            Object[] imported = node.execute(arguments);
+            assertEquals(arity, imported.length);
+            for (int i = 0; i < arity; i++) {
+                assertEquals("converted", Strings.toJavaString((TruffleString) imported[i]));
+                assertEquals("converted", arguments[i]);
+            }
+            if (run.isCached()) {
+                assertEquals(1, NodeUtil.findAllNodeInstances(node, ImportValueNode.class).size());
+            }
+        }
+    }
+
+    @Test
+    public void testArrayReuseAfterConversion() {
+        ImportArgumentsNode node = adoptNode(run.isCached() ? ImportArgumentsNode.create() : ImportArgumentsNode.getUncached());
+        Object[] converted = {1, "converted", true};
+        assertNotSame(converted, node.execute(converted));
+        Object[] unchanged = {1, 2, true};
+        assertSame(unchanged, node.execute(unchanged));
+        assertSame(unchanged, node.execute(unchanged));
+    }
+
+    @Test
     public void testExecuteInvokeAndConstruct() throws Exception {
         try (TestHelper helper = new TestHelper()) {
             helper.enterContext();
@@ -132,11 +180,11 @@ public class InteropArgumentsTest extends ParameterizedInteropLibraryTest {
                 Object function = helper.runNoPolyglot("(function() { this.args = Array.from(arguments); })");
                 Object receiver = helper.runNoPolyglot("({method: function() { return Array.from(arguments); }})");
                 Object executeFunction = helper.runNoPolyglot("(function() { return Array.from(arguments); })");
-                InteropLibrary functionInterop = createInteropLibrary(function);
-                InteropLibrary executeInterop = createInteropLibrary(executeFunction);
-                InteropLibrary receiverInterop = createInteropLibrary(receiver);
                 InteropLibrary uncached = InteropLibrary.getUncached();
                 for (int arity : ARITIES) {
+                    InteropLibrary functionInterop = createInteropLibrary(function);
+                    InteropLibrary executeInterop = createInteropLibrary(executeFunction);
+                    InteropLibrary receiverInterop = createInteropLibrary(receiver);
                     Object[] arguments = new Object[arity];
                     for (int i = 0; i < arity; i++) {
                         arguments[i] = i % 2 == 0 ? i : "arg" + i;
