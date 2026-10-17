@@ -245,7 +245,9 @@ class WorkerThreadsTaskRunner::DelayedTaskScheduler {
 
 WorkerThreadsTaskRunner::WorkerThreadsTaskRunner(
     int thread_pool_size, PlatformDebugLogLevel debug_log_level)
-    : debug_log_level_(debug_log_level) {
+    : thread_pool_size_(thread_pool_size), debug_log_level_(debug_log_level) {}
+
+void WorkerThreadsTaskRunner::Start(int thread_pool_size) {
   Mutex platform_workers_mutex;
   ConditionVariable platform_workers_ready;
 
@@ -282,6 +284,9 @@ WorkerThreadsTaskRunner::WorkerThreadsTaskRunner(
 void WorkerThreadsTaskRunner::PostTask(v8::TaskPriority priority,
                                        std::unique_ptr<v8::Task> task,
                                        const v8::SourceLocation& location) {
+  std::call_once(
+      start_once_, &WorkerThreadsTaskRunner::Start, this, thread_pool_size_);
+  if (threads_.empty()) return;
   auto entry = std::make_unique<TaskQueueEntry>(std::move(task), priority);
   bool is_outstanding = entry->is_outstanding();
   pending_worker_tasks_.Lock().Push(std::move(entry), is_outstanding);
@@ -292,6 +297,9 @@ void WorkerThreadsTaskRunner::PostDelayedTask(
     std::unique_ptr<v8::Task> task,
     const v8::SourceLocation& location,
     double delay_in_seconds) {
+  std::call_once(
+      start_once_, &WorkerThreadsTaskRunner::Start, this, thread_pool_size_);
+  if (!delayed_task_scheduler_) return;
   delayed_task_scheduler_->PostDelayedTask(
       priority, std::move(task), delay_in_seconds);
 }
@@ -301,15 +309,18 @@ void WorkerThreadsTaskRunner::BlockingDrain() {
 }
 
 void WorkerThreadsTaskRunner::Shutdown() {
+  // Prevent an unused runner from starting threads during or after shutdown.
+  std::call_once(start_once_, [] {});
   pending_worker_tasks_.Lock().Stop();
-  delayed_task_scheduler_->Stop();
+  if (delayed_task_scheduler_) delayed_task_scheduler_->Stop();
   for (size_t i = 0; i < threads_.size(); i++) {
     CHECK_EQ(0, uv_thread_join(threads_[i].get()));
   }
 }
 
 int WorkerThreadsTaskRunner::NumberOfWorkerThreads() const {
-  return threads_.size();
+  // Include the scheduler, as in the eager implementation.
+  return thread_pool_size_ + 1;
 }
 
 PerIsolatePlatformData::PerIsolatePlatformData(

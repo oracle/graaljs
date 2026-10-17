@@ -4,6 +4,7 @@
 #if defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS
 
 #include <functional>
+#include <mutex>
 #include <queue>
 #include <type_traits>
 #include <unordered_map>
@@ -201,6 +202,10 @@ class WorkerThreadsTaskRunner {
   int NumberOfWorkerThreads() const;
 
  private:
+  void Start(int thread_pool_size);
+  std::once_flag start_once_;
+  const int thread_pool_size_;
+
   // A queue shared by all threads. The consumers are the worker threads which
   // take tasks from it to run in PlatformWorkerThread(). The producers can be
   // any thread. Both the foreground thread and the worker threads can push
