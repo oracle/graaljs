@@ -68,18 +68,19 @@ public abstract class ImportArgumentsNode extends JavaScriptBaseNode {
     }
 
     @ExplodeLoop
-    @Specialization(guards = {"arguments.length <= MAX_CACHED_ARGUMENT_COUNT", "arguments.length == importNodes.length"}, limit = "1", replaces = "doZero")
+    @Specialization(guards = {"cachedArgumentCount <= MAX_CACHED_ARGUMENT_COUNT", "arguments.length == cachedArgumentCount"}, limit = "1", replaces = "doZero")
     static Object[] doCached(Object[] arguments,
-                    @Cached("createImportNodes(arguments.length)") ImportValueNode[] importNodes) {
+                    @Cached("arguments.length") int cachedArgumentCount,
+                    @Cached("createImportNodes(cachedArgumentCount)") ImportValueNode[] importNodes) {
         Object[] importedArguments = arguments;
         boolean copy = false;
-        for (int i = 0; i < importNodes.length; i++) {
+        for (int i = 0; i < cachedArgumentCount; i++) {
             Object argument = arguments[i];
             Object importedArgument = importNodes[i].executeWithTarget(argument);
             if (copy) {
                 importedArguments[i] = importedArgument;
             } else if (importedArgument != argument) {
-                importedArguments = new Object[importNodes.length];
+                importedArguments = new Object[cachedArgumentCount];
                 System.arraycopy(arguments, 0, importedArguments, 0, i);
                 importedArguments[i] = importedArgument;
                 copy = true;
