@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -90,6 +90,54 @@ public class JavaScriptHostInteropTest {
 
         @Override
         public void write(@SuppressWarnings("unused") String a, @SuppressWarnings("unused") String b, @SuppressWarnings("unused") String c) {
+        }
+    }
+
+    @Test
+    public void testHostMethodCallWithJSReceiver() {
+        testHostMethodCallWithJSReceiver("(receiver, value) => receiver.foo(value)");
+    }
+
+    @Test
+    public void testHostMethodCallWithOptionalReceiver() {
+        testHostMethodCallWithJSReceiver("(receiver, value) => (receiver?.foo)(value)");
+    }
+
+    private static void testHostMethodCallWithJSReceiver(String callSource) {
+        for (String jsReceiverSource : List.of("({ foo: host.foo })", "new Proxy({}, { get: (target, key) => host[key] })")) {
+            for (boolean hostFirst : new boolean[]{true, false}) {
+                try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).build()) {
+                    MyHostObj host = new MyHostObj();
+                    context.getBindings(ID).putMember("host", host);
+                    Value jsReceiver = context.eval(ID, jsReceiverSource);
+                    Value call = context.eval(ID, callSource);
+                    Object first = hostFirst ? host : jsReceiver;
+                    Object second = hostFirst ? jsReceiver : host;
+                    assertEquals(41, call.execute(first, 41).asInt());
+                    assertEquals(42, call.execute(second, 42).asInt());
+                    assertEquals(43, call.execute(first, 43).asInt());
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testBoundHostMethodCall() {
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).build()) {
+            MyHostObj host = new MyHostObj();
+            context.getBindings(ID).putMember("host", host);
+            Value jsReceiver = context.eval(ID, "({})");
+            Value bind = context.eval(ID, "(receiver, value) => Function.prototype.bind.call(host.foo, receiver, value)");
+            Value call = context.eval(ID, "f => f()");
+            Value boundHost = bind.execute(host, 41);
+            Value boundJS = bind.execute(jsReceiver, 42);
+            assertEquals(41, call.execute(boundHost).asInt());
+            assertEquals(42, call.execute(boundJS).asInt());
+            assertEquals(41, call.execute(boundHost).asInt());
+
+            Value rebind = context.eval(ID, "(f, receiver) => Function.prototype.bind.call(f, receiver)");
+            assertEquals(41, call.execute(rebind.execute(boundHost, jsReceiver)).asInt());
+            assertEquals(42, call.execute(rebind.execute(boundJS, host)).asInt());
         }
     }
 
