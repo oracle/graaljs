@@ -81,6 +81,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantUndefinedNode;
 import com.oracle.truffle.js.nodes.access.JSProxyCallNode;
 import com.oracle.truffle.js.nodes.access.JSTargetableNode;
+import com.oracle.truffle.js.nodes.access.OptionalChainNode.OptionalTargetableNode;
 import com.oracle.truffle.js.nodes.access.OptionalChainNode.ShortCircuitException;
 import com.oracle.truffle.js.nodes.access.OptionalChainNode.ShortCircuitTargetableNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -770,6 +771,8 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             JavaScriptNode propertyNode = JSNodeUtil.getWrappedNode(functionTargetNode);
             if (propertyNode instanceof ShortCircuitTargetableNode shortCircuitNode) {
                 propertyNode = JSNodeUtil.getWrappedNode(shortCircuitNode.getExpressionNode());
+            } else if (propertyNode instanceof OptionalTargetableNode optionalNode) {
+                propertyNode = JSNodeUtil.getWrappedNode(optionalNode.getDelegateNode());
             }
             if (propertyNode instanceof PropertyNode) {
                 return ((PropertyNode) propertyNode).getPropertyKey();
