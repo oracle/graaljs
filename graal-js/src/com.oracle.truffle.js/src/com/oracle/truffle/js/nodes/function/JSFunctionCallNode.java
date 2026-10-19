@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -81,6 +81,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantUndefinedNode;
 import com.oracle.truffle.js.nodes.access.JSProxyCallNode;
 import com.oracle.truffle.js.nodes.access.JSTargetableNode;
+import com.oracle.truffle.js.nodes.access.OptionalChainNode.OptionalTargetableNode;
 import com.oracle.truffle.js.nodes.access.OptionalChainNode.ShortCircuitException;
 import com.oracle.truffle.js.nodes.access.OptionalChainNode.ShortCircuitTargetableNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -422,19 +423,15 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     }
 
     private AbstractCacheNode specializeForeignCall(Object[] arguments, AbstractCacheNode head) {
-        AbstractCacheNode newNode = null;
+        AbstractCacheNode newNode;
         int userArgumentCount = JSArguments.getUserArgumentCount(arguments);
-        Object thisObject = JSArguments.getThisObject(arguments);
         if (isNew(flags) || isNewTarget(flags)) {
             int skippedArgs = isNewTarget(flags) ? 1 : 0;
             newNode = new ForeignInstantiateNode(skippedArgs, userArgumentCount - skippedArgs);
-        } else if (JSGuards.isForeignObject(thisObject)) {
-            Object propertyKey = getPropertyKey();
-            if (propertyKey instanceof TruffleString propertyName) {
-                newNode = new ForeignInvokeNode(propertyName, userArgumentCount);
-            }
-        }
-        if (newNode == null) {
+        } else if (getPropertyKey() instanceof TruffleString propertyName) {
+            // Named calls may switch between foreign receivers and JS receivers with foreign methods.
+            newNode = new ForeignInvokeNode(propertyName, userArgumentCount);
+        } else {
             newNode = new ForeignExecuteNode(userArgumentCount);
         }
         return insertAtFront(newNode, head);
@@ -774,6 +771,8 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             JavaScriptNode propertyNode = JSNodeUtil.getWrappedNode(functionTargetNode);
             if (propertyNode instanceof ShortCircuitTargetableNode shortCircuitNode) {
                 propertyNode = JSNodeUtil.getWrappedNode(shortCircuitNode.getExpressionNode());
+            } else if (propertyNode instanceof OptionalTargetableNode optionalNode) {
+                propertyNode = JSNodeUtil.getWrappedNode(optionalNode.getDelegateNode());
             }
             if (propertyNode instanceof PropertyNode) {
                 return ((PropertyNode) propertyNode).getPropertyKey();
