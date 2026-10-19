@@ -174,6 +174,7 @@ import com.oracle.truffle.js.parser.env.FunctionEnvironment;
 import com.oracle.truffle.js.parser.env.FunctionEnvironment.JumpTargetCloseable;
 import com.oracle.truffle.js.parser.env.GlobalEnvironment;
 import com.oracle.truffle.js.parser.env.PrivateEnvironment;
+import com.oracle.truffle.js.parser.env.StrictEnvironment;
 import com.oracle.truffle.js.parser.env.WithEnvironment;
 import com.oracle.truffle.js.parser.internal.ir.debug.PrintVisitor;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -1198,6 +1199,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             }
 
             @Override
+            public boolean enterWithNode(WithNode withNode) {
+                directArgumentsAccess = false;
+                return false;
+            }
+
+            @Override
             public boolean enterFunctionNode(FunctionNode nestedFunctionNode) {
                 if (nestedFunctionNode == functionNode) {
                     return true;
@@ -1274,9 +1281,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         assert !currentFunction().getNonArrowParentFunction().isDerivedConstructor();
         VarRef thisVar = environment.findThisVar();
         boolean isLexicalThis = functionNode.isArrow();
-        JavaScriptNode getThisNode = isLexicalThis ? factory.createAccessLexicalThis() : factory.createAccessThis();
-        if (!environment.isStrictMode() && !isLexicalThis) {
-            getThisNode = factory.createPrepareThisBinding(context, getThisNode);
+        JavaScriptNode getThisNode;
+        if (isLexicalThis) {
+            getThisNode = factory.createAccessLexicalThis();
+        } else if (environment.isStrictMode()) {
+            getThisNode = factory.createAccessThis();
+        } else {
+            getThisNode = factory.createPrepareThisBinding();
         }
         if (functionNode.isClassConstructor()) {
             getThisNode = initializeInstanceElements(getThisNode);
@@ -3070,7 +3081,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                                 accessNode.getBase());
                 target1 = tagExpression(factory.createSuperPropertyReference(targetTemp.createReadNode(), factory.copy(superTarget.getThisValue())), accessNode.getBase());
                 target2 = tagExpression(factory.createSuperPropertyReference(targetTemp.createReadNode(), factory.copy(superTarget.getThisValue())), accessNode.getBase());
-            } else if (target instanceof RepeatableNode) {
+            } else if (!isLogicalOp(binaryOp) && target instanceof RepeatableNode) {
                 target1 = target;
                 target2 = factory.copy(target);
             } else {
@@ -3161,7 +3172,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 JavaScriptNode preparedIndex = factory.createExprBlock(
                                 computedSuperPropertyReference ? factory.createEmpty() : keyTemp.createWriteNode(elem),
                                 factory.createRequireObjectCoercible(targetTemp.createReadNode()),
-                                keyTemp.createWriteNode(factory.createToPropertyKey(keyTemp.createReadNode())));
+                                keyTemp.createWriteNode(factory.createToArrayIndexNoString(keyTemp.createReadNode())));
                 JavaScriptNode readNode = tagExpression(factory.createReadElementNode(context, target1, preparedIndex), indexNode);
                 JavaScriptNode writeNode = factory.createCompoundWriteElementNode(target2, readIndex, assignedValue, null, context, environment.isStrictMode());
                 assignedNode = factory.createBinary(context, binaryOp, readNode, writeNode);
@@ -3885,7 +3896,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         Scope classHeadScope = classNode.getClassHeadScope();
         Scope classBodyScope = classNode.getScope();
         boolean needsScope = classHeadScope.hasDeclarations() || classBodyScope.hasDeclarations();
-        try (EnvironmentCloseable blockEnv = new EnvironmentCloseable(needsScope ? newClassEnvironment(classHeadScope) : environment)) {
+        try (EnvironmentCloseable strictEnv = new EnvironmentCloseable(new StrictEnvironment(environment, factory, context));
+                        EnvironmentCloseable blockEnv = new EnvironmentCloseable(needsScope ? newClassEnvironment(classHeadScope) : environment)) {
             TruffleString className = null;
             Symbol classNameSymbol = null;
             IdentNode ident = classNode.getIdent();

@@ -51,7 +51,6 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.function.AbstractFunctionRootNode;
@@ -76,7 +75,6 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class GeneratorBodyNode extends JavaScriptNode {
     private static final class GeneratorRootNode extends AbstractFunctionRootNode {
-        @Child private CreateIterResultObjectNode createIterResultObject;
         @Child private JavaScriptNode functionBody;
         @Child private JSWriteFrameSlotNode writeYieldValue;
         @Child private JSReadFrameSlotNode readYieldResult;
@@ -87,7 +85,6 @@ public final class GeneratorBodyNode extends JavaScriptNode {
         GeneratorRootNode(JSContext context, JavaScriptNode functionBody, JSWriteFrameSlotNode writeYieldValueNode, JSReadFrameSlotNode readYieldResultNode, SourceSection functionSourceSection,
                         TruffleString functionName, ScriptOrModule activeScriptOrModule) {
             super(context.getLanguage(), functionSourceSection, null, activeScriptOrModule);
-            this.createIterResultObject = CreateIterResultObjectNode.create(context);
             this.functionBody = new FunctionBodyNode(functionBody);
             this.writeYieldValue = Objects.requireNonNull(writeYieldValueNode);
             this.readYieldResult = Objects.requireNonNull(readYieldResultNode);
@@ -105,7 +102,7 @@ public final class GeneratorBodyNode extends JavaScriptNode {
 
             if (completionType == Completion.Type.Normal) {
                 if (GeneratorState.Completed.equals(generatorState)) {
-                    return createIterResultObject.execute(Undefined.instance, true);
+                    return Undefined.instance;
                 }
                 assert GeneratorState.SuspendedStart.equals(generatorState) || GeneratorState.SuspendedYield.equals(generatorState);
             } else {
@@ -117,7 +114,7 @@ public final class GeneratorBodyNode extends JavaScriptNode {
                 }
                 if (GeneratorState.Completed.equals(generatorState)) {
                     if (returnOrExceptionProfile.profile(completion.isReturn())) {
-                        return createIterResultObject.execute(completion.getValue(), true);
+                        return completion.getValue();
                     } else {
                         assert completion.isThrow();
                         throw UserScriptException.create(completion.getValue(), this, getLanguage().getJSContext().getLanguageOptions().stackTraceLimit());
@@ -140,7 +137,7 @@ public final class GeneratorBodyNode extends JavaScriptNode {
                 } finally {
                     agent.asyncContextSwap(previousContextMapping);
                 }
-                return createIterResultObject.execute(result, true);
+                return result;
             } catch (YieldException e) {
                 generatorState = GeneratorState.SuspendedYield;
                 return readYieldResult == null ? e.getResult() : readYieldResult.execute(generatorFrame);

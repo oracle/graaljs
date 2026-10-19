@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.test.runtime;
 
+import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArrayOffset;
+import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetUsedLength;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
@@ -53,6 +55,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.dyn.AbstractIntArray;
 import com.oracle.truffle.js.runtime.array.dyn.AbstractWritableArray.SetSupportedProfileAccess;
+import com.oracle.truffle.js.runtime.array.dyn.ConstantObjectArray;
 import com.oracle.truffle.js.runtime.array.dyn.ContiguousIntArray;
 import com.oracle.truffle.js.runtime.array.dyn.HolesDoubleArray;
 import com.oracle.truffle.js.runtime.array.dyn.HolesIntArray;
@@ -294,6 +297,51 @@ public class DynamicArrayTest extends JSTest {
     @Test
     public void testConstantObjectArray() {
         assertScriptArray(createConstantArray(new Object[]{OBJECT}), OBJECT);
+    }
+
+    @Test
+    public void testConstantObjectArrayOnlyHolesSetLength() {
+        for (int capacity : new int[]{0, 1, 3}) {
+            for (int length : new int[]{0, 1, 2, 5}) {
+                JSArrayObject arrayObject = createConstantHolesObjectArray(capacity);
+                arrayObject.setArrayType(arrayObject.getArrayType().setLength(arrayObject, length, false));
+                ScriptArray array = arrayObject.getArrayType();
+                assertEquals(length, array.length(arrayObject));
+                assertEquals(0, arrayGetUsedLength(arrayObject));
+                assertEquals(0, arrayGetArrayOffset(arrayObject));
+                for (int index = 0; index < length; index++) {
+                    assertEquals(false, array.hasElement(arrayObject, index));
+                    assertEquals(Undefined.instance, array.getElement(arrayObject, index));
+                }
+                setArrayElement(arrayObject, length + 1, OBJECT);
+                setArrayElement(arrayObject, 0, INT);
+                assertEquals(length + 2, arrayObject.getArrayType().length(arrayObject));
+                assertEquals(INT, arrayObject.getArrayType().getElement(arrayObject, 0));
+                assertEquals(OBJECT, arrayObject.getArrayType().getElement(arrayObject, length + 1));
+            }
+        }
+    }
+
+    @Test
+    public void testConstantObjectArrayOnlyHolesWrite() {
+        for (int capacity : new int[]{0, 1, 3}) {
+            for (int index : new int[]{0, capacity, capacity + 2}) {
+                for (Object value : new Object[]{INT, DOUBLE, OBJECT, createEmptyArray()}) {
+                    JSArrayObject arrayObject = setArrayElement(createConstantHolesObjectArray(capacity), index, value);
+                    ScriptArray array = arrayObject.getArrayType();
+                    int length = Math.max(capacity, index + 1);
+                    assertEquals(length, array.length(arrayObject));
+                    assertEquals(value, array.getElement(arrayObject, index));
+                    for (int other = 0; other < length; other++) {
+                        assertEquals(other == index, array.hasElement(arrayObject, other));
+                    }
+                }
+            }
+        }
+    }
+
+    private JSArrayObject createConstantHolesObjectArray(int capacity) {
+        return JSArray.create(testHelper.getJSContext(), testHelper.getRealm(), ConstantObjectArray.createConstantHolesObjectArray(), new Object[capacity], capacity);
     }
 
     private JSArrayObject createEmptyArray(int capacity) {

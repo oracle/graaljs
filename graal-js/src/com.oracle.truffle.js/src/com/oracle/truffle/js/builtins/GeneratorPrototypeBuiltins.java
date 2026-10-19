@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,19 +41,25 @@
 package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.builtins.GeneratorPrototypeBuiltinsFactory.GeneratorResumeNodeGen;
+import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.function.InternalCallNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
+import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSGenerator;
 import com.oracle.truffle.js.runtime.builtins.JSGeneratorObject;
 import com.oracle.truffle.js.runtime.objects.Completion;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * Contains built-in methods of Generator.prototype.
@@ -105,23 +111,62 @@ public final class GeneratorPrototypeBuiltins extends JSBuiltinsContainer.Switch
     public abstract static class GeneratorResumeNode extends JSBuiltinNode {
         private final Completion.Type resumeType;
         @Child private InternalCallNode callNode;
+        @Child private CreateIterResultObjectNode createIterResultObjectNode;
 
         public GeneratorResumeNode(JSContext context, JSBuiltin builtin, Completion.Type resumeType) {
             super(context, builtin);
             this.resumeType = resumeType;
             this.callNode = InternalCallNode.create();
+            this.createIterResultObjectNode = CreateIterResultObjectNode.create(context);
         }
 
         @Specialization
-        protected Object resume(JSGeneratorObject generator, Object value) {
+        protected Object resume(JSGeneratorObject generator, Object value,
+                        @Cached InlinedBranchProfile errorBranch) {
+            /*
+             * GeneratorValidate: validate in this builtin's realm, not the generator's realm. Also
+             * handle non-resuming completions here: TypeError and completed iterator-result objects
+             * belong to this realm. Only enter the generator's realm when resuming its body below.
+             */
+            JSFunction.GeneratorState state = generator.getGeneratorState();
+            if (state == JSFunction.GeneratorState.Executing) {
+                errorBranch.enter(this);
+                throw Errors.createTypeError("generator is already executing");
+            }
+            // GeneratorResume(Abrupt): handle an already completed generator.
+            if (state == JSFunction.GeneratorState.Completed) {
+                return completedResult(value);
+            }
+            // GeneratorResumeAbrupt: complete suspended-start generator without executing its body.
+            if (state == JSFunction.GeneratorState.SuspendedStart && resumeType != Completion.Type.Normal) {
+                generator.setGeneratorState(JSFunction.GeneratorState.Completed);
+                return completedResult(value);
+            }
+            // GeneratorResume(Abrupt): resume the generator's execution context.
             CallTarget generatorTarget = generator.getGeneratorTarget();
             Object generatorContext = generator.getGeneratorContext();
-            return callNode.execute(generatorTarget, JSArguments.createResumeArguments(generatorContext, generator, resumeType, value));
+            Object result = callNode.execute(generatorTarget, JSArguments.createResumeArguments(generatorContext, generator, resumeType, value));
+            // GeneratorStart: create the final iterator result after removing the generator's
+            // execution context. The completed body returns its value, which we wrap in this realm.
+            if (generator.getGeneratorState() == JSFunction.GeneratorState.Completed) {
+                return createIterResultObjectNode.execute(result, true);
+            }
+            // GeneratorYield: return the yielded iterator-result object without wrapping it.
+            assert generator.getGeneratorState() == JSFunction.GeneratorState.SuspendedYield;
+            return result;
+        }
+
+        private Object completedResult(Object value) {
+            if (resumeType == Completion.Type.Throw) {
+                throw UserScriptException.create(value, this, getLanguageOptions().stackTraceLimit());
+            }
+            return createIterResultObjectNode.execute(resumeType == Completion.Type.Return ? value : Undefined.instance, true);
         }
 
         @SuppressWarnings("unused")
         @Fallback
         protected Object resume(Object thisObj, Object value) {
+            // GeneratorValidate: reject receivers without the generator internal slots.
             throw Errors.createTypeErrorGeneratorObjectExpected();
         }
     }

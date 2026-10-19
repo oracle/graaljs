@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -193,14 +193,15 @@ public abstract class JSAddConstantRightNumberNode extends JSUnaryNode implement
     }
 
     @Override
-    public void setTruncate() {
+    public JavaScriptNode setTruncate() {
         CompilerAsserts.neverPartOfCompilation();
         if (!truncate) {
             truncate = true;
             if (isInt) {
-                Truncatable.truncate(getOperand());
+                return JSAddConstantRightNumberNodeGen.create(Truncatable.truncate(getOperand()), getRightValue(), truncate);
             }
         }
+        return this;
     }
 
     @Override

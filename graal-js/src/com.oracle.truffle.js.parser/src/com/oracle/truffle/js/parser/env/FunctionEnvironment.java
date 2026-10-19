@@ -73,7 +73,6 @@ public final class FunctionEnvironment extends Environment {
 
     private final FunctionEnvironment parentFunction;
     private final JSFrameDescriptor frameDescriptor;
-    private final boolean isStrictMode;
     private final Scope scope;
 
     private JSFrameSlot returnSlot;
@@ -111,10 +110,9 @@ public final class FunctionEnvironment extends Environment {
     public FunctionEnvironment(Environment parent, NodeFactory factory, JSContext context, Scope scope,
                     boolean isStrictMode, boolean isEval, boolean isDirectEval, boolean isArrowFunction, boolean isGeneratorFunction, boolean isDerivedConstructor, boolean isAsyncFunction,
                     boolean isGlobal, boolean hasSyntheticArguments) {
-        super(parent, factory, context);
+        super(parent, factory, context, isStrictMode);
         this.isDirectEval = isDirectEval;
         this.isAsyncFunction = isAsyncFunction;
-        this.isStrictMode = isStrictMode;
         this.isEval = isEval;
         this.isArrowFunction = isArrowFunction;
         this.isGeneratorFunction = isGeneratorFunction;
@@ -396,11 +394,6 @@ public final class FunctionEnvironment extends Environment {
     @Override
     public JSFrameDescriptor getFunctionFrameDescriptor() {
         return frameDescriptor;
-    }
-
-    @Override
-    public boolean isStrictMode() {
-        return this.isStrictMode;
     }
 
     public FunctionEnvironment getParentFunction() {

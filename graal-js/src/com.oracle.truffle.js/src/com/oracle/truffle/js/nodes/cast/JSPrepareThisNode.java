@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,18 +44,24 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSFrameUtil;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
@@ -75,78 +81,117 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
  * @see JSToObjectNode
  */
 @ImportStatic({CompilerDirectives.class, JSConfig.class})
-public abstract class JSPrepareThisNode extends JSUnaryNode {
+public abstract class JSPrepareThisNode extends JavaScriptNode {
 
-    final JSContext context;
-
-    protected JSPrepareThisNode(JSContext context, JavaScriptNode child) {
-        super(child);
-        this.context = context;
+    protected JSPrepareThisNode() {
     }
 
-    public static JSPrepareThisNode createPrepareThisBinding(JSContext context, JavaScriptNode child) {
-        return JSPrepareThisNodeGen.create(context, child);
+    @NeverDefault
+    public static JSPrepareThisNode create() {
+        return JSPrepareThisNodeGen.create();
     }
+
+    @Override
+    public final Object execute(VirtualFrame frame) {
+        return execute(JSFrameUtil.getThisObj(frame));
+    }
+
+    public abstract Object execute(Object value);
 
     @Specialization(guards = "isNullOrUndefined(object)")
-    protected JSDynamicObject doJSObject(@SuppressWarnings("unused") Object object) {
-        return getRealm().getGlobalObject();
+    public static JSDynamicObject doNullish(@SuppressWarnings("unused") Object object,
+                    @Bind JSRealm realm) {
+        return realm.getGlobalObject();
     }
 
     @SuppressWarnings("unused")
     @Specialization(guards = {"cachedClass != null", "isExact(object, cachedClass)"}, limit = "1")
-    protected Object doJSObjectCached(Object object,
+    public static Object doJSObjectCached(Object object,
                     @Cached(value = "getClassIfJSObject(object)") Class<?> cachedClass) {
         return object;
     }
 
     @Specialization(replaces = "doJSObjectCached")
-    protected JSObject doJSObject(JSObject object) {
+    public static JSObject doJSObject(JSObject object) {
         return object;
     }
 
     @Specialization
-    protected JSObject doBoolean(boolean value) {
-        return JSBoolean.create(context, getRealm(), value);
+    public static JSObject doBoolean(boolean value,
+                    @Bind JSContext context,
+                    @Bind JSRealm realm) {
+        return JSBoolean.create(context, realm, value);
     }
 
     @Specialization
-    protected JSObject doString(TruffleString value) {
-        return JSString.create(context, getRealm(), value);
+    public static JSObject doString(TruffleString value,
+                    @Bind JSContext context,
+                    @Bind JSRealm realm) {
+        return JSString.create(context, realm, value);
     }
 
     @Specialization
-    protected JSObject doInt(int value) {
-        return JSNumber.create(context, getRealm(), value);
+    public static JSObject doInt(int value,
+                    @Bind JSContext context,
+                    @Bind JSRealm realm) {
+        return JSNumber.create(context, realm, value);
     }
 
     @Specialization
-    protected JSObject doDouble(double value) {
-        return JSNumber.create(context, getRealm(), value);
+    public static JSObject doDouble(double value,
+                    @Bind JSContext context,
+                    @Bind JSRealm realm) {
+        return JSNumber.create(context, realm, value);
     }
 
     @Specialization
-    protected JSObject doBigInt(BigInt value) {
-        return JSBigInt.create(context, getRealm(), value);
+    public static JSObject doBigInt(BigInt value,
+                    @Bind JSContext context,
+                    @Bind JSRealm realm) {
+        return JSBigInt.create(context, realm, value);
     }
 
     @Specialization
-    protected JSObject doSymbol(Symbol value) {
-        return JSSymbol.create(context, getRealm(), value);
+    public static JSObject doSymbol(Symbol value,
+                    @Bind JSContext context,
+                    @Bind JSRealm realm) {
+        return JSSymbol.create(context, realm, value);
     }
 
     @InliningCutoff
     @Specialization(guards = {"isForeignObjectOrNumber(value)"}, limit = "InteropLibraryLimit")
-    protected final Object doForeignObject(Object value,
+    public static Object doForeignObject(Object value,
+                    @Bind Node node,
+                    @Bind JSRealm realm,
                     @CachedLibrary("value") InteropLibrary interop) {
         if (interop.isNull(value)) {
-            return getRealm().getGlobalObject();
+            return realm.getGlobalObject();
         }
-        return JSToObjectNode.doForeignObjectNonNull(value, interop, this);
+        return JSToObjectNode.doForeignObjectNonNull(value, interop, node);
+    }
+
+    @Override
+    public final int executeInt(VirtualFrame frame) throws UnexpectedResultException {
+        return super.executeInt(frame);
+    }
+
+    @Override
+    public final double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
+        return super.executeDouble(frame);
+    }
+
+    @Override
+    public final boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException {
+        return super.executeBoolean(frame);
+    }
+
+    @Override
+    public final void executeVoid(VirtualFrame frame) {
+        super.executeVoid(frame);
     }
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return JSPrepareThisNodeGen.create(context, cloneUninitialized(getOperand(), materializedTags));
+        return JSPrepareThisNodeGen.create();
     }
 }

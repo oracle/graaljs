@@ -161,6 +161,7 @@ import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode.JSToPropertyKeyWrapperNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode.JSToStringWrapperNode;
+import com.oracle.truffle.js.nodes.cast.ToArrayIndexWrapperNode;
 import com.oracle.truffle.js.nodes.cast.WithStatementToObjectNode;
 import com.oracle.truffle.js.nodes.control.AbstractBlockNode;
 import com.oracle.truffle.js.nodes.control.AsyncDisposeResourcesWrapperNode;
@@ -357,7 +358,7 @@ public class NodeFactory {
     public JavaScriptNode createBinary(JSContext context, BinaryOperation operation, JavaScriptNode left, JavaScriptNode right) {
         switch (operation) {
             case ADD:
-                return JSAddNode.create(left, right, false);
+                return JSAddNode.create(left, right);
             case SUBTRACT:
                 return JSSubtractNode.create(left, right, false);
             case MULTIPLY:
@@ -918,19 +919,19 @@ public class NodeFactory {
     /**
      * @param functionNode used by snapshot recording.
      */
-    public JSFunctionExpressionNode createFunctionExpression(JSFunctionData function, FunctionRootNode functionNode, JSFrameSlot blockScopeSlot) {
+    public JSFunctionExpressionNode createFunctionExpression(JSFunctionData function, JavaScriptRootNode functionNode, JSFrameSlot blockScopeSlot) {
         return JSFunctionExpressionNode.create(function, blockScopeSlot);
     }
 
     /**
      * @param functionNode used by snapshot recording.
      */
-    public JSFunctionExpressionNode createFunctionExpressionLexicalThis(JSFunctionData function, FunctionRootNode functionNode, JSFrameSlot blockScopeSlot, JavaScriptNode thisNode) {
+    public JSFunctionExpressionNode createFunctionExpressionLexicalThis(JSFunctionData function, JavaScriptRootNode functionNode, JSFrameSlot blockScopeSlot, JavaScriptNode thisNode) {
         return JSFunctionExpressionNode.createLexicalThis(function, blockScopeSlot, thisNode);
     }
 
-    public JavaScriptNode createPrepareThisBinding(JSContext context, JavaScriptNode child) {
-        return JSPrepareThisNode.createPrepareThisBinding(context, child);
+    public JavaScriptNode createPrepareThisBinding() {
+        return JSPrepareThisNode.create();
     }
 
     public JavaScriptNode createGlobalObject() {
@@ -1376,6 +1377,10 @@ public class NodeFactory {
 
     public JavaScriptNode createGetPrivateBrand(JSContext context, JavaScriptNode constructorNode) {
         return JSAndNode.create(constructorNode, PropertyNode.createGetHidden(context, constructorNode, JSFunction.PRIVATE_BRAND_ID));
+    }
+
+    public JavaScriptNode createToArrayIndexNoString(JavaScriptNode key) {
+        return ToArrayIndexWrapperNode.create(key);
     }
 
     public JavaScriptNode createToPropertyKey(JavaScriptNode key) {

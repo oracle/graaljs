@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -103,4 +103,59 @@ public class RealmBuiltinTest {
         }
     }
 
+    @Test
+    public void testAsyncResumptionRealm() {
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.V8_REALM_BUILTIN_NAME, "true").build()) {
+            context.eval(JavaScriptLanguage.ID, """
+                            var done = false;
+                            var failure = null;
+                            const child = Realm.create();
+                            const other = Realm.global(child);
+                            Realm.eval(child, `
+                                async function f(reject) {
+                                    const local = 42;
+                                    await 0;
+                                    if (reject) throw new Error('async function');
+                                    return { object: {}, local: eval('local') };
+                                }
+                                async function* g(reject) {
+                                    const local = 43;
+                                    yield { object: {}, local: eval('local') };
+                                    await 0;
+                                    if (reject) throw new Error('async generator');
+                                    return { object: {}, local: eval('local') };
+                                }
+                            `);
+                            function check(value, local) {
+                                if (Object.getPrototypeOf(value.object) !== other.Object.prototype ||
+                                    value.local !== local || Realm.current() !== 0) {
+                                    throw new Error('incorrect resumption realm');
+                                }
+                            }
+                            (async function() {
+                                check(await other.f(false), 42);
+                                const iterator = other.g(false);
+                                const first = await iterator.next();
+                                check(first.value, 43);
+                                const last = await iterator.next();
+                                check(last.value, 43);
+                                if (first.done || !last.done) throw new Error('incorrect generator state');
+                                const rejectingIterator = other.g(true);
+                                check((await rejectingIterator.next()).value, 43);
+                                for (const promise of [other.f(true), rejectingIterator.next()]) {
+                                    let rejected = false;
+                                    try { await promise; } catch (error) {
+                                        if (!(error instanceof other.Error)) throw error;
+                                        rejected = true;
+                                    }
+                                    if (!rejected || Realm.current() !== 0) throw new Error('incorrect rejection realm');
+                                }
+                                done = true;
+                            })().catch(error => { failure = error; });
+                            """);
+            Assert.assertTrue(context.getBindings(JavaScriptLanguage.ID).getMember("failure").toString(),
+                            context.getBindings(JavaScriptLanguage.ID).getMember("done").asBoolean());
+            Assert.assertEquals(0, context.eval(JavaScriptLanguage.ID, "Realm.current()").asInt());
+        }
+    }
 }

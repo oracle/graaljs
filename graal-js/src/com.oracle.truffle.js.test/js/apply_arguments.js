@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
@@ -52,3 +52,109 @@ function verifyArguments(args) {
     };
     oh.apply(null, arguments);
 })(42);
+
+(function testWithArgumentsLookup() {
+    const scope = {};
+    let reads = 0;
+    function collect() {
+        return Array.prototype.slice.call(arguments);
+    }
+    function forward() {
+        with (scope) {
+            return collect.apply(null, arguments);
+        }
+    }
+
+    assertSameContent([1, 2], forward(1, 2));
+    Object.defineProperty(scope, 'arguments', {
+        configurable: true,
+        get() {
+            reads++;
+            return ['shadowed'];
+        }
+    });
+    assertSameContent(['shadowed'], forward(1, 2));
+    assertSame(1, reads);
+
+    scope[Symbol.unscopables] = {arguments: true};
+    assertSameContent([3, 4], forward(3, 4));
+    assertSame(1, reads);
+
+    scope[Symbol.unscopables].arguments = false;
+    assertSameContent(['shadowed'], forward());
+    assertSame(2, reads);
+
+    delete scope.arguments;
+    assertSameContent([5], forward(5));
+})();
+
+(function testNestedFunctionWithOwnArguments() {
+    const scope = {arguments: ['shadowed']};
+    function collect() {
+        return Array.prototype.slice.call(arguments);
+    }
+    let forward;
+    with (scope) {
+        forward = function () {
+            return collect.apply(null, arguments);
+        };
+    }
+    assertSameContent([6, 7], forward(6, 7));
+})();
+
+(function testSharedMaterializedArguments() {
+    let savedArguments;
+    let getterReads = 0;
+    function materialize() {}
+    materialize.apply = function (_thisArgument, args) {
+        savedArguments = args;
+        const first = args[0];
+        Object.defineProperty(args, '0', {
+            configurable: true,
+            get() {
+                getterReads++;
+                return first * 10;
+            }
+        });
+        delete args[1];
+        args[2] = 99;
+        args.length = 3;
+    };
+    function collect() {
+        return Array.prototype.slice.call(arguments);
+    }
+    function observe() {}
+    observe.apply = function (_thisArgument, args) {
+        assertSame(savedArguments, args);
+    };
+    function forward() {
+        materialize.apply(null, arguments);
+        const result = collect.apply(null, arguments);
+        observe.apply(null, arguments);
+        return result;
+    }
+
+    assertSameContent([10, undefined, 99], forward(1, 2));
+    assertSame(1, getterReads);
+    const firstArguments = savedArguments;
+    assertSameContent([30, undefined, 99], forward(3, 4));
+    assertSame(2, getterReads);
+    assertFalse(firstArguments === savedArguments);
+})();
+
+(function testMaterializationDuringArgumentEvaluation() {
+    function materialize() {}
+    materialize.apply = function (_thisArgument, args) {
+        args[0] = 42;
+        return null;
+    };
+    function collect() {
+        return Array.prototype.slice.call(arguments);
+    }
+    function forward() {
+        return collect.apply(materialize.apply(null, arguments), arguments);
+    }
+
+    assertSameContent([42, 2], forward(1, 2));
+    assertSameContent([42, 4], forward(3, 4));
+})();

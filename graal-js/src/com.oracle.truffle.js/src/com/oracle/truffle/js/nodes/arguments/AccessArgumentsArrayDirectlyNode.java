@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,25 +76,11 @@ public final class AccessArgumentsArrayDirectlyNode extends JavaScriptNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        if (directArrayAccess) {
-            return asObjectArray(frame);
-        } else {
-            return asArgumentsObject(frame);
-        }
-    }
-
-    private Object[] asObjectArray(VirtualFrame frame) {
-        return JSArguments.extractUserArguments(frame.getArguments(), leadingArgCount);
-    }
-
-    /**
-     * Reads the arguments object slot and checks whether it is already initialized, otherwise
-     * allocates and writes the arguments object, and finally returns the arguments object.
-     */
-    private Object asArgumentsObject(VirtualFrame frame) {
-        Object argumentsArray = readArgumentsNode.execute(frame);
-        if (initializedProfile.profile(ArgumentsObjectNode.isInitialized(argumentsArray))) {
-            return argumentsArray;
+        Object argumentsObject = readArgumentsNode.execute(frame);
+        if (initializedProfile.profile(ArgumentsObjectNode.isInitialized(argumentsObject))) {
+            return argumentsObject;
+        } else if (directArrayAccess) {
+            return JSArguments.extractUserArguments(frame.getArguments(), leadingArgCount);
         } else {
             return writeArgumentsNode.execute(frame);
         }

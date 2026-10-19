@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,6 +54,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
@@ -168,7 +169,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
         return doForeignObjectNonNull(value, interop, this);
     }
 
-    static Object doForeignObjectNonNull(Object value, InteropLibrary interop, JavaScriptBaseNode node) {
+    static Object doForeignObjectNonNull(Object value, InteropLibrary interop, Node node) {
         assert !interop.isNull(value);
         try {
             if (!interop.hasMembers(value)) {
@@ -187,7 +188,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
         }
     }
 
-    private static Object doForeignNumber(Object value, InteropLibrary interop, JavaScriptBaseNode node) throws UnsupportedMessageException {
+    private static Object doForeignNumber(Object value, InteropLibrary interop, Node node) throws UnsupportedMessageException {
         Number number;
         if (interop.fitsInInt(value)) {
             number = interop.asInt(value);

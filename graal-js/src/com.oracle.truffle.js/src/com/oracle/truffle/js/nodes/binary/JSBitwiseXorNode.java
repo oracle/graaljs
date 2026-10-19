@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -69,13 +69,13 @@ public abstract class JSBitwiseXorNode extends JSBinaryNode {
     }
 
     public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right) {
-        Truncatable.truncate(left);
+        JavaScriptNode lhs = Truncatable.truncate(left);
         if (JSConfig.UseSuperOperations && right instanceof JSConstantIntegerNode) {
             int rightValue = ((JSConstantIntegerNode) right).executeInt(null);
-            return JSBitwiseXorConstantNode.create(left, rightValue);
+            return JSBitwiseXorConstantNode.create(lhs, rightValue);
         }
-        Truncatable.truncate(right);
-        return JSBitwiseXorNodeGen.create(left, right);
+        JavaScriptNode rhs = Truncatable.truncate(right);
+        return JSBitwiseXorNodeGen.create(lhs, rhs);
     }
 
     public abstract Object executeObject(Object a, Object b);

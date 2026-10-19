@@ -2261,10 +2261,6 @@
     "status" : "SKIP",
     "comment" : "Long running test"
   }, {
-    "filePath" : "staging/sm/class/strictExecution.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
-  }, {
     "filePath" : "staging/sm/Date/non-iso.js",
     "status" : "FAIL",
     "comment" : "Expects new Date('<some non-ecma date>').getTime() to be NaN, but parsing of non-ecma dates is implementation specific"

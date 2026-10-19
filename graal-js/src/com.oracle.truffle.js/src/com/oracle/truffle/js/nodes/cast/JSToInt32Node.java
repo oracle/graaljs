@@ -87,19 +87,20 @@ public abstract class JSToInt32Node extends JavaScriptBaseNode {
     }
 
     public static JavaScriptNode create(JavaScriptNode child, boolean bitwiseOr) {
+        JavaScriptNode operand = null;
         if (child != null) {
             if (child.isResultAlwaysOfType(int.class)) {
                 return child;
             }
-            Truncatable.truncate(child);
             if (child instanceof JSConstantNode) {
                 Object constantOperand = ((JSConstantNode) child).getValue();
                 if (constantOperand != null && !(constantOperand instanceof Symbol) && JSRuntime.isJSPrimitive(constantOperand)) {
                     return JSConstantNode.createInt(JSRuntime.toInt32(constantOperand));
                 }
             }
+            operand = Truncatable.truncate(child);
         }
-        return JSToInt32UnaryNodeGen.create(child, bitwiseOr);
+        return JSToInt32UnaryNodeGen.create(operand, bitwiseOr);
     }
 
     @NeverDefault

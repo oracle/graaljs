@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,14 +40,15 @@
  */
 package com.oracle.truffle.js.nodes;
 
-import com.oracle.truffle.api.nodes.Node;
-
 public interface Truncatable {
-    void setTruncate();
+    JavaScriptNode setTruncate();
 
-    static void truncate(Node node) {
+    static JavaScriptNode truncate(JavaScriptNode node) {
         if (node instanceof Truncatable) {
-            ((Truncatable) node).setTruncate();
+            JavaScriptNode truncated = ((Truncatable) node).setTruncate();
+            JavaScriptNode.transferSourceSectionAndTags(node, truncated);
+            return truncated;
         }
+        return node;
     }
 }

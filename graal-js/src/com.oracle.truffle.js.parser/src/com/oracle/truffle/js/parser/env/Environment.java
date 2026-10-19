@@ -78,13 +78,19 @@ public abstract class Environment {
 
     private final Environment parent;
     private final FunctionEnvironment functionEnvironment;
+    private final boolean strictMode;
     protected final NodeFactory factory;
     protected final JSContext context;
 
     public Environment(Environment parent, NodeFactory factory, JSContext context) {
+        this(parent, factory, context, parent != null && parent.isStrictMode());
+    }
+
+    protected Environment(Environment parent, NodeFactory factory, JSContext context, boolean strictMode) {
         this.parent = parent;
         this.factory = factory;
         this.context = context;
+        this.strictMode = strictMode;
         this.functionEnvironment = this instanceof FunctionEnvironment ? (FunctionEnvironment) this : (parent == null ? null : parent.functionEnvironment);
     }
 
@@ -437,8 +443,8 @@ public abstract class Environment {
         return function().getFunctionFrameDescriptor();
     }
 
-    public boolean isStrictMode() {
-        return function().isStrictMode();
+    public final boolean isStrictMode() {
+        return strictMode;
     }
 
     public int getScopeLevel() {

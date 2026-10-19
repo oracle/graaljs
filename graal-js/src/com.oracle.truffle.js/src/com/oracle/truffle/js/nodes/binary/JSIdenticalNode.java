@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,21 +40,18 @@
  */
 package com.oracle.truffle.js.nodes.binary;
 
-import java.util.Set;
-
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantBooleanNode;
@@ -74,47 +71,35 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-/**
- * IsStrictlyEqual(x, y) aka {@code ===} operator.
- *
- * @see JSEqualNode
- */
-@NodeInfo(shortName = "===")
 @ImportStatic({JSRuntime.class, JSConfig.class})
+@GenerateCached(false)
 public abstract class JSIdenticalNode extends JSCompareNode {
 
     protected static final int STRICT_EQUALITY_COMPARISON = 0;
     protected static final int SAME_VALUE = 1;
     protected static final int SAME_VALUE_ZERO = 2;
 
-    protected final int type;
-
-    protected JSIdenticalNode(JavaScriptNode left, JavaScriptNode right, int type) {
+    protected JSIdenticalNode(JavaScriptNode left, JavaScriptNode right) {
         super(left, right);
-        this.type = type;
     }
 
     @NeverDefault
     public static JSIdenticalNode createStrictEqualityComparison() {
-        return JSIdenticalNodeGen.create(null, null, STRICT_EQUALITY_COMPARISON);
+        return JSStrictEqualNodeGen.create(null, null);
     }
 
     @NeverDefault
     public static JSIdenticalNode createSameValue() {
-        return JSIdenticalNodeGen.create(null, null, SAME_VALUE);
-    }
-
-    public static JSIdenticalNode createSameValue(JavaScriptNode left, JavaScriptNode right) {
-        return JSIdenticalNodeGen.create(left, right, SAME_VALUE);
+        return JSSameValueNodeGen.create(null, null, SAME_VALUE);
     }
 
     @NeverDefault
     public static JSIdenticalNode createSameValueZero() {
-        return JSIdenticalNodeGen.create(null, null, SAME_VALUE_ZERO);
+        return JSSameValueNodeGen.create(null, null, SAME_VALUE_ZERO);
     }
 
     public static JavaScriptNode createUnoptimized(JavaScriptNode left, JavaScriptNode right) {
-        return JSIdenticalNodeGen.create(left, right, STRICT_EQUALITY_COMPARISON);
+        return JSStrictEqualNodeGen.create(left, right);
     }
 
     public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right) {
@@ -139,18 +124,17 @@ public abstract class JSIdenticalNode extends JSCompareNode {
         } else if (right instanceof JSConstantUndefinedNode) {
             return IsIdenticalUndefinedNode.create(left, false);
         }
-        return JSIdenticalNodeGen.create(left, right, STRICT_EQUALITY_COMPARISON);
+        return JSStrictEqualNodeGen.create(left, right);
     }
 
     public abstract boolean executeBoolean(Object left, Object right);
 
     @Specialization
-    protected static boolean doInt(int a, int b) {
+    public static boolean doInt(int a, int b) {
         return a == b;
     }
 
-    @Specialization
-    protected final boolean doDouble(double a, double b) {
+    public static boolean doDouble(double a, double b, int type) {
         if (type == STRICT_EQUALITY_COMPARISON) {
             return a == b;
         } else if (type == SAME_VALUE) {
@@ -171,59 +155,59 @@ public abstract class JSIdenticalNode extends JSCompareNode {
     }
 
     @Specialization
-    protected static boolean doBoolean(boolean a, boolean b) {
+    public static boolean doBoolean(boolean a, boolean b) {
         return a == b;
     }
 
     @Specialization
-    protected static boolean doBigInt(BigInt a, BigInt b) {
+    public static boolean doBigInt(BigInt a, BigInt b) {
         return a.compareTo(b) == 0;
     }
 
     @Specialization
-    protected static boolean doBigIntDouble(@SuppressWarnings("unused") BigInt a, @SuppressWarnings("unused") double b) {
+    public static boolean doBigIntDouble(@SuppressWarnings("unused") BigInt a, @SuppressWarnings("unused") double b) {
         return false;
     }
 
     @Specialization
-    protected static boolean doDoubleBigInt(double a, BigInt b) {
+    public static boolean doDoubleBigInt(double a, BigInt b) {
         return doBigIntDouble(b, a);
     }
 
     @Specialization(guards = {"isUndefined(a)"})
-    protected static boolean doUndefinedA(Object a, Object b) {
+    public static boolean doUndefinedA(Object a, Object b) {
         return a == b;
     }
 
     @Specialization(guards = {"isUndefined(b)"})
-    protected static boolean doUndefinedB(Object a, Object b) {
+    public static boolean doUndefinedB(Object a, Object b) {
         return a == b;
     }
 
     @Specialization
-    protected static boolean doJSObjectA(JSObject a, Object b) {
+    public static boolean doJSObjectA(JSObject a, Object b) {
         return a == b;
     }
 
     @Specialization
-    protected static boolean doJSObjectB(Object a, JSObject b) {
+    public static boolean doJSObjectB(Object a, JSObject b) {
         return a == b;
     }
 
     @Specialization(guards = {"isJSNull(a)", "isJSNull(b)"})
-    protected static boolean doNullNull(@SuppressWarnings("unused") Object a, @SuppressWarnings("unused") Object b) {
+    public static boolean doNullNull(@SuppressWarnings("unused") Object a, @SuppressWarnings("unused") Object b) {
         return true;
     }
 
     @Specialization(guards = {"isJSNull(a)", "!isNullOrUndefined(b)"})
-    protected static boolean doNullA(@SuppressWarnings("unused") Object a, Object b,
+    public static boolean doNullA(@SuppressWarnings("unused") Object a, Object b,
                     @Shared @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary nullInterop) {
         assert b != Undefined.instance;
         return nullInterop.isNull(b);
     }
 
     @Specialization(guards = {"!isNullOrUndefined(a)", "isJSNull(b)"})
-    protected static boolean doNullB(Object a, @SuppressWarnings("unused") Object b,
+    public static boolean doNullB(Object a, @SuppressWarnings("unused") Object b,
                     @Shared @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary nullInterop) {
         assert a != Undefined.instance;
         return nullInterop.isNull(a);
@@ -231,58 +215,59 @@ public abstract class JSIdenticalNode extends JSCompareNode {
 
     @SuppressWarnings("unused")
     @Specialization(guards = "isReferenceEquals(a, b)")
-    protected static boolean doTruffleStringIdentity(TruffleString a, TruffleString b) {
+    public static boolean doTruffleStringIdentity(TruffleString a, TruffleString b) {
         return true;
     }
 
     @Specialization(replaces = "doTruffleStringIdentity")
-    protected static boolean doTruffleString(TruffleString a, TruffleString b,
+    public static boolean doTruffleString(TruffleString a, TruffleString b,
                     @Cached TruffleString.EqualNode equalsNode) {
         return equalsNode.execute(a, b, TruffleString.Encoding.UTF_16);
     }
 
     @Specialization
-    protected static boolean doSymbol(Symbol a, Symbol b) {
+    public static boolean doSymbol(Symbol a, Symbol b) {
         return a == b;
     }
 
     @Specialization(guards = {"isBoolean(a) != isBoolean(b)"})
-    protected static boolean doBooleanNotBoolean(Object a, Object b) {
+    public static boolean doBooleanNotBoolean(Object a, Object b) {
         assert (a != null) && (b != null);
         return false;
     }
 
     @Specialization(guards = {"isSymbol(a) != isSymbol(b)"})
-    protected static boolean doSymbolNotSymbol(Object a, Object b) {
+    public static boolean doSymbolNotSymbol(Object a, Object b) {
         assert (a != null) && (b != null);
         return false;
     }
 
     @Specialization(guards = {"isString(a) != isString(b)"})
-    protected static boolean doStringNotString(Object a, Object b) {
+    public static boolean doStringNotString(Object a, Object b) {
         assert (a != null) && (b != null);
         return false;
     }
 
     @Specialization
-    protected static boolean doLong(long a, long b) {
+    public static boolean doLong(long a, long b) {
         return a == b;
     }
 
     @InliningCutoff
     @Specialization(guards = {"isAForeign || isBForeign"}, limit = "InteropLibraryLimit")
-    protected final boolean doForeignObject(Object a, Object b,
+    public static boolean doForeignObject(Object a, Object b,
                     @Bind("isForeignObjectOrNumber(a)") boolean isAForeign,
                     @Bind("isForeignObjectOrNumber(b)") boolean isBForeign,
+                    @Bind("type()") int type,
                     @CachedLibrary("a") InteropLibrary aInterop,
                     @CachedLibrary("b") InteropLibrary bInterop) {
         if (aInterop.isNumber(a) && bInterop.isNumber(b)) {
-            return doForeignNumber(a, b, aInterop, bInterop, isAForeign, isBForeign);
+            return doForeignNumber(a, b, aInterop, bInterop, isAForeign, isBForeign, type);
         }
         return aInterop.isIdentical(a, b, bInterop) || (aInterop.isNull(a) && bInterop.isNull(b));
     }
 
-    private boolean doForeignNumber(Object a, Object b, InteropLibrary aInterop, InteropLibrary bInterop, boolean isAForeign, boolean isBForeign) {
+    private static boolean doForeignNumber(Object a, Object b, InteropLibrary aInterop, InteropLibrary bInterop, boolean isAForeign, boolean isBForeign, int type) {
         try {
             if (isAForeign != isBForeign) {
                 if (a instanceof BigInt) {
@@ -296,7 +281,7 @@ public abstract class JSIdenticalNode extends JSCompareNode {
                 assert isAForeign && isBForeign && !(a instanceof BigInt || b instanceof BigInt);
             }
             if (aInterop.fitsInDouble(a) && bInterop.fitsInDouble(b)) {
-                return doDouble(aInterop.asDouble(a), bInterop.asDouble(b));
+                return doDouble(aInterop.asDouble(a), bInterop.asDouble(b), type);
             } else if (aInterop.fitsInLong(a) && bInterop.fitsInLong(b)) {
                 return aInterop.asLong(a) == bInterop.asLong(b);
             } else if (aInterop.fitsInBigInteger(a) && bInterop.fitsInBigInteger(b)) {
@@ -309,13 +294,8 @@ public abstract class JSIdenticalNode extends JSCompareNode {
     }
 
     @Fallback
-    protected static boolean doFallback(Object a, Object b) {
+    public static boolean doFallback(Object a, Object b) {
         assert !JSRuntime.identical(a, b) : a + " (" + (a == null ? "null" : a.getClass()) + ")" + ", " + b + " (" + (b == null ? "null" : b.getClass()) + ")";
         return false;
-    }
-
-    @Override
-    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return JSIdenticalNodeGen.create(cloneUninitialized(getLeft(), materializedTags), cloneUninitialized(getRight(), materializedTags), type);
     }
 }

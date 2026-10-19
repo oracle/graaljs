@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,12 +44,12 @@ import static com.oracle.truffle.js.nodes.JSGuards.isString;
 
 import java.util.Set;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.Node;
@@ -58,7 +58,6 @@ import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.Truncatable;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantDoubleNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
@@ -73,14 +72,12 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
 
+@GenerateCached(false)
 @NodeInfo(shortName = "+")
-public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
+public abstract class JSAddNode extends JSBinaryNode {
 
-    @CompilationFinal boolean truncate;
-
-    protected JSAddNode(boolean truncate, JavaScriptNode left, JavaScriptNode right) {
+    protected JSAddNode(JavaScriptNode left, JavaScriptNode right) {
         super(left, right);
-        this.truncate = truncate;
     }
 
     public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right, boolean truncate) {
@@ -100,38 +97,26 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
                 return JSAddConstantLeftNumberNodeGen.create((Number) leftValue, right, truncate);
             }
         }
-        return JSAddNodeGen.create(truncate, left, right);
+        return createUnoptimized(left, right, truncate);
     }
 
     public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right) {
         return create(left, right, false);
     }
 
-    public static JavaScriptNode createUnoptimized(JavaScriptNode left, JavaScriptNode right, boolean truncate) {
-        return JSAddNodeGen.create(truncate, left, right);
+    public static JSAddNode createUnoptimized(JavaScriptNode left, JavaScriptNode right, boolean truncate) {
+        if (truncate) {
+            return JSAddTruncNodeGen.create(left, right);
+        } else {
+            return JSAddNormalNodeGen.create(left, right);
+        }
     }
 
     public static JSAddNode createUnoptimized() {
-        return JSAddNodeGen.create(false, null, null);
+        return createUnoptimized(null, null, false);
     }
 
     public abstract Object execute(Object a, Object b);
-
-    @Specialization(guards = "truncate")
-    protected static int doIntTruncate(int a, int b) {
-        return a + b;
-    }
-
-    @Specialization(guards = "!truncate", rewriteOn = ArithmeticException.class)
-    protected static int doInt(int a, int b) {
-        return Math.addExact(a, b);
-    }
-
-    @Specialization(guards = "!truncate", rewriteOn = ArithmeticException.class)
-    protected static Object doIntOverflow(int a, int b) {
-        long result = (long) a + (long) b;
-        return doIntOverflowStaticLong(result);
-    }
 
     static Object doIntOverflowStaticLong(long result) {
         if (JSRuntime.longIsRepresentableAsInt(result)) {
@@ -139,64 +124,65 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
         } else if (JSRuntime.isSafeInteger(result)) {
             return SafeInteger.valueOf(result);
         } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new ArithmeticException();
         }
     }
 
     @Specialization(rewriteOn = ArithmeticException.class)
-    protected static SafeInteger doIntSafeInteger(int a, SafeInteger b) {
+    public static SafeInteger doIntSafeInteger(int a, SafeInteger b) {
         return SafeInteger.valueOf(a).addExact(b);
     }
 
     @Specialization(rewriteOn = ArithmeticException.class)
-    protected static SafeInteger doSafeIntegerInt(SafeInteger a, int b) {
+    public static SafeInteger doSafeIntegerInt(SafeInteger a, int b) {
         return a.addExact(SafeInteger.valueOf(b));
     }
 
     @Specialization(rewriteOn = ArithmeticException.class)
-    protected static SafeInteger doSafeInteger(SafeInteger a, SafeInteger b) {
+    public static SafeInteger doSafeInteger(SafeInteger a, SafeInteger b) {
         return a.addExact(b);
     }
 
     @Specialization
-    protected static double doDouble(double a, double b) {
+    public static double doDouble(double a, double b) {
         return a + b;
     }
 
     @Specialization
-    protected BigInt doBigInt(BigInt left, BigInt right) {
+    public static BigInt doBigInt(BigInt left, BigInt right) {
         return left.add(right);
     }
 
     @Specialization
-    protected TruffleString doString(TruffleString a, TruffleString b,
+    public static TruffleString doString(TruffleString a, TruffleString b,
                     @Cached @Shared JSConcatStringsNode concatStringsNode) {
         return concatStringsNode.executeTString(a, b);
     }
 
     @Specialization
-    protected TruffleString doStringInt(TruffleString a, int b,
+    public static TruffleString doStringInt(TruffleString a, int b,
                     @Cached @Shared JSConcatStringsNode concatStringsNode,
                     @Cached @Shared TruffleString.FromLongNode stringFromLongNode) {
         return concatStringsNode.executeTString(a, Strings.fromLong(stringFromLongNode, b));
     }
 
     @Specialization
-    protected TruffleString doIntString(int a, TruffleString b,
+    public static TruffleString doIntString(int a, TruffleString b,
                     @Cached @Shared JSConcatStringsNode concatStringsNode,
                     @Cached @Shared TruffleString.FromLongNode stringFromLongNode) {
         return concatStringsNode.executeTString(Strings.fromLong(stringFromLongNode, a), b);
     }
 
     @Specialization(guards = "isNumber(b)")
-    protected Object doStringNumber(TruffleString a, Object b,
+    public static Object doStringNumber(TruffleString a, Object b,
                     @Cached @Shared JSConcatStringsNode concatStringsNode,
                     @Cached @Shared JSDoubleToStringNode doubleToStringNode) {
         return concatStringsNode.executeTString(a, doubleToStringNode.executeString(b));
     }
 
     @Specialization(guards = "isNumber(a)")
-    protected Object doNumberString(Object a, TruffleString b,
+    public static Object doNumberString(Object a, TruffleString b,
                     @Cached @Shared JSConcatStringsNode concatStringsNode,
                     @Cached @Shared JSDoubleToStringNode doubleToStringNode) {
         return concatStringsNode.executeTString(doubleToStringNode.executeString(a), b);
@@ -213,19 +199,19 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
      */
     @InliningCutoff
     @Specialization(guards = "hasOverloadedOperators(a) || hasOverloadedOperators(b)")
-    protected Object doOverloaded(Object a, Object b,
+    public static Object doOverloaded(Object a, Object b,
                     @Cached("createHintDefault(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
         return overloadedOperatorNode.execute(a, b);
     }
 
-    protected TruffleString getOverloadedOperatorName() {
+    public static TruffleString getOverloadedOperatorName() {
         return Strings.SYMBOL_PLUS;
     }
 
     @InliningCutoff
-    @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {"doInt", "doIntOverflow", "doIntTruncate", "doSafeInteger",
+    @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {"doSafeInteger",
                     "doIntSafeInteger", "doSafeIntegerInt", "doDouble", "doBigInt", "doString", "doStringInt", "doIntString", "doStringNumber", "doNumberString"})
-    protected static Object doPrimitiveConversion(Object a, Object b,
+    public static Object doPrimitiveConversion(Object a, Object b,
                     @Bind Node node,
                     @Cached JSToPrimitiveNode toPrimitiveA,
                     @Cached JSToPrimitiveNode toPrimitiveB,
@@ -235,7 +221,7 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
                     @Cached JSToStringNode toStringB,
                     @Cached InlinedConditionProfile profileA,
                     @Cached InlinedConditionProfile profileB,
-                    @Cached("copyRecursive()") JSAddNode add,
+                    @Cached("createRecursive()") JSAddNode add,
                     @Cached InlinedBranchProfile mixedNumericTypes) {
 
         Object primitiveA = toPrimitiveA.executeHintDefault(a);
@@ -257,20 +243,9 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
         return add.execute(castA, castB);
     }
 
-    public final JSAddNode copyRecursive() {
-        return (JSAddNode) create(null, null, truncate);
-    }
-
-    @Override
-    public void setTruncate() {
-        CompilerAsserts.neverPartOfCompilation();
-        if (!truncate) {
-            truncate = true;
-        }
-    }
-
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return JSAddNodeGen.createUnoptimized(cloneUninitialized(getLeft(), materializedTags), cloneUninitialized(getRight(), materializedTags), truncate);
+        boolean truncate = this instanceof JSAddTruncNode;
+        return createUnoptimized(cloneUninitialized(getLeft(), materializedTags), cloneUninitialized(getRight(), materializedTags), truncate);
     }
 }
