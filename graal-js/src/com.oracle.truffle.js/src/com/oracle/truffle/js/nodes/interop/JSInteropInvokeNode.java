@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -70,13 +70,13 @@ public abstract class JSInteropInvokeNode extends JSInteropCallNode {
                     @Cached("createGetProperty(cachedName)") PropertyGetNode functionPropertyGetNode,
                     @Shared @Cached IsCallableNode isCallableNode,
                     @Shared @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
-                    @Shared @Cached ImportValueNode importValueNode) throws UnknownIdentifierException, UnsupportedMessageException {
+                    @Shared @Cached ImportArgumentsNode importArgumentsNode) throws UnknownIdentifierException, UnsupportedMessageException {
         Object function = functionPropertyGetNode.getValueOrDefault(receiver, null);
         if (function == null) {
             throw UnknownIdentifierException.create(cachedName.toJavaStringUncached());
         }
         if (isCallableNode.executeBoolean(function)) {
-            return callNode.executeCall(JSArguments.create(receiver, function, prepare(arguments, importValueNode)));
+            return callNode.executeCall(JSArguments.create(receiver, function, importArgumentsNode.execute(arguments)));
         } else {
             throw UnsupportedMessageException.create();
         }
@@ -87,7 +87,7 @@ public abstract class JSInteropInvokeNode extends JSInteropCallNode {
                     @Cached(value = "create(getLanguage().getJSContext())", uncached = "getUncachedRead()") ReadElementNode readNode,
                     @Shared @Cached IsCallableNode isCallableNode,
                     @Shared @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
-                    @Shared @Cached ImportValueNode importValueNode) throws UnknownIdentifierException, UnsupportedMessageException {
+                    @Shared @Cached ImportArgumentsNode importArgumentsNode) throws UnknownIdentifierException, UnsupportedMessageException {
         Object function;
         if (readNode == null) {
             function = JSObject.getOrDefault(receiver, name, receiver, null);
@@ -98,7 +98,7 @@ public abstract class JSInteropInvokeNode extends JSInteropCallNode {
             throw UnknownIdentifierException.create(name.toJavaStringUncached());
         }
         if (isCallableNode.executeBoolean(function)) {
-            Object[] preparedArgs = prepare(arguments, importValueNode);
+            Object[] preparedArgs = importArgumentsNode.execute(arguments);
             return callNode.executeCall(JSArguments.create(receiver, function, preparedArgs));
         } else {
             throw UnsupportedMessageException.create();
