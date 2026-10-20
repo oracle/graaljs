@@ -632,7 +632,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
                 int arrayOffset = getArrayOffset(object);
                 if (arrayOffset == preparedindex) {
                     fixHolesArrayStartingWithAHole(object, index, preparedindex);
-                } else if (arrayOffset + arrayGetUsedLength(object) == preparedindex) {
+                } else if (arrayOffset + arrayGetUsedLength(object) - 1 == preparedindex) {
                     long previousNonHoles = previousElementIndexHoles(object, index);
                     assert previousNonHoles >= 0;
                     int preparedPreviousNonHoles = prepareInBoundsFast(object, (int) previousNonHoles);

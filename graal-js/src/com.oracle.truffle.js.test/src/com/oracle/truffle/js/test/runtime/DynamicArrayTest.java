@@ -483,6 +483,27 @@ public class DynamicArrayTest extends JSTest {
     }
 
     @Test
+    public void testDeleteLastElementShrinksUsedRange() {
+        for (String value : new String[]{"1", "1.5", "'x'", "{}"}) {
+            for (int offset : new int[]{0, 20, 1_000_000}) {
+                for (int gap : new int[]{1, 3}) {
+                    JSArrayObject arrayObject = (JSArrayObject) testHelper.runNoPolyglot(
+                                    "globalThis.array = []; array[" + offset + "] = " + value + "; array[" + (offset + gap) + "] = " + value + "; array");
+                    assertEquals(gap + 1, arrayGetUsedLength(arrayObject));
+                    assertEquals(gap - 1, arrayGetHoleCount(arrayObject));
+
+                    assertEquals(true, testHelper.runNoPolyglot("delete array[" + (offset + gap) + "]"));
+
+                    assertEquals(offset + gap + 1, arrayObject.getArrayType().length(arrayObject));
+                    assertEquals(1, arrayGetUsedLength(arrayObject));
+                    assertEquals(0, arrayGetHoleCount(arrayObject));
+                    assertEquals(offset, arrayObject.getArrayType().lastElementIndex(arrayObject));
+                }
+            }
+        }
+    }
+
+    @Test
     public void testSetLengthBeforeIndexOffsetClearsHoleCount() {
         for (String value : new String[]{"1", "1.5", "'x'", "{}"}) {
             for (int length : new int[]{1, 1_000_000}) {
