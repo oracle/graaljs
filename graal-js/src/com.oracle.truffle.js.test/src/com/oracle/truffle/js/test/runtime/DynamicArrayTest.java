@@ -511,6 +511,25 @@ public class DynamicArrayTest extends JSTest {
     }
 
     @Test
+    public void testSetLengthZeroClearsHoleCount() {
+        for (String value : new String[]{"1", "1.5", "'x'", "{}"}) {
+            for (int offset : new int[]{0, 1_000_000}) {
+                JSArrayObject arrayObject = (JSArrayObject) testHelper.runNoPolyglot(
+                                "globalThis.array = []; array[" + offset + "] = " + value + "; array[" + (offset + 2) + "] = " + value + "; array");
+                assertEquals(1, arrayGetHoleCount(arrayObject));
+
+                testHelper.runNoPolyglot("array.length = 0");
+
+                assertEquals(0, arrayGetHoleCount(arrayObject));
+                Object element = testHelper.runNoPolyglot("array[0] = " + value);
+                assertEquals(false, arrayObject.getArrayType().hasHoles(arrayObject));
+                assertEquals(element, testHelper.runNoPolyglot("array.shift()"));
+                assertEquals(0, arrayObject.getArrayType().length(arrayObject));
+            }
+        }
+    }
+
+    @Test
     public void testSetLengthZeroReleasesBackingStore() {
         for (String source : new String[]{
                         "globalThis.array = []; array.push({}, {}); array",

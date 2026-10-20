@@ -497,6 +497,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
     public final ScriptArray setLengthImpl(JSDynamicObject object, long length, Node node, SetLengthProfileAccess profile) {
         if (profile.lengthZero(node, length == 0)) {
             arraySetLength(object, length);
+            arraySetHoleCount(object, 0);
             arraySetArray(object, ScriptArray.EMPTY_OBJECT_ARRAY);
             return ConstantEmptyArray.createConstantEmptyArray();
         } else if (profile.lengthLess(node, length < length(object))) {
