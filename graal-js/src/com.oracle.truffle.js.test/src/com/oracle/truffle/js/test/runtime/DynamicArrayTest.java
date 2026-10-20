@@ -40,10 +40,16 @@
  */
 package com.oracle.truffle.js.test.runtime;
 
+import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArray;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArrayOffset;
+import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetHoleCount;
+import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetIndexOffset;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetUsedLength;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 
 import org.junit.Ignore;
 import org.junit.Test;
@@ -57,6 +63,7 @@ import com.oracle.truffle.js.runtime.array.dyn.AbstractIntArray;
 import com.oracle.truffle.js.runtime.array.dyn.AbstractWritableArray.SetSupportedProfileAccess;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantObjectArray;
 import com.oracle.truffle.js.runtime.array.dyn.ContiguousIntArray;
+import com.oracle.truffle.js.runtime.array.dyn.ContiguousObjectArray;
 import com.oracle.truffle.js.runtime.array.dyn.HolesDoubleArray;
 import com.oracle.truffle.js.runtime.array.dyn.HolesIntArray;
 import com.oracle.truffle.js.runtime.array.dyn.ZeroBasedIntArray;
@@ -455,6 +462,107 @@ public class DynamicArrayTest extends JSTest {
         arrayObject.setArrayType(array = array.setLength(arrayObject, 2, false));
         assertEquals(Undefined.instance, array.getElement(arrayObject, 2));
         assertEquals(Undefined.instance, array.getElement(arrayObject, 5));
+    }
+
+    @Test
+    public void testContiguousRangeRemovalClearsVacatedStorage() {
+        JSArrayObject arrayObject = createEmptyArray();
+        Object first = new Object();
+        Object last = new Object();
+        Object[] storage = {null, null, null, first, last, null};
+        ScriptArray array = ContiguousObjectArray.makeContiguousObjectArray(arrayObject, 16, storage, 10, 3, 2, 0);
+        arrayObject.setArrayType(array);
+
+        assertSame(ContiguousObjectArray.class, arrayObject.getArrayType().getClass());
+        arrayObject.setArrayType(array.removeRange(arrayObject, 11, 12));
+
+        assertSame(storage, arrayGetArray(arrayObject));
+        assertSame(first, arrayObject.getArrayType().getElement(arrayObject, 12));
+        assertSame(last, arrayObject.getArrayType().getElement(arrayObject, 13));
+        assertNull(storage[4]);
+    }
+
+    @Test
+    public void testDeleteLastElementShrinksUsedRange() {
+        for (String value : new String[]{"1", "1.5", "'x'", "{}"}) {
+            for (int offset : new int[]{0, 20, 1_000_000}) {
+                for (int gap : new int[]{1, 3}) {
+                    JSArrayObject arrayObject = (JSArrayObject) testHelper.runNoPolyglot(
+                                    "globalThis.array = []; array[" + offset + "] = " + value + "; array[" + (offset + gap) + "] = " + value + "; array");
+                    assertEquals(gap + 1, arrayGetUsedLength(arrayObject));
+                    assertEquals(gap - 1, arrayGetHoleCount(arrayObject));
+
+                    assertEquals(true, testHelper.runNoPolyglot("delete array[" + (offset + gap) + "]"));
+
+                    assertEquals(offset + gap + 1, arrayObject.getArrayType().length(arrayObject));
+                    assertEquals(1, arrayGetUsedLength(arrayObject));
+                    assertEquals(0, arrayGetHoleCount(arrayObject));
+                    assertEquals(offset, arrayObject.getArrayType().lastElementIndex(arrayObject));
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testSetLengthBeforeIndexOffsetClearsHoleCount() {
+        for (String value : new String[]{"1", "1.5", "'x'", "{}"}) {
+            for (int length : new int[]{1, 1_000_000}) {
+                JSArrayObject arrayObject = (JSArrayObject) testHelper.runNoPolyglot(
+                                "globalThis.array = []; array[1000000] = " + value + "; array[1000002] = " + value + "; array");
+                assertEquals(1_000_000, arrayGetIndexOffset(arrayObject));
+                assertEquals(3, arrayGetUsedLength(arrayObject));
+                assertEquals(1, arrayGetHoleCount(arrayObject));
+
+                testHelper.runNoPolyglot("array.length = " + length);
+
+                assertEquals(length, arrayObject.getArrayType().length(arrayObject));
+                assertEquals(0, arrayGetUsedLength(arrayObject));
+                assertEquals(0, arrayGetHoleCount(arrayObject));
+                assertEquals(true, testHelper.runNoPolyglot("delete array[0]"));
+
+                // Reusing the storage must count only the newly created holes.
+                testHelper.runNoPolyglot("array[" + length + "] = " + value + "; array[" + (length + 2) + "] = " + value);
+                assertEquals(3, arrayGetUsedLength(arrayObject));
+                assertEquals(1, arrayGetHoleCount(arrayObject));
+                testHelper.runNoPolyglot("delete array[" + length + "]");
+                assertEquals(1, arrayGetUsedLength(arrayObject));
+                assertEquals(0, arrayGetHoleCount(arrayObject));
+            }
+        }
+    }
+
+    @Test
+    public void testSetLengthZeroClearsHoleCount() {
+        for (String value : new String[]{"1", "1.5", "'x'", "{}"}) {
+            for (int offset : new int[]{0, 1_000_000}) {
+                JSArrayObject arrayObject = (JSArrayObject) testHelper.runNoPolyglot(
+                                "globalThis.array = []; array[" + offset + "] = " + value + "; array[" + (offset + 2) + "] = " + value + "; array");
+                assertEquals(1, arrayGetHoleCount(arrayObject));
+
+                testHelper.runNoPolyglot("array.length = 0");
+
+                assertEquals(0, arrayGetHoleCount(arrayObject));
+                Object element = testHelper.runNoPolyglot("array[0] = " + value);
+                assertEquals(false, arrayObject.getArrayType().hasHoles(arrayObject));
+                assertEquals(element, testHelper.runNoPolyglot("array.shift()"));
+                assertEquals(0, arrayObject.getArrayType().length(arrayObject));
+            }
+        }
+    }
+
+    @Test
+    public void testSetLengthZeroReleasesBackingStore() {
+        for (String source : new String[]{
+                        "globalThis.array = []; array.push({}, {}); array",
+                        "globalThis.array = ['x', 'y']; array[0] = 'z'; array",
+                        "globalThis.array = []; array[3] = {}; array[7] = {}; array"}) {
+            JSArrayObject arrayObject = (JSArrayObject) testHelper.runNoPolyglot(source);
+            assertNotSame(ScriptArray.EMPTY_OBJECT_ARRAY, arrayGetArray(arrayObject));
+
+            testHelper.runNoPolyglot("array.length = 0");
+
+            assertSame(ScriptArray.EMPTY_OBJECT_ARRAY, arrayGetArray(arrayObject));
+        }
     }
 
     @Test

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -497,6 +497,8 @@ public abstract class AbstractWritableArray extends DynamicArray {
     public final ScriptArray setLengthImpl(JSDynamicObject object, long length, Node node, SetLengthProfileAccess profile) {
         if (profile.lengthZero(node, length == 0)) {
             arraySetLength(object, length);
+            arraySetHoleCount(object, 0);
+            arraySetArray(object, ScriptArray.EMPTY_OBJECT_ARRAY);
             return ConstantEmptyArray.createConstantEmptyArray();
         } else if (profile.lengthLess(node, length < length(object))) {
             setLengthLess(object, length, node, profile);
@@ -525,6 +527,9 @@ public abstract class AbstractWritableArray extends DynamicArray {
         arraySetLength(object, length);
         if (profile.contiguousZeroUsed(node, length <= indexOffset)) {
             arraySetUsedLength(object, 0);
+            if (isHolesType()) {
+                arraySetHoleCount(object, 0);
+            }
             setIndexOffset(object, length - 1);
             setArrayOffset(object, 0);
             long arrayCapacity = getArrayCapacity(object);
@@ -627,7 +632,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
                 int arrayOffset = getArrayOffset(object);
                 if (arrayOffset == preparedindex) {
                     fixHolesArrayStartingWithAHole(object, index, preparedindex);
-                } else if (arrayOffset + arrayGetUsedLength(object) == preparedindex) {
+                } else if (arrayOffset + arrayGetUsedLength(object) - 1 == preparedindex) {
                     long previousNonHoles = previousElementIndexHoles(object, index);
                     assert previousNonHoles >= 0;
                     int preparedPreviousNonHoles = prepareInBoundsFast(object, (int) previousNonHoles);
@@ -748,7 +753,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
         int usedStartIntl = Math.max(arrayOffset, startIntl);
         int usedEndIntl = Math.min(arrayOffset + usedLength, endIntl);
 
-        int usedDelta = usedEndIntl - usedStartIntl;
+        int usedDelta = Math.max(0, usedEndIntl - usedStartIntl);
         int newUsedLength = usedLength - usedDelta;
         if (usedDelta > 0) {
             arraySetUsedLength(object, newUsedLength);
@@ -774,6 +779,9 @@ public abstract class AbstractWritableArray extends DynamicArray {
                     moveRangePrepared(object, endIntl, 0, length);
                 }
                 indexOffsetNew = start;
+                // The remaining elements moved towards zero, including any unused prefix.
+                arrayOffsetNew = Math.max(0, arrayOffset - endIntl);
+                setArrayOffset(object, arrayOffsetNew);
             }
 
             setIndexOffset(object, indexOffsetNew);
@@ -789,9 +797,11 @@ public abstract class AbstractWritableArray extends DynamicArray {
             }
         }
 
-        if (usedDelta > 0) {
+        int newUsedEnd = arrayOffsetNew + newUsedLength;
+        int oldUsedEnd = arrayOffset + usedLength;
+        if (newUsedEnd < oldUsedEnd) {
             // Unused part of the internal array should not keep objects alive
-            fillWithHoles(getArrayObject(object), arrayOffsetNew + newUsedLength, arrayOffset + usedLength);
+            fillWithHoles(getArrayObject(object), newUsedEnd, oldUsedEnd);
         }
 
         return this;
