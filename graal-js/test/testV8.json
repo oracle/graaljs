@@ -312,10 +312,6 @@
     "status" : "FAIL",
     "comment" : "Very deep conditional chain causes stack overflow"
   }, {
-    "filePath" : "mjsunit/compiler/regress-1065737.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
-  }, {
     "filePath" : "mjsunit/compiler/regress-1125145.js",
     "status" : "SKIP",
     "comment" : "Function.prototype.bind heavy test, too slow on Graal.js"
@@ -1411,9 +1407,6 @@
     "status" : "FAIL",
     "comment" : "TestV8 Realm.navigate does not preserve the Temporal global for a cross-realm function."
   }, {
-    "filePath" : "mjsunit/regress/regress-4970.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/regress/regress-500174491.js",
     "status" : "FAIL",
     "comment" : "TestV8 Realm mock does not implement verifySourcePositions()."
@@ -1506,10 +1499,6 @@
   }, {
     "filePath" : "mjsunit/regress/regress-5902.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/regress/regress-5927.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
     "filePath" : "mjsunit/regress/regress-599414-array-concat-fast-path.js",
     "status" : "SKIP",
