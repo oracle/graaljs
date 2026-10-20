@@ -42,6 +42,8 @@ package com.oracle.truffle.js.test.runtime;
 
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArray;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArrayOffset;
+import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetHoleCount;
+import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetIndexOffset;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetUsedLength;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -478,6 +480,34 @@ public class DynamicArrayTest extends JSTest {
         assertSame(first, arrayObject.getArrayType().getElement(arrayObject, 12));
         assertSame(last, arrayObject.getArrayType().getElement(arrayObject, 13));
         assertNull(storage[4]);
+    }
+
+    @Test
+    public void testSetLengthBeforeIndexOffsetClearsHoleCount() {
+        for (String value : new String[]{"1", "1.5", "'x'", "{}"}) {
+            for (int length : new int[]{1, 1_000_000}) {
+                JSArrayObject arrayObject = (JSArrayObject) testHelper.runNoPolyglot(
+                                "globalThis.array = []; array[1000000] = " + value + "; array[1000002] = " + value + "; array");
+                assertEquals(1_000_000, arrayGetIndexOffset(arrayObject));
+                assertEquals(3, arrayGetUsedLength(arrayObject));
+                assertEquals(1, arrayGetHoleCount(arrayObject));
+
+                testHelper.runNoPolyglot("array.length = " + length);
+
+                assertEquals(length, arrayObject.getArrayType().length(arrayObject));
+                assertEquals(0, arrayGetUsedLength(arrayObject));
+                assertEquals(0, arrayGetHoleCount(arrayObject));
+                assertEquals(true, testHelper.runNoPolyglot("delete array[0]"));
+
+                // Reusing the storage must count only the newly created holes.
+                testHelper.runNoPolyglot("array[" + length + "] = " + value + "; array[" + (length + 2) + "] = " + value);
+                assertEquals(3, arrayGetUsedLength(arrayObject));
+                assertEquals(1, arrayGetHoleCount(arrayObject));
+                testHelper.runNoPolyglot("delete array[" + length + "]");
+                assertEquals(1, arrayGetUsedLength(arrayObject));
+                assertEquals(0, arrayGetHoleCount(arrayObject));
+            }
+        }
     }
 
     @Test

@@ -526,6 +526,9 @@ public abstract class AbstractWritableArray extends DynamicArray {
         arraySetLength(object, length);
         if (profile.contiguousZeroUsed(node, length <= indexOffset)) {
             arraySetUsedLength(object, 0);
+            if (isHolesType()) {
+                arraySetHoleCount(object, 0);
+            }
             setIndexOffset(object, length - 1);
             setArrayOffset(object, 0);
             long arrayCapacity = getArrayCapacity(object);
