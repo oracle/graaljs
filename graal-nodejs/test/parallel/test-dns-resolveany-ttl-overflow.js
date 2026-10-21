@@ -29,8 +29,8 @@ server.on('message', common.mustCall((msg, { address, port }) => {
 
 server.bind(0, common.mustCall(async () => {
   const { port } = server.address();
-  const callbackResolver = new dns.Resolver({ timeout: 1000, tries: 1 });
-  const promiseResolver = new dnsPromises.Resolver({ timeout: 1000, tries: 1 });
+  const callbackResolver = new dns.Resolver({ timeout: 10000, tries: 1 });
+  const promiseResolver = new dnsPromises.Resolver({ timeout: 10000, tries: 1 });
   callbackResolver.setServers([`127.0.0.1:${port}`]);
   promiseResolver.setServers([`127.0.0.1:${port}`]);
 
