@@ -1071,6 +1071,10 @@ The `'origin'` event is only emitted when using a secure TLS connection.
 <!-- YAML
 added: v8.4.0
 changes:
+  - version: v22.23.0
+    pr-url: https://github.com/nodejs/node/pull/58293
+    description: The `weight` option is now ignored, setting it will trigger a
+                 runtime warning.
   - version: v22.17.0
     pr-url: https://github.com/nodejs/node/pull/58313
     description: Following the deprecation of priority signaling as of RFC 9113,
@@ -1093,10 +1097,6 @@ changes:
     **Default:** `false`.
   * `parent` {number} Specifies the numeric identifier of a stream the newly
     created stream is dependent on.
-  * `weight` {number} Specifies the relative dependency of a stream in relation
-    to other streams with the same `parent`. The value is a number between `1`
-    and `256` (inclusive). This has been **deprecated** in [RFC 9113][], and
-    support for it will be removed in future versions of Node.js.
   * `waitForTrailers` {boolean} When `true`, the `Http2Stream` will emit the
     `'wantTrailers'` event after the final `DATA` frame has been sent.
   * `signal` {AbortSignal} An AbortSignal that may be used to abort an ongoing
@@ -1467,25 +1467,17 @@ numeric stream identifier.
 <!-- YAML
 added: v8.4.0
 deprecated: v22.17.0
+changes:
+  - version: v22.23.0
+    pr-url: https://github.com/nodejs/node/pull/58293
+    description: This method no longer sets the priority of the stream. Using it
+                 now triggers a runtime warning.
 -->
 
 > Stability: 0 - Deprecated: support for priority signaling has been deprecated
 > in the [RFC 9113][] and is no longer supported in Node.js.
 
-* `options` {Object}
-  * `exclusive` {boolean} When `true` and `parent` identifies a parent Stream,
-    this stream is made the sole direct dependency of the parent, with
-    all other existing dependents made a dependent of this stream. **Default:**
-    `false`.
-  * `parent` {number} Specifies the numeric identifier of a stream this stream
-    is dependent on.
-  * `weight` {number} Specifies the relative dependency of a stream in relation
-    to other streams with the same `parent`. The value is a number between `1`
-    and `256` (inclusive).
-  * `silent` {boolean} When `true`, changes the priority locally without
-    sending a `PRIORITY` frame to the connected peer.
-
-Updates the priority for this `Http2Stream` instance.
+Empty method, only there to maintain some backward compatibility.
 
 #### `http2stream.rstCode`
 
@@ -1582,6 +1574,10 @@ req.setTimeout(5000, () => req.close(NGHTTP2_CANCEL));
 <!-- YAML
 added: v8.4.0
 changes:
+  - version: v22.23.0
+    pr-url: https://github.com/nodejs/node/pull/58293
+    description: The `state.weight` property is now always set to 16 and
+                 `sumDependencyWeight` is always set to 0.
   - version: v22.17.0
     pr-url: https://github.com/nodejs/node/pull/58313
     description: Following the deprecation of priority signaling as of RFC 9113,
@@ -1599,13 +1595,8 @@ Provides miscellaneous information about the current state of the
   * `localClose` {number} `1` if this `Http2Stream` has been closed locally.
   * `remoteClose` {number} `1` if this `Http2Stream` has been closed
     remotely.
-  * `sumDependencyWeight` {number} The sum weight of all `Http2Stream`
-    instances that depend on this `Http2Stream` as specified using
-    `PRIORITY` frames. This has been **deprecated** in [RFC 9113][], and
-    support for it will be removed in future versions of Node.js.
-  * `weight` {number} The priority weight of this `Http2Stream`. This has been
-    **deprecated** in [RFC 9113][], and support for it will be removed in future
-    versions of Node.js.
+  * `sumDependencyWeight` {number} Legacy property, always set to `0`.
+  * `weight` {number} Legacy property, always set to `16`.
 
 A current state of this `Http2Stream`.
 
@@ -2854,9 +2845,10 @@ changes:
     This is a credit based limit, existing `Http2Stream`s may cause this
     limit to be exceeded, but new `Http2Stream` instances will be rejected
     while this limit is exceeded. The current number of `Http2Stream` sessions,
-    the current memory use of the header compression tables, current data
-    queued to be sent, and unacknowledged `PING` and `SETTINGS` frames are all
-    counted towards the current limit. **Default:** `10`.
+    the current memory use of the header compression tables, header blocks
+    retained by open streams, current data queued to be sent, and
+    unacknowledged `PING` and `SETTINGS` frames are all counted towards the
+    current limit. **Default:** `10`.
   * `maxHeaderListPairs` {number} Sets the maximum number of header entries.
     This is similar to [`server.maxHeadersCount`][] or
     [`request.maxHeadersCount`][] in the `node:http` module. The minimum value
@@ -3043,9 +3035,10 @@ changes:
     credit based limit, existing `Http2Stream`s may cause this
     limit to be exceeded, but new `Http2Stream` instances will be rejected
     while this limit is exceeded. The current number of `Http2Stream` sessions,
-    the current memory use of the header compression tables, current data
-    queued to be sent, and unacknowledged `PING` and `SETTINGS` frames are all
-    counted towards the current limit. **Default:** `10`.
+    the current memory use of the header compression tables, header blocks
+    retained by open streams, current data queued to be sent, and
+    unacknowledged `PING` and `SETTINGS` frames are all counted towards the
+    current limit. **Default:** `10`.
   * `maxHeaderListPairs` {number} Sets the maximum number of header entries.
     This is similar to [`server.maxHeadersCount`][] or
     [`request.maxHeadersCount`][] in the `node:http` module. The minimum value
@@ -3205,13 +3198,16 @@ changes:
     This is a credit based limit, existing `Http2Stream`s may cause this
     limit to be exceeded, but new `Http2Stream` instances will be rejected
     while this limit is exceeded. The current number of `Http2Stream` sessions,
-    the current memory use of the header compression tables, current data
-    queued to be sent, and unacknowledged `PING` and `SETTINGS` frames are all
-    counted towards the current limit. **Default:** `10`.
+    the current memory use of the header compression tables, header blocks
+    retained by open streams, current data queued to be sent, and
+    unacknowledged `PING` and `SETTINGS` frames are all counted towards the
+    current limit. **Default:** `10`.
   * `maxHeaderListPairs` {number} Sets the maximum number of header entries.
     This is similar to [`server.maxHeadersCount`][] or
     [`request.maxHeadersCount`][] in the `node:http` module. The minimum value
     is `1`. **Default:** `128`.
+  * `maxOriginSetSize` {number} Sets the maximum number of uniq origin the sever
+    can send via ORIGIN frames. **Default:** `128`.
   * `maxOutstandingPings` {number} Sets the maximum number of outstanding,
     unacknowledged pings. **Default:** `10`.
   * `maxReservedRemoteStreams` {number} Sets the maximum number of reserved push

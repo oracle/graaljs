@@ -1,5 +1,5 @@
 /*
- * Copyright 1995-2025 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 1995-2026 The OpenSSL Project Authors. All Rights Reserved.
  * Copyright (c) 2002, Oracle and/or its affiliates. All rights reserved
  * Copyright 2005 Nokia. All rights reserved.
  *
@@ -3412,22 +3412,21 @@ char *SSL_get_shared_ciphers(const SSL *s, char *buf, int size)
     int i;
     const SSL_CONNECTION *sc = SSL_CONNECTION_FROM_CONST_SSL(s);
 
-    if (sc == NULL)
+    if (size < 2 || buf == NULL)
         return NULL;
 
-    if (!sc->server
-        || sc->peer_ciphers == NULL
-        || size < 2)
+    buf[0] = '\0';
+
+    if (sc == NULL || !sc->server)
         return NULL;
 
     p = buf;
     clntsk = sc->peer_ciphers;
     srvrsk = SSL_get_ciphers(s);
-    if (clntsk == NULL || srvrsk == NULL)
-        return NULL;
 
-    if (sk_SSL_CIPHER_num(clntsk) == 0 || sk_SSL_CIPHER_num(srvrsk) == 0)
-        return NULL;
+    if (clntsk == NULL || sk_SSL_CIPHER_num(clntsk) == 0
+        || srvrsk == NULL || sk_SSL_CIPHER_num(srvrsk) == 0)
+        return buf;
 
     for (i = 0; i < sk_SSL_CIPHER_num(clntsk); i++) {
         int n;
@@ -3447,10 +3446,9 @@ char *SSL_get_shared_ciphers(const SSL *s, char *buf, int size)
     }
 
     /* No overlap */
-    if (p == buf)
-        return NULL;
+    if (p != buf)
+        p[-1] = '\0';
 
-    p[-1] = '\0';
     return buf;
 }
 
@@ -5228,6 +5226,31 @@ SSL *SSL_dup(SSL *s)
         || !dup_ca_names(&retsc->client_ca_names, sc->client_ca_names))
         goto err;
 
+    if (sc->server_cert_type != NULL) {
+        OPENSSL_free(retsc->server_cert_type);
+        retsc->server_cert_type = OPENSSL_memdup(sc->server_cert_type,
+            sc->server_cert_type_len);
+        if (retsc->server_cert_type == NULL)
+            goto err;
+        retsc->server_cert_type_len = sc->server_cert_type_len;
+    }
+
+    if (sc->client_cert_type != NULL) {
+        OPENSSL_free(retsc->client_cert_type);
+        retsc->client_cert_type = OPENSSL_memdup(sc->client_cert_type,
+            sc->client_cert_type_len);
+        if (retsc->client_cert_type == NULL)
+            goto err;
+        retsc->client_cert_type_len = sc->client_cert_type_len;
+    }
+
+#ifndef OPENSSL_NO_CT
+    retsc->ct_validation_callback = sc->ct_validation_callback;
+    retsc->ct_validation_callback_arg = sc->ct_validation_callback_arg;
+#endif
+
+    retsc->ext.status_type = sc->ext.status_type;
+
     return ret;
 
 err:
@@ -5462,6 +5485,7 @@ SSL_CTX *SSL_get_SSL_CTX(const SSL *ssl)
 SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX *ctx)
 {
     CERT *new_cert;
+    uint32_t *new_valid_flags = NULL;
     SSL_CONNECTION *sc = SSL_CONNECTION_FROM_SSL_ONLY(ssl);
 
     /* TODO(QUIC FUTURE): Add support for QUIC */
@@ -5486,6 +5510,34 @@ SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX *ctx)
      */
     if (!ossl_assert(sc->sid_ctx_length <= sizeof(sc->sid_ctx)))
         goto err;
+
+    /*
+     * |valid_flags| is sized from the number of signature algorithm slots of
+     * the SSL_CTX the connection was created from, so it must be resized for
+     * the replacement context.
+     *
+     * The built-in slots are indexed by the fixed SSL_PKEY_* constants and so
+     * mean the same thing in either context. They are preserved because they
+     * may already hold peer signature algorithm state which does not depend
+     * on the SSL_CTX. A provider slot index is instead a position in one
+     * context's provider list, so the same index denotes a different
+     * algorithm here and the old value cannot be carried over. They are reset
+     * rather than recomputed: recomputing them means recomputing the shared
+     * signature algorithms against the replacement context, which would let
+     * its preferences take effect on an established connection.
+     */
+    if (sc->s3.tmp.valid_flags != NULL) {
+        /* Should never happen: ssl_cert_new() enforces this */
+        if (!ossl_assert(new_cert->ssl_pkey_num >= SSL_PKEY_NUM))
+            goto err;
+        new_valid_flags = OPENSSL_zalloc(new_cert->ssl_pkey_num
+            * sizeof(*new_valid_flags));
+        if (new_valid_flags == NULL)
+            goto err;
+        memcpy(new_valid_flags, sc->s3.tmp.valid_flags,
+            SSL_PKEY_NUM * sizeof(*new_valid_flags));
+    }
+
     if (!SSL_CTX_up_ref(ctx))
         goto err;
 
@@ -5502,12 +5554,18 @@ SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX *ctx)
 
     ssl_cert_free(sc->cert);
     sc->cert = new_cert;
+    sc->ssl_pkey_num = new_cert->ssl_pkey_num;
+    if (new_valid_flags != NULL) {
+        OPENSSL_free(sc->s3.tmp.valid_flags);
+        sc->s3.tmp.valid_flags = new_valid_flags;
+    }
     SSL_CTX_free(ssl->ctx); /* decrement reference count */
     ssl->ctx = ctx;
 
     return ssl->ctx;
 
 err:
+    OPENSSL_free(new_valid_flags);
     ssl_cert_free(new_cert);
     return NULL;
 }
@@ -6982,8 +7040,10 @@ static int nss_keylog_int(const char *prefix,
      */
     prefix_len = strlen(prefix);
     out_len = prefix_len + (2 * parameter_1_len) + (2 * parameter_2_len) + 3;
-    if ((out = cursor = OPENSSL_malloc(out_len)) == NULL)
+    if ((out = cursor = OPENSSL_malloc(out_len)) == NULL) {
+        SSLfatal(sc, SSL_AD_INTERNAL_ERROR, ERR_R_CRYPTO_LIB);
         return 0;
+    }
 
     memcpy(cursor, prefix, prefix_len);
     cursor += prefix_len;

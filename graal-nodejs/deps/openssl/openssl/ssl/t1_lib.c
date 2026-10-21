@@ -1,5 +1,5 @@
 /*
- * Copyright 1995-2025 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 1995-2026 The OpenSSL Project Authors. All Rights Reserved.
  *
  * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
@@ -211,7 +211,7 @@ static const uint16_t suiteb_curves[] = {
 
 /* Group list string of the built-in pseudo group DEFAULT_SUITE_B */
 #define SUITE_B_GROUP_NAME "DEFAULT_SUITE_B"
-#define SUITE_B_GROUP_LIST "secp256r1:secp384r1",
+#define SUITE_B_GROUP_LIST "?secp256r1:?secp384r1",
 
 struct provider_ctx_data_st {
     SSL_CTX *ctx;
@@ -1237,15 +1237,20 @@ typedef struct {
     size_t gidmax; /* The memory allocation chunk size for the group IDs */
     size_t gidcnt; /* Number of groups */
     uint16_t *gid_arr; /* The IDs of the supported groups (flat list) */
-    size_t tplmax; /* The memory allocation chunk size for the tuple counters */
-    size_t tplcnt; /* Number of tuples */
-    size_t *tuplcnt_arr; /* The number of groups inside a tuple */
+    size_t tplmax; /* Allocated length of tuplcnt_arr */
+    /*
+     * Number of *closed* (fully parsed) tuples.  During parsing there is
+     * always one additional active tuple being built, stored at index tplcnt.
+     * tuplcnt_arr therefore always needs at least tplcnt + 1 allocated slots.
+     */
+    size_t tplcnt;
+    size_t *tuplcnt_arr; /* Per-tuple group counts; [0..tplcnt-1] closed, [tplcnt] active */
     size_t ksidmax; /* The memory allocation chunk size */
     size_t ksidcnt; /* Number of key shares */
     uint16_t *ksid_arr; /* The IDs of the key share groups (flat list) */
     /* Variable to keep state between execution of callback or helper functions */
-    size_t tuple_mode; /* Keeps track whether tuple_cb called from 'the top' or from gid_cb */
-    int ignore_unknown_default; /* Flag such that unknown groups for DEFAULT[_XYZ] are ignored */
+    int inner; /* Are we expanding a DEFAULT list */
+    int first; /* First tuple of possibly nested expansion? */
 } gid_cb_st;
 
 /* Forward declaration of tuple callback function */
@@ -1264,7 +1269,7 @@ static int gid_cb(const char *elem, int len, void *arg)
     int found_group = 0;
     char etmp[GROUP_NAME_BUFFER_LENGTH];
     int retval = 1; /* We assume success */
-    char *current_prefix;
+    const char *current_prefix;
     int ignore_unknown = 0;
     int add_keyshare = 0;
     int remove_group = 0;
@@ -1320,16 +1325,16 @@ static int gid_cb(const char *elem, int len, void *arg)
             for (i = 0; i < OSSL_NELEM(default_group_strings); i++) {
                 if ((size_t)len == (strlen(default_group_strings[i].list_name))
                     && OPENSSL_strncasecmp(default_group_strings[i].list_name, elem, len) == 0) {
+                    int saved_first;
+
                     /*
                      * We're asked to insert an entire list of groups from a
                      * DEFAULT[_XYZ] 'pseudo group' which we do by
                      * recursively calling this function (indirectly via
                      * CONF_parse_list and tuple_cb); essentially, we treat a DEFAULT
                      * group string like a tuple which is appended to the current tuple
-                     * rather then starting a new tuple. Variable tuple_mode is the flag which
-                     * controls append tuple vs start new tuple.
+                     * rather then starting a new tuple.
                      */
-
                     if (ignore_unknown || remove_group)
                         return -1; /* removal or ignore not allowed here -> syntax error */
 
@@ -1350,15 +1355,17 @@ static int gid_cb(const char *elem, int len, void *arg)
                         default_group_strings[i].group_string,
                         strlen(default_group_strings[i].group_string));
                     restored_default_group_string[strlen(default_group_strings[i].group_string) + restored_prefix_index] = '\0';
-                    /* We execute the recursive call */
-                    garg->ignore_unknown_default = 1; /* We ignore unknown groups for DEFAULT_XYZ */
-                    /* we enforce group mode (= append tuple) for DEFAULT_XYZ group lists */
-                    garg->tuple_mode = 0;
-                    /* We use the tuple_cb callback to process the pseudo group tuple */
+                    /*
+                     * Append first tuple of result to current tuple, and don't
+                     * terminate the last tuple until we return to a top-level
+                     * tuple_cb.
+                     */
+                    saved_first = garg->first;
+                    garg->inner = garg->first = 1;
                     retval = CONF_parse_list(restored_default_group_string,
                         TUPLE_DELIMITER_CHARACTER, 1, tuple_cb, garg);
-                    garg->tuple_mode = 1; /* next call to tuple_cb will again start new tuple */
-                    garg->ignore_unknown_default = 0; /* reset to original value */
+                    garg->inner = 0;
+                    garg->first = saved_first;
                     /* We don't need the \0-terminated string anymore */
                     OPENSSL_free(restored_default_group_string);
 
@@ -1377,9 +1384,6 @@ static int gid_cb(const char *elem, int len, void *arg)
 
     if (len == 0)
         return -1; /* Seems we have prefxes without a group name -> syntax error */
-
-    if (garg->ignore_unknown_default == 1) /* Always ignore unknown groups for DEFAULT[_XYZ] */
-        ignore_unknown = 1;
 
     /* Memory management in case more groups are present compared to initial allocation */
     if (garg->gidcnt == garg->gidmax) {
@@ -1514,13 +1518,64 @@ static int gid_cb(const char *elem, int len, void *arg)
         /* and update the book keeping for the number of groups in current tuple */
         garg->tuplcnt_arr[garg->tplcnt]++;
 
-        /* We memorize if needed that we want to add a key share for the current group */
+        /* We want to add a key share for the current group */
         if (add_keyshare)
             garg->ksid_arr[garg->ksidcnt++] = gid;
     }
 
 done:
     return retval;
+}
+
+/*
+ * Ensure tuplcnt_arr has room for at least tplcnt + 2 entries so that
+ * close_tuple() can safely increment tplcnt and write the new active-tuple
+ * slot at index tplcnt + 1.  Must be called before that increment.
+ */
+static int grow_tuples(gid_cb_st *garg)
+{
+    static size_t max_tplcnt = (~(size_t)0) / sizeof(size_t);
+
+    /*
+     * Ensure we have room for at least one additional tuple.
+     * (tplcnt + 1 are in active use).
+     */
+    if (garg->tplcnt + 1 == garg->tplmax) {
+        size_t newcnt = garg->tplmax + GROUPLIST_INCREMENT;
+        size_t newsz = newcnt * sizeof(size_t);
+        size_t *tmp;
+
+        if (newsz > max_tplcnt
+            || (tmp = OPENSSL_realloc(garg->tuplcnt_arr, newsz)) == NULL)
+            return 0;
+
+        garg->tplmax = newcnt;
+        garg->tuplcnt_arr = tmp;
+    }
+    return 1;
+}
+
+/*
+ * Finalise the active tuple (at index tplcnt) and open a fresh one.
+ * tplcnt is the count of closed tuples; the active tuple lives at tplcnt
+ * throughout parsing.  After this call tplcnt is incremented and the new
+ * active tuple at the updated index is initialised to 0.
+ * Empty tuples (gidcnt == 0) are discarded without advancing tplcnt.
+ */
+static int close_tuple(gid_cb_st *garg)
+{
+    size_t gidcnt = garg->tuplcnt_arr[garg->tplcnt];
+
+    if (gidcnt == 0)
+        return 1; /* Discard empty tuple; no need to open a new slot */
+
+    /* Grow before the increment: the new active slot will be at tplcnt + 1 */
+    if (!grow_tuples(garg))
+        return 0;
+
+    /* Promote closed tuple and initialise the new active tuple slot */
+    garg->tuplcnt_arr[++garg->tplcnt] = 0;
+    return 1;
 }
 
 /* Extract and process a tuple of groups */
@@ -1536,16 +1591,9 @@ static int tuple_cb(const char *tuple, int len, void *arg)
         return 0;
     }
 
-    /* Memory management for tuples */
-    if (garg->tplcnt == garg->tplmax) {
-        size_t *tmp = OPENSSL_realloc(garg->tuplcnt_arr,
-            (garg->tplmax + GROUPLIST_INCREMENT) * sizeof(*garg->tuplcnt_arr));
-
-        if (tmp == NULL)
-            return 0;
-        garg->tplmax += GROUPLIST_INCREMENT;
-        garg->tuplcnt_arr = tmp;
-    }
+    if (garg->inner && !garg->first && !close_tuple(garg))
+        return 0;
+    garg->first = 0;
 
     /* Convert to \0-terminated string */
     restored_tuple_string = OPENSSL_malloc((len + 1 /* \0 */) * sizeof(char));
@@ -1560,15 +1608,8 @@ static int tuple_cb(const char *tuple, int len, void *arg)
     /* We don't need the \o-terminated string anymore */
     OPENSSL_free(restored_tuple_string);
 
-    if (garg->tuplcnt_arr[garg->tplcnt] > 0) { /* Some valid groups are present in current tuple... */
-        if (garg->tuple_mode) {
-            /* We 'close' the tuple */
-            garg->tplcnt++;
-            garg->tuplcnt_arr[garg->tplcnt] = 0; /* Next tuple is initialized to be empty */
-            garg->tuple_mode = 1; /* next call will start a tuple (unless overridden in gid_cb) */
-        }
-    }
-
+    if (!garg->inner && !close_tuple(garg))
+        return 0;
     return retval;
 }
 
@@ -1599,8 +1640,6 @@ int tls1_set_groups_list(SSL_CTX *ctx,
     }
 
     memset(&gcb, 0, sizeof(gcb));
-    gcb.tuple_mode = 1; /* We prepare to collect the first tuple */
-    gcb.ignore_unknown_default = 0;
     gcb.gidmax = GROUPLIST_INCREMENT;
     gcb.tplmax = GROUPLIST_INCREMENT;
     gcb.ksidmax = GROUPLIST_INCREMENT;
@@ -1778,53 +1817,6 @@ void tls1_get_formatlist(SSL_CONNECTION *s, const unsigned char **pformats,
     }
 }
 
-/* Check a key is compatible with compression extension */
-static int tls1_check_pkey_comp(SSL_CONNECTION *s, EVP_PKEY *pkey)
-{
-    unsigned char comp_id;
-    size_t i;
-    int point_conv;
-
-    /* If not an EC key nothing to check */
-    if (!EVP_PKEY_is_a(pkey, "EC"))
-        return 1;
-
-    /* Get required compression id */
-    point_conv = EVP_PKEY_get_ec_point_conv_form(pkey);
-    if (point_conv == 0)
-        return 0;
-    if (point_conv == POINT_CONVERSION_UNCOMPRESSED) {
-        comp_id = TLSEXT_ECPOINTFORMAT_uncompressed;
-    } else if (SSL_CONNECTION_IS_TLS13(s)) {
-        /*
-         * ec_point_formats extension is not used in TLSv1.3 so we ignore
-         * this check.
-         */
-        return 1;
-    } else {
-        int field_type = EVP_PKEY_get_field_type(pkey);
-
-        if (field_type == NID_X9_62_prime_field)
-            comp_id = TLSEXT_ECPOINTFORMAT_ansiX962_compressed_prime;
-        else if (field_type == NID_X9_62_characteristic_two_field)
-            comp_id = TLSEXT_ECPOINTFORMAT_ansiX962_compressed_char2;
-        else
-            return 0;
-    }
-    /*
-     * If point formats extension present check it, otherwise everything is
-     * supported (see RFC4492).
-     */
-    if (s->ext.peer_ecpointformats == NULL)
-        return 1;
-
-    for (i = 0; i < s->ext.peer_ecpointformats_len; i++) {
-        if (s->ext.peer_ecpointformats[i] == comp_id)
-            return 1;
-    }
-    return 0;
-}
-
 /* Return group id of a key */
 static uint16_t tls1_get_group_id(EVP_PKEY *pkey)
 {
@@ -1849,9 +1841,6 @@ static int tls1_check_cert_param(SSL_CONNECTION *s, X509 *x, int check_ee_md)
     /* If not EC nothing to do */
     if (!EVP_PKEY_is_a(pkey, "EC"))
         return 1;
-    /* Check compression */
-    if (!tls1_check_pkey_comp(s, pkey))
-        return 0;
     group_id = tls1_get_group_id(pkey);
     /*
      * For a server we allow the certificate to not be in our list of supported
@@ -2748,13 +2737,6 @@ int tls12_check_peer_sigalg(SSL_CONNECTION *s, uint16_t sig, EVP_PKEY *pkey)
     }
 
     if (pkeyid == EVP_PKEY_EC) {
-
-        /* Check point compression is permitted */
-        if (!tls1_check_pkey_comp(s, pkey)) {
-            SSLfatal(s, SSL_AD_ILLEGAL_PARAMETER,
-                SSL_R_ILLEGAL_POINT_COMPRESSION);
-            return 0;
-        }
 
         /* For TLS 1.3 or Suite B check curve matches signature algorithm */
         if (SSL_CONNECTION_IS_TLS13(s) || tls1_suiteb(s)) {
@@ -4018,8 +4000,6 @@ int tls1_check_chain(SSL_CONNECTION *s, X509 *x, EVP_PKEY *pk,
         chain = cpk->chain;
         strict_mode = c->cert_flags & SSL_CERT_FLAGS_CHECK_TLS_STRICT;
         if (tls12_rpk_and_privkey(s, idx)) {
-            if (EVP_PKEY_is_a(pk, "EC") && !tls1_check_pkey_comp(s, pk))
-                return 0;
             *pvalid = rv = CERT_PKEY_RPK;
             return rv;
         }
@@ -4362,51 +4342,29 @@ static int ssl_security_cert_key(SSL_CONNECTION *s, SSL_CTX *ctx, X509 *x,
         return ssl_ctx_security(ctx, op, secbits, 0, x);
 }
 
-static int ssl_security_cert_sig(SSL_CONNECTION *s, SSL_CTX *ctx, X509 *x,
-    int op)
+int ssl_security_cert(SSL_CONNECTION *s, SSL_CTX *ctx, X509 *x, int is_ee)
 {
-    /* Lookup signature algorithm digest */
-    int secbits, nid, pknid;
-
-    /* Don't check signature if self signed */
-    if ((X509_get_extension_flags(x) & EXFLAG_SS) != 0)
-        return 1;
-    if (!X509_get_signature_info(x, &nid, &pknid, &secbits, NULL))
-        secbits = -1;
-    /* If digest NID not defined use signature NID */
-    if (nid == NID_undef)
-        nid = pknid;
-    if (s != NULL)
-        return ssl_security(s, op, secbits, nid, x);
-    else
-        return ssl_ctx_security(ctx, op, secbits, nid, x);
-}
-
-int ssl_security_cert(SSL_CONNECTION *s, SSL_CTX *ctx, X509 *x, int vfy,
-    int is_ee)
-{
-    if (vfy)
-        vfy = SSL_SECOP_PEER;
     if (is_ee) {
-        if (!ssl_security_cert_key(s, ctx, x, SSL_SECOP_EE_KEY | vfy))
+        if (!ssl_security_cert_key(s, ctx, x, SSL_SECOP_EE_KEY))
             return SSL_R_EE_KEY_TOO_SMALL;
     } else {
-        if (!ssl_security_cert_key(s, ctx, x, SSL_SECOP_CA_KEY | vfy))
+        if (!ssl_security_cert_key(s, ctx, x, SSL_SECOP_CA_KEY))
             return SSL_R_CA_KEY_TOO_SMALL;
     }
-    if (!ssl_security_cert_sig(s, ctx, x, SSL_SECOP_CA_MD | vfy))
-        return SSL_R_CA_MD_TOO_WEAK;
     return 1;
 }
 
 /*
- * Check security of a chain, if |sk| includes the end entity certificate then
- * |x| is NULL. If |vfy| is 1 then we are verifying a peer chain and not sending
- * one to the peer. Return values: 1 if ok otherwise error code to use
+ * Call ssl_security_check() on all certificates in a stack.
+ * If |x| is non NULL it is checked first, before checking the
+ * certificates in the stack.
+ *
+ * Return values: 1 if ok otherwise the error code from the first
+ * failing ssl_security_check().;
  */
 
 int ssl_security_cert_chain(SSL_CONNECTION *s, STACK_OF(X509) *sk,
-    X509 *x, int vfy)
+    X509 *x)
 {
     int rv, start_idx, i;
 
@@ -4418,13 +4376,13 @@ int ssl_security_cert_chain(SSL_CONNECTION *s, STACK_OF(X509) *sk,
     } else
         start_idx = 0;
 
-    rv = ssl_security_cert(s, NULL, x, vfy, 1);
+    rv = ssl_security_cert(s, NULL, x, 1);
     if (rv != 1)
         return rv;
 
     for (i = start_idx; i < sk_X509_num(sk); i++) {
         x = sk_X509_value(sk, i);
-        rv = ssl_security_cert(s, NULL, x, vfy, 0);
+        rv = ssl_security_cert(s, NULL, x, 0);
         if (rv != 1)
             return rv;
     }
@@ -4482,6 +4440,20 @@ static int check_cert_usable(SSL_CONNECTION *s, const SIGALG_LOOKUP *sig,
         mdname,
         sctx->propq);
     if (supported <= 0)
+        return 0;
+
+    /*
+     * When RPK is negotiated there are no certificate signatures to
+     * constrain, and there may not even be a certificate configured.
+     */
+    if (TLSEXT_cert_type_rpk == (s->server ? s->ext.server_cert_type : s->ext.client_cert_type))
+        return 1;
+
+    /*
+     * RPK was enabled, adding candidate private-key-only slots, but was not
+     * negotiated, so the key-only slot is not usable.
+     */
+    if (x == NULL)
         return 0;
 
     /*

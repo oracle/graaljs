@@ -1,5 +1,5 @@
 /*
- * Copyright 2005-2025 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 2005-2026 The OpenSSL Project Authors. All Rights Reserved.
  *
  * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
@@ -1177,7 +1177,11 @@ int dtls1_buffer_message(SSL_CONNECTION *s, int is_ccs)
         return 0;
     }
 
-    pqueue_insert(s->d1->sent_messages, item);
+    if (pqueue_insert(s->d1->sent_messages, item) == NULL) {
+        dtls1_hm_fragment_free(frag);
+        pitem_free(item);
+        return 0;
+    }
     return 1;
 }
 
@@ -1214,6 +1218,8 @@ int dtls1_retransmit_message(SSL_CONNECTION *s, unsigned short seq, int *found)
     memcpy(s->init_buf->data, frag->fragment,
         frag->msg_header.msg_len + header_length);
     s->init_num = frag->msg_header.msg_len + header_length;
+    /* Always retransmit from the start, not wherever init_off was left */
+    s->init_off = 0;
 
     dtls1_set_message_header_int(s, frag->msg_header.type,
         frag->msg_header.msg_len,

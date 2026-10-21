@@ -1,5 +1,5 @@
 /*
- * Copyright 2023-2024 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 2023-2026 The OpenSSL Project Authors. All Rights Reserved.
  *
  * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
@@ -168,6 +168,11 @@ void ossl_quic_srtm_free(QUIC_SRTM *srtm)
 
     lh_SRTM_ITEM_free(srtm->items_rev);
     if (srtm->items_fwd != NULL) {
+        /*
+         * We don't need to call lh_SRTM_ITEM_set_down_load(..., 0)
+         * here because srtm_free_each() callback for _doall() does
+         * not call to lh_SRTIM_ITEM_delete().
+         */
         lh_SRTM_ITEM_doall(srtm->items_fwd, srtm_free_each);
         lh_SRTM_ITEM_free(srtm->items_fwd);
     }
@@ -480,8 +485,8 @@ static void check_mark(SRTM_ITEM *item, void *arg)
 {
     struct check_args *arg_ = arg;
     uint32_t token = arg_->token;
-    uint64_t prev_seq_num = 0;
-    void *prev_opaque = NULL;
+    ossl_unused uint64_t prev_seq_num = 0;
+    ossl_unused void *prev_opaque = NULL;
     int have_prev = 0;
 
     assert(item != NULL);
@@ -509,7 +514,7 @@ static void check_mark(SRTM_ITEM *item, void *arg)
 static void check_count(SRTM_ITEM *item, void *arg)
 {
     struct check_args *arg_ = arg;
-    uint32_t token = arg_->token;
+    ossl_unused uint32_t token = arg_->token;
 
     assert(item != NULL);
 
@@ -530,7 +535,8 @@ void ossl_quic_srtm_check(const QUIC_SRTM *srtm)
 {
 #ifdef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
     struct check_args args = { 0 };
-    size_t tokens_expected, tokens_expected_old;
+    size_t tokens_expected;
+    ossl_unused size_t tokens_expected_old;
 
     args.token = token_next;
     ++token_next;

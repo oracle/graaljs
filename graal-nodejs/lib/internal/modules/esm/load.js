@@ -10,7 +10,7 @@ const {
 const { defaultGetFormat } = require('internal/modules/esm/get_format');
 const { validateAttributes, emitImportAssertionWarning } = require('internal/modules/esm/assert');
 const { getOptionValue } = require('internal/options');
-const { readFileSync } = require('fs');
+const fs = require('fs');
 
 const defaultType =
   getOptionValue('--experimental-default-type');
@@ -38,7 +38,11 @@ function getSourceSync(url, context) {
   const responseURL = href;
   let source;
   if (protocol === 'file:') {
-    source = readFileSync(url);
+    // If you are reading this code to figure out how to patch Node.js module loading
+    // behavior - DO NOT depend on the patchability in new code: Node.js
+    // internals may stop going through the JavaScript fs module entirely.
+    // Prefer module.registerHooks() or other more formal fs hooks released in the future.
+    source = fs.readFileSync(url);
   } else if (protocol === 'data:') {
     const result = dataURLProcessor(url);
     if (result === 'failure') {
@@ -145,15 +149,26 @@ function defaultLoadSync(url, context = kEmptyObject) {
 
   throwIfUnsupportedURLScheme(urlInstance, false);
 
+  let shouldBeReloadedByCJSLoader = false;
   if (urlInstance.protocol === 'node:') {
     source = null;
-  } else if (source == null) {
-    ({ responseURL, source } = getSourceSync(urlInstance, context));
-    context.source = source;
+    format ??= 'builtin';
+  } else if (format === 'addon') {
+    // Skip loading addon file content. It must be loaded with dlopen from file system.
+    source = null;
+  } else {
+    if (source == null) {
+      ({ responseURL, source } = getSourceSync(urlInstance, context));
+      context = { __proto__: context, source };
+    }
+
+    // Now that we have the source for the module, run `defaultGetFormat` to detect its format.
+    format ??= defaultGetFormat(urlInstance, context);
+
+    // For backward compatibility reasons, we need to let go through Module._load
+    // again.
+    shouldBeReloadedByCJSLoader = (format === 'commonjs');
   }
-
-  format ??= defaultGetFormat(urlInstance, context);
-
   validateAttributes(url, format, importAttributes);
 
   return {
@@ -161,6 +176,7 @@ function defaultLoadSync(url, context = kEmptyObject) {
     format,
     responseURL,
     source,
+    shouldBeReloadedByCJSLoader,
   };
 }
 

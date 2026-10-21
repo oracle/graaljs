@@ -1,5 +1,5 @@
 /*
- * Copyright 1995-2025 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 1995-2026 The OpenSSL Project Authors. All Rights Reserved.
  *
  * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
@@ -48,7 +48,8 @@ long PKCS7_ctrl(PKCS7 *p7, int cmd, long larg, char *parg)
         break;
     case PKCS7_OP_GET_DETACHED_SIGNATURE:
         if (nid == NID_pkcs7_signed) {
-            if (p7->d.sign == NULL || p7->d.sign->contents->d.ptr == NULL)
+            if (p7->d.sign == NULL || p7->d.sign->contents == NULL
+                || p7->d.sign->contents->d.ptr == NULL)
                 ret = 1;
             else
                 ret = 0;
@@ -536,7 +537,7 @@ int PKCS7_set_digest(PKCS7 *p7, const EVP_MD *md)
     }
 
     ERR_raise(ERR_LIB_PKCS7, PKCS7_R_WRONG_CONTENT_TYPE);
-    return 1;
+    return 0;
 }
 
 STACK_OF(PKCS7_SIGNER_INFO) *PKCS7_get_signer_info(PKCS7 *p7)
@@ -726,6 +727,10 @@ int PKCS7_stream(unsigned char ***boundary, PKCS7 *p7)
         break;
 
     case NID_pkcs7_signedAndEnveloped:
+        if (p7->d.signed_and_enveloped == NULL || p7->d.signed_and_enveloped->enc_data == NULL) {
+            ERR_raise(ERR_LIB_PKCS7, PKCS7_R_NO_CONTENT);
+            break;
+        }
         os = p7->d.signed_and_enveloped->enc_data->enc_data;
         if (os == NULL) {
             os = ASN1_OCTET_STRING_new();
@@ -734,6 +739,10 @@ int PKCS7_stream(unsigned char ***boundary, PKCS7 *p7)
         break;
 
     case NID_pkcs7_enveloped:
+        if (p7->d.enveloped == NULL || p7->d.enveloped->enc_data == NULL) {
+            ERR_raise(ERR_LIB_PKCS7, PKCS7_R_NO_CONTENT);
+            break;
+        }
         os = p7->d.enveloped->enc_data->enc_data;
         if (os == NULL) {
             os = ASN1_OCTET_STRING_new();
@@ -742,7 +751,17 @@ int PKCS7_stream(unsigned char ***boundary, PKCS7 *p7)
         break;
 
     case NID_pkcs7_signed:
-        os = p7->d.sign->contents->d.data;
+        if (p7->d.sign == NULL || p7->d.sign->contents == NULL) {
+            ERR_raise(ERR_LIB_PKCS7, PKCS7_R_NO_CONTENT);
+            break;
+        }
+
+        if (!PKCS7_type_is_data(p7->d.sign->contents)) {
+            ERR_raise(ERR_LIB_PKCS7, PKCS7_R_UNSUPPORTED_CONTENT_TYPE);
+            break;
+        }
+
+        os = PKCS7_get_octet_string(p7->d.sign->contents);
         break;
 
     default:

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2025 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 2020-2026 The OpenSSL Project Authors. All Rights Reserved.
  *
  * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
@@ -104,6 +104,8 @@ struct file_ctx_st {
 
     /* Expected object type.  May be unspecified */
     int expected_type;
+    /* Fatal error occurred. We should indicate EOF. */
+    int fatal_error;
 };
 
 static void free_file_ctx(struct file_ctx_st *ctx)
@@ -559,14 +561,17 @@ static int file_load_file(struct file_ctx_st *ctx,
 
     /* Setup the decoders (one time shot per session */
 
-    if (!file_setup_decoders(ctx))
+    if (!file_setup_decoders(ctx)) {
+        ctx->fatal_error = 1;
         return 0;
+    }
 
     /* Setup for this object */
 
     data.object_cb = object_cb;
     data.object_cbarg = object_cbarg;
-    OSSL_DECODER_CTX_set_construct_data(ctx->_.file.decoderctx, &data);
+    if (!OSSL_DECODER_CTX_set_construct_data(ctx->_.file.decoderctx, &data))
+        return 0;
     OSSL_DECODER_CTX_set_passphrase_cb(ctx->_.file.decoderctx, pw_cb, pw_cbarg);
 
     /* Launch */
@@ -757,6 +762,9 @@ static int file_load(void *loaderctx,
 static int file_eof(void *loaderctx)
 {
     struct file_ctx_st *ctx = loaderctx;
+
+    if (ctx->fatal_error)
+        return 1;
 
     switch (ctx->type) {
     case IS_DIR:

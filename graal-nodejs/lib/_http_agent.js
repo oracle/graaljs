@@ -43,12 +43,22 @@ const {
   filterEnvForProxies,
 } = require('internal/http');
 const { AsyncResource } = require('async_hooks');
-const { async_id_symbol } = require('internal/async_hooks').symbols;
+const {
+  async_id_symbol,
+  owner_symbol,
+} = require('internal/async_hooks').symbols;
 const {
   getLazy,
   kEmptyObject,
   once,
 } = require('internal/util');
+const {
+  onStreamRead,
+} = require('internal/stream_base_commons');
+const {
+  kReadBytesOrError,
+  streamBaseState,
+} = internalBinding('stream_wrap');
 const {
   validateNumber,
   validateOneOf,
@@ -60,6 +70,7 @@ const { getOptionValue } = require('internal/options');
 const kOnKeylog = Symbol('onkeylog');
 const kRequestOptions = Symbol('requestOptions');
 const kRequestAsyncResource = Symbol('requestAsyncResource');
+const kFreeSocketDataGuard = Symbol('freeSocketDataGuard');
 
 // New Agent code.
 
@@ -85,6 +96,70 @@ function freeSocketErrorListener(err) {
   debug('SOCKET ERROR on FREE socket:', err.message, err.stack);
   socket.destroy();
   socket.emit('agentRemove');
+}
+
+// Guard against unsolicited data arriving while a socket is idle in the
+// freeSockets pool.  When the HTTPParser is detached the data would sit
+// in the TCP buffer and be silently consumed as the response for the
+// *next* request that reuses the socket (response-queue poisoning).
+// See: https://hackerone.com/reports/3582376
+function freeSocketOnReadGuard() {
+  const nread = streamBaseState[kReadBytesOrError];
+  if (nread === 0) return;
+
+  debug('READ on FREE socket - destroying poisoned socket');
+  this[owner_symbol].destroy();
+}
+
+function installFreeSocketDataGuard(socket) {
+  if (socket.readableLength > 0) {
+    debug('BUFFERED DATA on FREE socket - destroying poisoned socket');
+    socket.destroy();
+    return;
+  }
+
+  if (socket.connecting) {
+    socket[kFreeSocketDataGuard] = function onConnect() {
+      socket[kFreeSocketDataGuard] = null;
+      installFreeSocketDataGuard(socket);
+    };
+    socket.once('connect', socket[kFreeSocketDataGuard]);
+    return;
+  }
+
+  const handle = socket._handle;
+  if (handle) {
+    handle.onread = freeSocketOnReadGuard;
+    if (!handle.reading) {
+      handle.reading = true;
+      const err = handle.readStart();
+      if (err) socket.destroy();
+    }
+  }
+}
+
+// The data guard only runs when the event loop polls for I/O. Data that
+// reached the OS socket buffer after the last poll has not been seen by it
+// yet, so check for it directly before handing an idle socket to a request.
+function hasPendingRead(socket) {
+  // A socket that is still connecting has nothing to read yet, and a pending
+  // connect error must be reported to the request rather than swallowed here.
+  if (socket.connecting) return false;
+  const handle = socket._handle;
+  return typeof handle?.hasPendingRead === 'function' &&
+    handle.hasPendingRead() === true;
+}
+
+function removeFreeSocketDataGuard(socket) {
+  if (socket[kFreeSocketDataGuard]) {
+    socket.removeListener('connect', socket[kFreeSocketDataGuard]);
+    socket[kFreeSocketDataGuard] = null;
+  }
+
+  const handle = socket._handle;
+  if (handle?.onread === freeSocketOnReadGuard) {
+    handle.onread = onStreamRead;
+  }
 }
 
 function Agent(options) {
@@ -150,6 +225,12 @@ function Agent(options) {
 
     const requests = this.requests[name];
     if (requests?.length) {
+      if (hasPendingRead(socket)) {
+        // onClose() will create a new socket for the pending request.
+        debug('PENDING DATA on released socket - destroying');
+        socket.destroy();
+        return;
+      }
       const req = requests.shift();
       const reqAsyncRes = req[kRequestAsyncResource];
       if (reqAsyncRes) {
@@ -196,6 +277,7 @@ function Agent(options) {
     this.removeSocket(socket, options);
 
     socket.once('error', freeSocketErrorListener);
+    installFreeSocketDataGuard(socket);
     freeSockets.push(socket);
   });
 
@@ -319,6 +401,13 @@ Agent.prototype.addRequest = function addRequest(req, options, port/* legacy */,
     socket = this.scheduling === 'fifo' ?
       freeSockets.shift() :
       freeSockets.pop();
+    while (socket && hasPendingRead(socket)) {
+      debug('PENDING DATA on FREE socket - destroying poisoned socket');
+      socket.destroy();
+      socket = this.scheduling === 'fifo' ?
+        freeSockets.shift() :
+        freeSockets.pop();
+    }
     if (!freeSockets.length)
       delete this.freeSockets[name];
   }
@@ -587,6 +676,7 @@ Agent.prototype.keepSocketAlive = function keepSocketAlive(socket) {
 Agent.prototype.reuseSocket = function reuseSocket(socket, req) {
   debug('have free socket');
   socket.removeListener('error', freeSocketErrorListener);
+  removeFreeSocketDataGuard(socket);
   req.reusedSocket = true;
   socket.ref();
 };

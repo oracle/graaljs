@@ -1137,6 +1137,11 @@ static ares_status_t ares_uri_parse_userinfo(ares_uri_t *uri, ares_buf_t *buf)
 
     /* Consume : */
     ares_buf_consume(buf, 1);
+  } else {
+    /* The ':' is absent or belongs to the host:port that follows the '@', but
+     * the search above has already consumed up to it, so rewind to the start
+     * of the userinfo */
+    ares_buf_tag_rollback(buf);
   }
 
   ares_buf_tag(buf);
@@ -1174,6 +1179,7 @@ static ares_status_t ares_uri_parse_hostport(ares_uri_t *uri, ares_buf_t *buf)
   unsigned char b;
   char          host[256];
   char          port[6];
+  unsigned short parsed_port;
   size_t        len;
   ares_status_t status;
 
@@ -1242,11 +1248,11 @@ static ares_status_t ares_uri_parse_hostport(ares_uri_t *uri, ares_buf_t *buf)
   }
   port[len] = 0;
 
-  if (!ares_str_isnum(port)) {
+  if (!ares_parse_port(port, &parsed_port, ARES_TRUE)) {
     return ARES_EBADSTR;
   }
 
-  status = ares_uri_set_port(uri, (unsigned short)atoi(port));
+  status = ares_uri_set_port(uri, parsed_port);
   if (status != ARES_SUCCESS) {
     return status;
   }

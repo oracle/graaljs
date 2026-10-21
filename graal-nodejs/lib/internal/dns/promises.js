@@ -71,6 +71,7 @@ const {
   validateOneOf,
   validatePort,
   validateString,
+  validateStringWithoutNullBytes,
 } = require('internal/validators');
 
 const kPerfHooksDnsLookupContext = Symbol('kPerfHooksDnsLookupContext');
@@ -201,7 +202,7 @@ function lookup(hostname, options) {
 
   // Parse arguments
   if (hostname) {
-    validateString(hostname, 'hostname');
+    validateStringWithoutNullBytes(hostname, 'hostname');
   }
 
   if (typeof options === 'number') {
@@ -335,7 +336,7 @@ function createResolverPromise(resolver, bindingName, hostname, ttl) {
 
 function resolver(bindingName) {
   function query(name, options) {
-    validateString(name, 'name');
+    validateStringWithoutNullBytes(name, 'name');
 
     const ttl = !!(options?.ttl);
     return createResolverPromise(this, bindingName, name, ttl);

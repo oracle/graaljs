@@ -820,6 +820,21 @@ void Http2Session::Close(uint32_t code, bool socket_closed) {
     return;
   set_closing();
 
+  // Do not flush GOAWAY from inside nghttp2_session_mem_recv() callbacks.
+  // ConsumeHTTP2Data() finishes the close once mem_recv returns.
+  if (is_receiving()) {
+    set_close_pending();
+    pending_close_code_ = code;
+    pending_close_socket_closed_ = socket_closed;
+    return;
+  }
+
+  FinishClose(code, socket_closed);
+}
+
+void Http2Session::FinishClose(uint32_t code, bool socket_closed) {
+  CHECK(is_closing());
+
   // Stop reading on the i/o stream
   if (stream_ != nullptr) {
     set_reading_stopped();
@@ -869,6 +884,12 @@ void Http2Session::Close(uint32_t code, bool socket_closed) {
   EmitStatistics();
 }
 
+void Http2Session::MaybeFinishPendingClose() {
+  if (!is_close_pending() || is_destroyed()) return;
+  set_close_pending(false);
+  FinishClose(pending_close_code_, pending_close_socket_closed_);
+}
+
 // Locates an existing known stream by ID. nghttp2 has a similar method
 // but this is faster and does not fail if the stream is not found.
 BaseObjectPtr<Http2Stream> Http2Session::FindStream(int32_t id) {
@@ -907,6 +928,14 @@ BaseObjectPtr<Http2Stream> Http2Session::RemoveStream(int32_t id) {
   stream = FindStream(id);
   if (stream) {
     streams_.erase(id);
+    if (stream->current_headers_length_ > 0) {
+      DecrementCurrentSessionMemory(stream->current_headers_length_);
+      stream->current_headers_length_ = 0;
+    }
+    if (stream->retained_headers_length_ > 0) {
+      DecrementCurrentSessionMemory(stream->retained_headers_length_);
+      stream->retained_headers_length_ = 0;
+    }
     DecrementCurrentSessionMemory(sizeof(*stream));
   }
   return stream;
@@ -955,11 +984,13 @@ void Http2Session::ConsumeHTTP2Data() {
         nghttp2_session_want_read(session_.get()));
   set_receive_paused(false);
   custom_recv_error_code_ = nullptr;
+  set_receiving();
   ssize_t ret =
     nghttp2_session_mem_recv(session_.get(),
                              reinterpret_cast<uint8_t*>(stream_buf_.base) +
                                  stream_buf_offset_,
                              read_len);
+  set_receiving(false);
   CHECK_NE(ret, NGHTTP2_ERR_NOMEM);
   CHECK_IMPLIES(custom_recv_error_code_ != nullptr, ret < 0);
 
@@ -973,6 +1004,10 @@ void Http2Session::ConsumeHTTP2Data() {
     // Even if all bytes were received, a paused stream may delay the
     // nghttp2_on_frame_recv_callback which may have an END_STREAM flag.
     stream_buf_offset_ += ret;
+    // Still complete a Close() deferred during mem_recv; do not fall through
+    // to SendPendingData() here (paused receives historically skip that flush
+    // because a write may already be in progress).
+    MaybeFinishPendingClose();
     goto done;
   }
 
@@ -983,12 +1018,23 @@ void Http2Session::ConsumeHTTP2Data() {
   stream_buf_allocation_.reset();
   stream_buf_ = uv_buf_init(nullptr, 0);
 
+  // Finish a Close() deferred during mem_recv before flushing, so GOAWAY is
+  // not written after pending RST_STREAM frames.
+  MaybeFinishPendingClose();
+
+done:
+  // Finish a Close() deferred above before flushing, so GOAWAY is not written
+  // after pending RST_STREAM frames.
+  if (is_close_pending() && !is_destroyed()) {
+    set_close_pending(false);
+    FinishClose(pending_close_code_, pending_close_socket_closed_);
+  }
+
   // Send any data that was queued up while processing the received data.
   if (ret >= 0 && !is_destroyed()) {
     SendPendingData();
   }
 
-done:
   if (ret < 0) [[unlikely]] {
     Isolate* isolate = env()->isolate();
     Debug(this,
@@ -1270,6 +1316,24 @@ int Http2Session::OnFrameSent(nghttp2_session* handle,
                               void* user_data) {
   Http2Session* session = static_cast<Http2Session*>(user_data);
   session->statistics_.frame_sent += 1;
+
+  // If nghttp2 has internally terminated the session (e.g. due to a protocol
+  // error like oversized frames, padding errors, or HPACK compression
+  // failures), it calls nghttp2_session_terminate_session() directly which
+  // queues a GOAWAY but does not invoke any application-level callback.
+  // Detect that case here: a GOAWAY was sent but we never initiated it
+  // (no Close(), no session.close(), no session.goaway()).
+  //
+  // We set a flag here, and then throw the error at the end of
+  // SendPendingData, to wait until the GOAWAY is written before the session
+  // is torn down.
+  if (frame->hd.type == NGHTTP2_GOAWAY && !session->is_closing() &&
+      !session->is_destroyed() && !session->IsGracefulCloseInitiated() &&
+      !session->goaway_initiated_) {
+    Debug(session, "nghttp2 session terminated internally");
+    session->internal_goaway_sent_ = true;
+  }
+
   return 0;
 }
 
@@ -1383,6 +1447,9 @@ int Http2Session::OnDataChunkReceived(nghttp2_session* handle,
     data += avail;
     len -= avail;
     stream->EmitRead(avail, buf);
+
+    // JS may have destroyed the stream from inside onread; stop delivering.
+    if (stream->is_destroyed()) break;
 
     // If the stream owner (e.g. the JS Http2Stream) wants more data, just
     // tell nghttp2 that all data has been consumed. Otherwise, defer until
@@ -1535,7 +1602,10 @@ void Http2Session::HandleHeadersFrame(const nghttp2_frame* frame) {
   });
   CHECK_EQ(stream->headers_count(), 0);
 
-  DecrementCurrentSessionMemory(stream->current_headers_length_);
+  // Keep the header block charged against maxSessionMemory while the
+  // corresponding JS objects can still keep it alive for the lifetime of
+  // the stream.
+  stream->retained_headers_length_ += stream->current_headers_length_;
   stream->current_headers_length_ = 0;
 
   Local<Value> args[] = {
@@ -1938,6 +2008,7 @@ uint8_t Http2Session::SendPendingData() {
   // SendPendingData should not be called recursively.
   if (is_sending())
     return 1;
+
   // This is cleared by ClearOutgoing().
   set_sending();
 
@@ -2003,6 +2074,18 @@ uint8_t Http2Session::SendPendingData() {
   }
 
   MaybeStopReading();
+
+  // If nghttp2 has internally torn down the session (detected in OnFrameSent)
+  // during the nghttp2_session_mem_send loop above, at this point we error:
+  if (internal_goaway_sent_) {
+    internal_goaway_sent_ = false;
+    if (!is_closing() && !is_destroyed()) {
+      Isolate* isolate = env()->isolate();
+      HandleScope scope(isolate);
+      Local<Value> arg = Integer::New(isolate, NGHTTP2_ERR_PROTO);
+      MakeCallback(env()->http2session_on_error_function(), 1, &arg);
+    }
+  }
 
   return 0;
 }
@@ -2335,9 +2418,47 @@ void Http2Stream::Destroy() {
   // Do nothing if this stream instance is already destroyed
   if (is_destroyed())
     return;
-  if (session_->has_pending_rststream(id_))
-    FlushRstStream();
+
+  // Session may already be gone if destroy was deferred across a session
+  // teardown.
+  if (!session_) {
+    set_destroyed();
+    Detach();
+    return;
+  }
+
+  // Mark destroyed immediately so OnDataChunkReceived stops EmitRead into an
+  // already-destroyed JS stream (which would treat the byte count as errno).
   set_destroyed();
+
+  // While mem_recv is active, do not FlushRstStream or RemoveStream yet:
+  // - FlushRstStream would close the nghttp2 stream before queued response
+  //   DATA can be mem_send'd after receive returns.
+  // - RemoveStream would make OnSendData/Provider::OnRead fail to FindStream.
+  // Pending RSTs stay in pending_rst_streams_ and are flushed from
+  // ClearOutgoing after the post-receive SendPendingData.
+  if (session_->is_receiving()) {
+    BaseObjectPtr<Http2Stream> strong_ref{this};
+    env()->SetImmediate(
+        [this, strong_ref](Environment*) { CompleteDestroyCleanup(); });
+    return;
+  }
+
+  if (session_->has_pending_rststream(id_)) FlushRstStream();
+
+  CompleteDestroyCleanup();
+}
+
+void Http2Stream::CompleteDestroyCleanup() {
+  if (!session_) {
+    Detach();
+    return;
+  }
+
+  // Destroy() always set_destroyed() before scheduling or calling this.
+  CHECK(is_destroyed());
+
+  if (session_->has_pending_rststream(id_)) FlushRstStream();
 
   Debug(this, "destroying stream");
 
@@ -2374,7 +2495,6 @@ void Http2Stream::Destroy() {
           session_->statistics_.stream_count) / 1e6;
   EmitStatistics();
 }
-
 
 // Initiates a response on the Http2Stream using data provided via the
 // StreamBase Streams API.
@@ -2484,6 +2604,18 @@ void Http2Stream::SubmitRstStream(const uint32_t code) {
     return code == NGHTTP2_CANCEL;
   };
 
+  // Do not call `nghttp2_session_mem_send()` while nghttp2 is processing
+  // incoming data. Sending may close the stream and free nghttp2 state
+  // that is still in use by `nghttp2_session_mem_recv()`.
+  if (session_->is_receiving() && available_outbound_length_ == 0) {
+    if (is_stream_cancel(code)) {
+      session_->AddPendingRstStream(id_);
+      return;
+    }
+    FlushRstStream();
+    return;
+  }
+
   // If RST_STREAM frame is received with error code NGHTTP2_CANCEL,
   // add it to the pending list and don't force purge the data. It is
   // to avoids the double free error due to unwanted behavior of nghttp2.
@@ -2493,10 +2625,18 @@ void Http2Stream::SubmitRstStream(const uint32_t code) {
   // if RST_STREAM received is not in scope and added to the list
   // causing endpoint to hang.
   if (session_->is_in_scope() && is_stream_cancel(code)) {
-      session_->AddPendingRstStream(id_);
-      return;
+    session_->AddPendingRstStream(id_);
+    return;
   }
 
+  // If RST_STREAM is submitted while nghttp2 is processing callbacks for
+  // a refused stream, don't force purge pending data. Sending pending data
+  // here can re-enter nghttp2 and close streams that are still being used
+  // by the active receive operation.
+  if (session_->is_in_scope() && code == NGHTTP2_REFUSED_STREAM) {
+    FlushRstStream();
+    return;
+  }
 
   // If possible, force a purge of any currently pending data here to make sure
   // it is sent before closing the stream. If it returns non-zero then we need
@@ -2511,8 +2651,8 @@ void Http2Stream::SubmitRstStream(const uint32_t code) {
 }
 
 void Http2Stream::FlushRstStream() {
-  if (is_destroyed())
-    return;
+  if (!session_) return;
+  session_->RemovePendingRstStream(id_);
   Http2Scope h2scope(this);
   CHECK_EQ(nghttp2_submit_rst_stream(
       session_->session(),
@@ -2944,6 +3084,7 @@ void Http2Session::Goaway(uint32_t code,
   if (is_destroyed())
     return;
 
+  goaway_initiated_ = true;
   Http2Scope h2scope(this);
   // the last proc stream id is the most recently created Http2Stream.
   if (lastStreamID <= 0)

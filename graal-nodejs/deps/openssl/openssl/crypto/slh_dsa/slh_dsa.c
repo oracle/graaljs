@@ -1,5 +1,5 @@
 /*
- * Copyright 2024-2025 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 2024-2026 The OpenSSL Project Authors. All Rights Reserved.
  *
  * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
@@ -8,6 +8,7 @@
  */
 #include <stddef.h>
 #include <string.h>
+#include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/proverr.h>
 #include "slh_dsa_local.h"
@@ -119,11 +120,16 @@ static int slh_sign_internal(SLH_DSA_HASH_CTX *hctx,
         /* Generate ht signature and append to the SLH-DSA signature */
         && ossl_slh_ht_sign(hctx, pk_fors, sk_seed, pk_seed, tree_id, leaf_id,
             wpkt);
-    *sig_len = sig_len_expected;
-    ret = 1;
 err:
     if (!WPACKET_finish(wpkt))
         ret = 0;
+    OPENSSL_cleanse(m_digest, sizeof(m_digest));
+    OPENSSL_cleanse(pk_fors, sizeof(pk_fors));
+    if (ret)
+        *sig_len = sig_len_expected;
+    else
+        /* Erase any partial signature output */
+        OPENSSL_cleanse(sig, sig_len_expected);
     return ret;
 }
 
@@ -148,6 +154,7 @@ static int slh_verify_internal(SLH_DSA_HASH_CTX *hctx,
     const uint8_t *msg, size_t msg_len,
     const uint8_t *sig, size_t sig_len)
 {
+    int ret = 0;
     const SLH_DSA_KEY *pub = hctx->key;
     SLH_HASH_FUNC_DECLARE(pub, hashf);
     SLH_ADRS_FUNC_DECLARE(pub, adrsf);
@@ -185,7 +192,7 @@ static int slh_verify_internal(SLH_DSA_HASH_CTX *hctx,
 
     if (!hashf->H_MSG(hctx, r, pk_seed, pk_root, msg, msg_len,
             m_digest, sizeof(m_digest)))
-        return 0;
+        goto err;
 
     /*
      * Get md (the first md_len bytes of m_digest to use in
@@ -195,16 +202,20 @@ static int slh_verify_internal(SLH_DSA_HASH_CTX *hctx,
     if (!PACKET_buf_init(m_digest_rpkt, m_digest, sizeof(m_digest))
         || !PACKET_get_bytes(m_digest_rpkt, &md, md_len)
         || !get_tree_ids(m_digest_rpkt, params, &tree_id, &leaf_id))
-        return 0;
+        goto err;
 
     adrsf->set_tree_address(adrs, tree_id);
     adrsf->set_type_and_clear(adrs, SLH_ADRS_TYPE_FORS_TREE);
     adrsf->set_keypair_address(adrs, leaf_id);
-    return ossl_slh_fors_pk_from_sig(hctx, sig_rpkt, md, pk_seed, adrs,
-               pk_fors, sizeof(pk_fors))
+    ret = ossl_slh_fors_pk_from_sig(hctx, sig_rpkt, md, pk_seed, adrs,
+              pk_fors, sizeof(pk_fors))
         && ossl_slh_ht_verify(hctx, pk_fors, sig_rpkt, pk_seed,
             tree_id, leaf_id, pk_root)
         && PACKET_remaining(sig_rpkt) == 0;
+err:
+    OPENSSL_cleanse(m_digest, sizeof(m_digest));
+    OPENSSL_cleanse(pk_fors, sizeof(pk_fors));
+    return ret;
 }
 
 /**
@@ -232,6 +243,7 @@ static uint8_t *msg_encode(const uint8_t *msg, size_t msg_len,
     const uint8_t *ctx, size_t ctx_len, int encode,
     uint8_t *tmp, size_t tmp_len, size_t *out_len)
 {
+    WPACKET pkt;
     uint8_t *encoded = NULL;
     size_t encoded_len;
 
@@ -240,11 +252,14 @@ static uint8_t *msg_encode(const uint8_t *msg, size_t msg_len,
         *out_len = msg_len;
         return (uint8_t *)msg;
     }
+
     if (ctx_len > SLH_DSA_MAX_CONTEXT_STRING_LEN)
         return NULL;
 
     /* Pure encoding */
     encoded_len = 1 + 1 + ctx_len + msg_len;
+    if (encoded_len < msg_len) /* Check for overflow */
+        return NULL;
     *out_len = encoded_len;
     if (encoded_len <= tmp_len) {
         encoded = tmp;
@@ -253,10 +268,17 @@ static uint8_t *msg_encode(const uint8_t *msg, size_t msg_len,
         if (encoded == NULL)
             return NULL;
     }
-    encoded[0] = 0;
-    encoded[1] = (uint8_t)ctx_len;
-    memcpy(&encoded[2], ctx, ctx_len);
-    memcpy(&encoded[2 + ctx_len], msg, msg_len);
+    if (!WPACKET_init_static_len(&pkt, encoded, encoded_len, 0)
+        || !WPACKET_put_bytes_u8(&pkt, 0)
+        || !WPACKET_put_bytes_u8(&pkt, (uint8_t)ctx_len)
+        || !WPACKET_memcpy(&pkt, ctx, ctx_len)
+        || !WPACKET_memcpy(&pkt, msg, msg_len)
+        || !WPACKET_finish(&pkt)) {
+        if (encoded != tmp)
+            OPENSSL_free(encoded);
+        encoded = NULL;
+        WPACKET_cleanup(&pkt);
+    }
     return encoded;
 }
 
@@ -281,8 +303,13 @@ int ossl_slh_dsa_sign(SLH_DSA_HASH_CTX *slh_ctx,
             return 0;
     }
     ret = slh_sign_internal(slh_ctx, m, m_len, sig, siglen, sigsize, add_rand);
-    if (m != msg && m != m_tmp)
-        OPENSSL_free(m);
+    /* The encoded message may contain confidential message content */
+    if (m != msg) {
+        if (m != m_tmp)
+            OPENSSL_clear_free(m, m_len);
+        else
+            OPENSSL_cleanse(m_tmp, sizeof(m_tmp));
+    }
     return ret;
 }
 
@@ -306,8 +333,13 @@ int ossl_slh_dsa_verify(SLH_DSA_HASH_CTX *slh_ctx,
         return 0;
 
     ret = slh_verify_internal(slh_ctx, m, m_len, sig, sig_len);
-    if (m != msg && m != m_tmp)
-        OPENSSL_free(m);
+    /* The encoded message may contain confidential message content */
+    if (m != msg) {
+        if (m != m_tmp)
+            OPENSSL_clear_free(m, m_len);
+        else
+            OPENSSL_cleanse(m_tmp, sizeof(m_tmp));
+    }
     return ret;
 }
 

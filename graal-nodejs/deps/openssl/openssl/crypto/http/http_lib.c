@@ -1,5 +1,5 @@
 /*
- * Copyright 2001-2025 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 2001-2026 The OpenSSL Project Authors. All Rights Reserved.
  *
  * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
@@ -21,6 +21,7 @@
 #define NI_MAXHOST 255
 #endif
 #include "crypto/ctype.h" /* for ossl_isspace() */
+#define OSSL_URL_SCHEME_SUFFIX "://"
 
 static void init_pstring(char **pstr)
 {
@@ -55,6 +56,7 @@ int OSSL_parse_url(const char *url, char **pscheme, char **puser, char **phost,
     char **ppath, char **pquery, char **pfrag)
 {
     const char *p, *tmp;
+    const char *authority_end;
     const char *scheme, *scheme_end;
     const char *user, *user_end;
     const char *host, *host_end;
@@ -78,21 +80,28 @@ int OSSL_parse_url(const char *url, char **pscheme, char **puser, char **phost,
         return 0;
     }
 
-    /* check for optional prefix "<scheme>://" */
-    scheme = scheme_end = url;
-    p = strstr(url, "://");
-    if (p == NULL) {
-        p = url;
-    } else {
-        scheme_end = p;
-        if (scheme_end == scheme)
-            goto parse_err;
-        p += strlen("://");
+    /* check for optional prefix "<scheme>://" as per RFC 3986: */
+    scheme = scheme_end = p = url;
+    if (ossl_isalpha(*p)) {
+        while (*p != '\0'
+            && (ossl_isalpha(*p)
+                || ossl_isdigit(*p)
+                || strchr("+-.", *p) != NULL))
+            p++;
+        if (HAS_PREFIX(p, OSSL_URL_SCHEME_SUFFIX)) {
+            scheme_end = p;
+            p += sizeof(OSSL_URL_SCHEME_SUFFIX) - 1;
+        } else {
+            p = url;
+        }
     }
 
     /* parse optional "userinfo@" */
     user = user_end = host = p;
-    host = strchr(p, '@');
+    authority_end = strpbrk(p, "/?#");
+    if (authority_end == NULL)
+        authority_end = p + strlen(p);
+    host = memchr(p, '@', authority_end - p);
     if (host != NULL)
         user_end = host++;
     else
@@ -101,7 +110,7 @@ int OSSL_parse_url(const char *url, char **pscheme, char **puser, char **phost,
     /* parse hostname/address as far as needed here */
     if (host[0] == '[') {
         /* IPv6 literal, which may include ':' */
-        host_end = strchr(host + 1, ']');
+        host_end = memchr(host + 1, ']', authority_end - host - 1);
         if (host_end == NULL)
             goto parse_err;
         p = ++host_end;
@@ -266,6 +275,9 @@ static int use_proxy(const char *no_proxy, const char *server)
         host[sl] = '\0';
         server = host;
     }
+
+    if (sl == 0)
+        return 1;
 
     /*
      * using environment variable names, both lowercase and uppercase variants,

@@ -1,5 +1,5 @@
 /*
- * Copyright 1995-2025 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 1995-2026 The OpenSSL Project Authors. All Rights Reserved.
  * Copyright (c) 2002, Oracle and/or its affiliates. All rights reserved
  * Copyright 2005 Nokia. All rights reserved.
  *
@@ -4322,7 +4322,7 @@ long ssl3_callback_ctrl(SSL *s, int cmd, void (*fp)(void))
     switch (cmd) {
 #if !defined(OPENSSL_NO_DEPRECATED_3_0)
     case SSL_CTRL_SET_TMP_DH_CB:
-        sc->cert->dh_tmp_cb = (DH * (*)(SSL *, int, int)) fp;
+        sc->cert->dh_tmp_cb = (DH *(*)(SSL *, int, int))fp;
         ret = 1;
         break;
 #endif
@@ -4593,7 +4593,7 @@ long ssl3_ctx_callback_ctrl(SSL_CTX *ctx, int cmd, void (*fp)(void))
     switch (cmd) {
 #if !defined(OPENSSL_NO_DEPRECATED_3_0)
     case SSL_CTRL_SET_TMP_DH_CB: {
-        ctx->cert->dh_tmp_cb = (DH * (*)(SSL *, int, int)) fp;
+        ctx->cert->dh_tmp_cb = (DH *(*)(SSL *, int, int))fp;
     } break;
 #endif
     case SSL_CTRL_SET_TLSEXT_SERVERNAME_CB:
@@ -5223,8 +5223,10 @@ int ssl_generate_master_secret(SSL_CONNECTION *s, unsigned char *pms,
 
         pskpmslen = 4 + pmslen + psklen;
         pskpms = OPENSSL_malloc(pskpmslen);
-        if (pskpms == NULL)
+        if (pskpms == NULL) {
+            SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_CRYPTO_LIB);
             goto err;
+        }
         t = pskpms;
         s2n(pmslen, t);
         if (alg_k & SSL_kPSK)
@@ -5248,6 +5250,7 @@ int ssl_generate_master_secret(SSL_CONNECTION *s, unsigned char *pms,
         OPENSSL_clear_free(pskpms, pskpmslen);
 #else
         /* Should never happen */
+        SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
         goto err;
 #endif
     } else {

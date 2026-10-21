@@ -470,11 +470,15 @@ int ocsp_main(int argc, char **argv)
             if (issuer == NULL)
                 goto end;
             if (issuers == NULL) {
-                if ((issuers = sk_X509_new_null()) == NULL)
+                if ((issuers = sk_X509_new_null()) == NULL) {
+                    X509_free(issuer);
                     goto end;
+                }
             }
-            if (!sk_X509_push(issuers, issuer))
+            if (!sk_X509_push(issuers, issuer)) {
+                X509_free(issuer);
                 goto end;
+            }
             break;
         case OPT_CERT:
             reset_unknown();
@@ -876,7 +880,7 @@ done_resp:
 
         i = OCSP_basic_verify(bs, verify_other, store, verify_flags);
         if (i <= 0 && issuers) {
-            i = OCSP_basic_verify(bs, issuers, store, OCSP_TRUSTOTHER);
+            i = OCSP_basic_verify(bs, issuers, store, verify_flags);
             if (i > 0)
                 ERR_clear_error();
         }

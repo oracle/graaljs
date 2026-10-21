@@ -447,7 +447,9 @@ class CompressionStream : public AsyncWrap, public ThreadPoolWork {
       if (!args[2]->Uint32Value(context).To(&in_off)) return;
       if (!args[3]->Uint32Value(context).To(&in_len)) return;
 
-      CHECK(Buffer::IsWithinBounds(in_off, in_len, Buffer::Length(in_buf)));
+      if (!Buffer::IsWithinBounds(in_off, in_len, Buffer::Length(in_buf))) {
+        return THROW_ERR_OUT_OF_RANGE(env, "input buffer is out of bounds");
+      }
       in = Buffer::Data(in_buf) + in_off;
     }
 
@@ -455,7 +457,9 @@ class CompressionStream : public AsyncWrap, public ThreadPoolWork {
     Local<Object> out_buf = args[4].As<Object>();
     if (!args[5]->Uint32Value(context).To(&out_off)) return;
     if (!args[6]->Uint32Value(context).To(&out_len)) return;
-    CHECK(Buffer::IsWithinBounds(out_off, out_len, Buffer::Length(out_buf)));
+    if (!Buffer::IsWithinBounds(out_off, out_len, Buffer::Length(out_buf))) {
+      return THROW_ERR_OUT_OF_RANGE(env, "output buffer is out of bounds");
+    }
     out = Buffer::Data(out_buf) + out_off;
 
     CompressionStream* ctx;
@@ -574,6 +578,12 @@ class CompressionStream : public AsyncWrap, public ThreadPoolWork {
   static void Reset(const FunctionCallbackInfo<Value> &args) {
     CompressionStream* wrap;
     ASSIGN_OR_RETURN_UNWRAP(&wrap, args.This());
+
+    if (wrap->write_in_progress_) {
+      wrap->env()->ThrowError(
+          "Cannot reset zlib stream while a write is in progress");
+      return;
+    }
 
     AllocScope alloc_scope(wrap);
     const CompressionError err = wrap->context()->ResetStream();
@@ -1816,6 +1826,7 @@ void DefineZlibConstants(Local<Object> target) {
   NODE_DEFINE_CONSTANT(target, BROTLI_DECODER_ERROR_FORMAT_PADDING_1);
   NODE_DEFINE_CONSTANT(target, BROTLI_DECODER_ERROR_FORMAT_PADDING_2);
   NODE_DEFINE_CONSTANT(target, BROTLI_DECODER_ERROR_FORMAT_DISTANCE);
+  NODE_DEFINE_CONSTANT(target, BROTLI_DECODER_ERROR_FORMAT_BLOCK_SWITCH);
   NODE_DEFINE_CONSTANT(target, BROTLI_DECODER_ERROR_DICTIONARY_NOT_SET);
   NODE_DEFINE_CONSTANT(target, BROTLI_DECODER_ERROR_INVALID_ARGUMENTS);
   NODE_DEFINE_CONSTANT(target, BROTLI_DECODER_ERROR_ALLOC_CONTEXT_MODES);

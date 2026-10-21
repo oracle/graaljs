@@ -1,5 +1,5 @@
 /*
- * Copyright 1995-2025 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 1995-2026 The OpenSSL Project Authors. All Rights Reserved.
  *
  * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
@@ -552,7 +552,7 @@ static int MOD_EXP_CTIME_COPY_FROM_PREBUF(BIGNUM *b, int top,
             BN_ULONG acc = 0;
 
             for (j = 0; j < width; j++) {
-                acc |= table[j] & ((BN_ULONG)0 - (constant_time_eq_int(j, idx) & 1));
+                acc |= table[j] & value_barrier_bn((BN_ULONG)0 - (constant_time_eq_int(j, idx) & 1));
             }
 
             b->d[i] = acc;
@@ -573,8 +573,9 @@ static int MOD_EXP_CTIME_COPY_FROM_PREBUF(BIGNUM *b, int top,
             BN_ULONG acc = 0;
 
             for (j = 0; j < xstride; j++) {
-                acc |= ((table[j + 0 * xstride] & y0) | (table[j + 1 * xstride] & y1) | (table[j + 2 * xstride] & y2) | (table[j + 3 * xstride] & y3))
-                    & ((BN_ULONG)0 - (constant_time_eq_int(j, idx) & 1));
+                acc |= ((table[j + 0 * xstride] & value_barrier_bn(y0)) | (table[j + 1 * xstride] & value_barrier_bn(y1))
+                           | (table[j + 2 * xstride] & value_barrier_bn(y2)) | (table[j + 3 * xstride] & value_barrier_bn(y3)))
+                    & value_barrier_bn((BN_ULONG)0 - (constant_time_eq_int(j, idx) & 1));
             }
 
             b->d[i] = acc;
@@ -771,16 +772,16 @@ int bn_mod_exp_mont_fixed_top(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
         typedef int (*bn_pwr5_mont_f)(BN_ULONG *tp, const BN_ULONG *np,
             const BN_ULONG *n0, const void *table,
             int power, int bits);
-        int bn_pwr5_mont_t4_8(BN_ULONG * tp, const BN_ULONG *np,
+        int bn_pwr5_mont_t4_8(BN_ULONG *tp, const BN_ULONG *np,
             const BN_ULONG *n0, const void *table,
             int power, int bits);
-        int bn_pwr5_mont_t4_16(BN_ULONG * tp, const BN_ULONG *np,
+        int bn_pwr5_mont_t4_16(BN_ULONG *tp, const BN_ULONG *np,
             const BN_ULONG *n0, const void *table,
             int power, int bits);
-        int bn_pwr5_mont_t4_24(BN_ULONG * tp, const BN_ULONG *np,
+        int bn_pwr5_mont_t4_24(BN_ULONG *tp, const BN_ULONG *np,
             const BN_ULONG *n0, const void *table,
             int power, int bits);
-        int bn_pwr5_mont_t4_32(BN_ULONG * tp, const BN_ULONG *np,
+        int bn_pwr5_mont_t4_32(BN_ULONG *tp, const BN_ULONG *np,
             const BN_ULONG *n0, const void *table,
             int power, int bits);
         static const bn_pwr5_mont_f pwr5_funcs[4] = {
@@ -792,15 +793,15 @@ int bn_mod_exp_mont_fixed_top(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
         typedef int (*bn_mul_mont_f)(BN_ULONG *rp, const BN_ULONG *ap,
             const void *bp, const BN_ULONG *np,
             const BN_ULONG *n0);
-        int bn_mul_mont_t4_8(BN_ULONG * rp, const BN_ULONG *ap, const void *bp,
+        int bn_mul_mont_t4_8(BN_ULONG *rp, const BN_ULONG *ap, const void *bp,
             const BN_ULONG *np, const BN_ULONG *n0);
-        int bn_mul_mont_t4_16(BN_ULONG * rp, const BN_ULONG *ap,
+        int bn_mul_mont_t4_16(BN_ULONG *rp, const BN_ULONG *ap,
             const void *bp, const BN_ULONG *np,
             const BN_ULONG *n0);
-        int bn_mul_mont_t4_24(BN_ULONG * rp, const BN_ULONG *ap,
+        int bn_mul_mont_t4_24(BN_ULONG *rp, const BN_ULONG *ap,
             const void *bp, const BN_ULONG *np,
             const BN_ULONG *n0);
-        int bn_mul_mont_t4_32(BN_ULONG * rp, const BN_ULONG *ap,
+        int bn_mul_mont_t4_32(BN_ULONG *rp, const BN_ULONG *ap,
             const void *bp, const BN_ULONG *np,
             const BN_ULONG *n0);
         static const bn_mul_mont_f mul_funcs[4] = {
@@ -809,20 +810,20 @@ int bn_mod_exp_mont_fixed_top(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
         };
         bn_mul_mont_f mul_worker = mul_funcs[top / 16 - 1];
 
-        void bn_mul_mont_vis3(BN_ULONG * rp, const BN_ULONG *ap,
+        void bn_mul_mont_vis3(BN_ULONG *rp, const BN_ULONG *ap,
             const void *bp, const BN_ULONG *np,
             const BN_ULONG *n0, int num);
-        void bn_mul_mont_t4(BN_ULONG * rp, const BN_ULONG *ap,
+        void bn_mul_mont_t4(BN_ULONG *rp, const BN_ULONG *ap,
             const void *bp, const BN_ULONG *np,
             const BN_ULONG *n0, int num);
-        void bn_mul_mont_gather5_t4(BN_ULONG * rp, const BN_ULONG *ap,
+        void bn_mul_mont_gather5_t4(BN_ULONG *rp, const BN_ULONG *ap,
             const void *table, const BN_ULONG *np,
             const BN_ULONG *n0, int num, int power);
         void bn_flip_n_scatter5_t4(const BN_ULONG *inp, size_t num,
             void *table, size_t power);
-        void bn_gather5_t4(BN_ULONG * out, size_t num,
+        void bn_gather5_t4(BN_ULONG *out, size_t num,
             void *table, size_t power);
-        void bn_flip_t4(BN_ULONG * dst, BN_ULONG * src, size_t num);
+        void bn_flip_t4(BN_ULONG *dst, BN_ULONG *src, size_t num);
 
         BN_ULONG *np = mont->N.d, *n0 = mont->n0;
         int stride = 5 * (6 - (top / 16 - 1)); /* multiple of 5, but less
@@ -922,13 +923,13 @@ int bn_mod_exp_mont_fixed_top(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
          * Given those inputs, |bn_mul_mont| may not give reduced
          * output, but it will still produce "almost" reduced output.
          */
-        void bn_mul_mont_gather5(BN_ULONG * rp, const BN_ULONG *ap,
+        void bn_mul_mont_gather5(BN_ULONG *rp, const BN_ULONG *ap,
             const void *table, const BN_ULONG *np,
             const BN_ULONG *n0, int num, int power);
         void bn_scatter5(const BN_ULONG *inp, size_t num,
             void *table, size_t power);
-        void bn_gather5(BN_ULONG * out, size_t num, void *table, size_t power);
-        void bn_power5(BN_ULONG * rp, const BN_ULONG *ap,
+        void bn_gather5(BN_ULONG *out, size_t num, void *table, size_t power);
+        void bn_power5(BN_ULONG *rp, const BN_ULONG *ap,
             const void *table, const BN_ULONG *np,
             const BN_ULONG *n0, int num, int power);
         int bn_get_bits5(const BN_ULONG *ap, int off);

@@ -757,6 +757,8 @@ maintaining the Node.js project.
   **Oliver Medhurst** <<honk@goose.icu>> (they/them)
 * [daeyeon](https://github.com/daeyeon) -
   **Daeyeon Jeong** <<daeyeon.dev@gmail.com>> (he/him)
+* [efekrskl](https://github.com/efekrskl) -
+  **Efe Karasakal** <<hi@efe.dev>> (he/him)
 * [gireeshpunathil](https://github.com/gireeshpunathil) -
   **Gireesh Punathil** <<gpunathi@in.ibm.com>> (he/him)
 * [gurgunday](https://github.com/gurgunday) -
@@ -803,6 +805,8 @@ Primary GPG keys for Node.js Releasers (some Releasers sign with subkeys):
   `C82FA3AE1CBEDC6BE46B9360C43CEC45C17AB93C`
 * **Ruy Adorno** <<ruyadorno@hotmail.com>>
   `108F52B48DB57BB0CC439B2997B01419BD92F80A`
+* **Stewart X Addison** <<sxa@ibm.com>>
+  `655F3B5C1FB3FA8D1A0CA6BDE4A7D232B936D2FD`
 * **Ulises Gascón** <<ulisesgascongonzalez@gmail.com>>
   `A363A499291CBBC940DD62E41F10027AF002F8B0`
 
@@ -820,6 +824,7 @@ gpg --keyserver hkps://keys.openpgp.org --recv-keys 8FCCA13FEF1D0C2E91008E09770F
 gpg --keyserver hkps://keys.openpgp.org --recv-keys 890C08DB8579162FEE0DF9DB8BEAB4DFCF555EF4 # Rafael Gonzaga
 gpg --keyserver hkps://keys.openpgp.org --recv-keys C82FA3AE1CBEDC6BE46B9360C43CEC45C17AB93C # Richard Lau
 gpg --keyserver hkps://keys.openpgp.org --recv-keys 108F52B48DB57BB0CC439B2997B01419BD92F80A # Ruy Adorno
+gpg --keyserver hkps://keys.openpgp.org --recv-keys 655F3B5C1FB3FA8D1A0CA6BDE4A7D232B936D2FD # Stewart X Addison
 gpg --keyserver hkps://keys.openpgp.org --recv-keys A363A499291CBBC940DD62E41F10027AF002F8B0 # Ulises Gascón
 ```
 
@@ -889,15 +894,15 @@ releases on a rotation basis as outlined in the
   * [bengl](https://github.com/bengl) -
     **Bryan English** <<bryan@bryanenglish.com>> (he/him)
 * [HeroDevs](https://www.herodevs.com/)
-  * [marco-ippolito](https://github.com/marco-ippolito) - OpenJSF handle: `Marco Ippolito`
+  * [juanarbol](https://github.com/juanarbol) - OpenJS Slack handle: `juanarbol`
+    **Juan José Arboleda** <<soyjuanarbol@gmail.com>> (he/him)
+  * [marco-ippolito](https://github.com/marco-ippolito) - OpenJS Slack handle: `Marco Ippolito`
     **Marco Ippolito** <<marcoippolito54@gmail.com>> (he/him)
 * [NodeSource](https://nodesource.com/)
-  * [juanarbol](https://github.com/juanarbol) -
-    **Juan José Arboleda** <<soyjuanarbol@gmail.com>> (he/him)
-  * [RafaelGSS](https://github.com/RafaelGSS) - OpenJSF handle: `RafaelGSS`
+  * [RafaelGSS](https://github.com/RafaelGSS) - OpenJS Slack handle: `RafaelGSS`
     **Rafael Gonzaga** <<rafael.nunu@hotmail.com>> (he/him)
 * [Platformatic](https://platformatic.dev/)
-  * [mcollina](https://github.com/mcollina) - OpenJSF handle: `mcollina`
+  * [mcollina](https://github.com/mcollina) - OpenJS Slack handle: `mcollina`
     **Matteo Collina** <<matteo.collina@gmail.com>> (he/him)
 * [Red Hat](https://redhat.com) / [IBM](https://ibm.com)
   * [BethGriggs](https://github.com/BethGriggs) -

@@ -69,6 +69,7 @@ const { canonicalizeIP } = internalBinding('cares_wrap');
 const tlsCommon = require('internal/tls/common');
 const tlsWrap = require('internal/tls/wrap');
 const { createSecurePair } = require('internal/tls/secure-pair');
+const { domainToASCII } = require('internal/url');
 const { validateString } = require('internal/validators');
 
 const {
@@ -404,6 +405,13 @@ exports.checkServerIdentity = function checkServerIdentity(hostname, cert) {
   const ips = [];
 
   hostname = '' + hostname;
+  const hostnameASCII = domainToASCII(hostname);
+
+  // Remove trailing dots for error messages and matching.
+  hostname = unfqdn(hostname);
+  const hostnameASCIIWithoutFQDN = unfqdn(hostnameASCII);
+  const hostnameIsIP = net.isIP(hostname);
+  const hostnameASCIIIsIP = net.isIP(hostnameASCIIWithoutFQDN);
 
   if (altNames) {
     const splitAltNames = altNames.includes('"') ?
@@ -418,17 +426,31 @@ exports.checkServerIdentity = function checkServerIdentity(hostname, cert) {
     });
   }
 
+  // Non-canonical IP address spellings can be interpreted differently by
+  // domainToASCII() and the operating system resolver. Reject them instead of
+  // validating a certificate against an address that may not be the peer.
+  if (!hostnameIsIP && hostnameASCIIIsIP) {
+    return new ERR_TLS_CERT_ALTNAME_INVALID(
+      'Host is a non-canonical IP address', hostname, cert);
+  }
+
   let valid = false;
   let reason = 'Unknown reason';
 
-  hostname = unfqdn(hostname);  // Remove trailing dot for error messages.
-
-  if (net.isIP(hostname)) {
+  // An IP literal must not be IDNA-normalized: domainToASCII() returns '' for
+  // an IPv6 literal (it is not a domain), so matching against the normalized
+  // host would skip IP-SAN matching for IPv6 entirely. Match IP hosts against
+  // the original hostname (net.isIP() rejects non-ASCII, so there is no IDNA
+  // confusion to guard against here); the normalized form is kept for the
+  // DNS-name path below.
+  if (hostnameIsIP) {
     valid = ips.includes(canonicalizeIP(hostname));
-    if (!valid)
-      reason = `IP: ${hostname} is not in the cert's list: ` + ips.join(', ');
+    if (!valid) {
+      reason =
+        `IP: ${hostname} is not in the cert's list: ` + ips.join(', ');
+    }
   } else if (dnsNames.length > 0 || subject?.CN) {
-    const hostParts = splitHost(hostname);
+    const hostParts = splitHost(hostnameASCIIWithoutFQDN);
     const wildcard = (pattern) => check(hostParts, pattern, true);
 
     if (dnsNames.length > 0) {

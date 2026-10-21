@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2025 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 2016-2026 The OpenSSL Project Authors. All Rights Reserved.
  *
  * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
@@ -275,27 +275,24 @@ DEFINE_RUN_ONCE_STATIC_ALT(ossl_init_no_add_all_digests,
 }
 
 static CRYPTO_ONCE config = CRYPTO_ONCE_STATIC_INIT;
-static int config_inited = 0;
 static const OPENSSL_INIT_SETTINGS *conf_settings = NULL;
 DEFINE_RUN_ONCE_STATIC(ossl_init_config)
 {
     int ret = ossl_config_int(NULL);
 
-    config_inited = 1;
     return ret;
 }
 DEFINE_RUN_ONCE_STATIC_ALT(ossl_init_config_settings, ossl_init_config)
 {
     int ret = ossl_config_int(conf_settings);
 
-    config_inited = 1;
     return ret;
 }
 DEFINE_RUN_ONCE_STATIC_ALT(ossl_init_no_config, ossl_init_config)
 {
     OSSL_TRACE(INIT, "ossl_no_config_int()\n");
     ossl_no_config_int();
-    config_inited = 1;
+
     return 1;
 }
 
@@ -499,6 +496,7 @@ void OPENSSL_cleanup(void)
 int OPENSSL_init_crypto(uint64_t opts, const OPENSSL_INIT_SETTINGS *settings)
 {
     uint64_t tmp;
+    uint64_t optsdone_bits = opts;
     int aloaddone = 0;
 
     /* Applications depend on 0 being returned when cleanup was already done */
@@ -624,8 +622,15 @@ int OPENSSL_init_crypto(uint64_t opts, const OPENSSL_INIT_SETTINGS *settings)
     if (opts & OPENSSL_INIT_LOAD_CONFIG) {
         int loading = CRYPTO_THREAD_get_local(&in_init_config_local) != NULL;
 
-        /* If called recursively from OBJ_ calls, just skip it. */
-        if (!loading) {
+        /* If called recursively from OBJ_ calls during config loading,
+         * we have to mask OPENSSL_INIT_LOAD_CONFIG in optsdone to not
+         * advertise that config loading is complete, otherwise other
+         * threads may proceed, e.g., to fetching from a provider that
+         * is not yet loaded.
+         */
+        if (loading) {
+            optsdone_bits &= ~(uint64_t)OPENSSL_INIT_LOAD_CONFIG;
+        } else {
             int ret;
 
             if (!CRYPTO_THREAD_set_local(&in_init_config_local, (void *)-1))
@@ -690,7 +695,7 @@ int OPENSSL_init_crypto(uint64_t opts, const OPENSSL_INIT_SETTINGS *settings)
     }
 #endif
 
-    if (!CRYPTO_atomic_or(&optsdone, opts, &tmp, optsdone_lock))
+    if (!CRYPTO_atomic_or(&optsdone, optsdone_bits, &tmp, optsdone_lock))
         return 0;
 
     return 1;

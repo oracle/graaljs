@@ -1,4 +1,4 @@
-# Copyright 2024-2025 The OpenSSL Project Authors. All Rights Reserved.
+# Copyright 2024-2026 The OpenSSL Project Authors. All Rights Reserved.
 # Copyright (c) 2024, Intel Corporation. All Rights Reserved.
 #
 # Licensed under the Apache License 2.0 (the "License").  You may not use
@@ -36,6 +36,13 @@ if (!$avxifma && `$ENV{CC} -v 2>&1`
     =~ /\s*((?:clang|LLVM) version|.*based on LLVM) ([0-9]+)\.([0-9]+)\.([0-9]+)?/) {
     my $ver = $2 + $3/100.0 + $4/10000.0; # 3.1.0->3.01, 3.10.1->3.1001
     $avxifma = ($ver>=16.0);
+}
+
+if (!$avxifma && `$ENV{CC} -x c /dev/null -dM -E|grep __clang_major__`
+    =~ /#define __clang_major__.([0-9]+)/) {
+    if ($1) {
+        $avxifma = ($1>=16);
+    }
 }
 
 if ($win64 && ($flavour =~ /nasm/ || $ENV{ASM} =~ /nasm/) &&
@@ -87,8 +94,6 @@ my ($res,$a,$b,$m,$k0) = @_6_args_universal_ABI;
 my $mask52     = "%rax";
 my $acc0_0     = "%r9";
 my $acc0_0_low = "%r9d";
-my $acc0_1     = "%r15";
-my $acc0_1_low = "%r15d";
 my $b_ptr      = "%r11";
 
 my $iter = "%ebx";
@@ -741,7 +746,7 @@ $code.=<<___;
     vmovdqu   $R3_0,  `6*32`($res)
     vmovdqu   $R3_0h, `7*32`($res)
 
-    xorl    $acc0_1_low, $acc0_1_low
+    xorl    $acc0_0_low, $acc0_0_low
 
     lea    16($b_ptr), $b_ptr
     movq    \$0xfffffffffffff, $mask52       # 52-bit mask
@@ -857,6 +862,23 @@ $code.=<<___;
 ossl_extract_multiplier_2x30_win5_avx:
 .cfi_startproc
     endbranch
+___
+$code.=<<___ if ($win64);
+    push      %rsi                          # save non-volatile registers
+    push      %rdi
+    lea       -168(%rsp), %rsp              # 16*10 + (8 bytes to get correct 16-byte SIMD alignment)
+    vmovapd   %xmm6, `16*0`(%rsp)
+    vmovapd   %xmm7, `16*1`(%rsp)
+    vmovapd   %xmm8, `16*2`(%rsp)
+    vmovapd   %xmm9, `16*3`(%rsp)
+    vmovapd   %xmm10, `16*4`(%rsp)
+    vmovapd   %xmm11, `16*5`(%rsp)
+    vmovapd   %xmm12, `16*6`(%rsp)
+    vmovapd   %xmm13, `16*7`(%rsp)
+    vmovapd   %xmm14, `16*8`(%rsp)
+    vmovapd   %xmm15, `16*9`(%rsp)
+___
+$code.=<<___;
     vmovapd   .Lones(%rip), $ones         # broadcast ones
     vmovq    $red_tbl_idx1, $tmp_xmm
     vpbroadcastq    $tmp_xmm, $idx1
@@ -930,6 +952,24 @@ foreach (8..15) {
     $code.="vmovdqu   $t[$_], `${_}*32`($out) \n";
 }
 
+$code.=<<___;
+    vzeroupper
+___
+$code.=<<___ if ($win64);
+    vmovapd `16*0`(%rsp), %xmm6
+    vmovapd `16*1`(%rsp), %xmm7
+    vmovapd `16*2`(%rsp), %xmm8
+    vmovapd `16*3`(%rsp), %xmm9
+    vmovapd `16*4`(%rsp), %xmm10
+    vmovapd `16*5`(%rsp), %xmm11
+    vmovapd `16*6`(%rsp), %xmm12
+    vmovapd `16*7`(%rsp), %xmm13
+    vmovapd `16*8`(%rsp), %xmm14
+    vmovapd `16*9`(%rsp), %xmm15
+    lea     168(%rsp), %rsp
+    pop     %rdi
+    pop     %rsi
+___
 
 $code.=<<___;
 

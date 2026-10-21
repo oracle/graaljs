@@ -30,6 +30,8 @@ const {
   promisify,
   SymbolAsyncDispose,
   SymbolDispose,
+  deprecate,
+  deprecateProperty,
 } = require('internal/util');
 
 assertCrypto();
@@ -96,6 +98,7 @@ const {
     ERR_HTTP2_STREAM_ERROR,
     ERR_HTTP2_STREAM_SELF_DEPENDENCY,
     ERR_HTTP2_TOO_MANY_CUSTOM_SETTINGS,
+    ERR_HTTP2_TOO_MANY_ORIGINS,
     ERR_HTTP2_TRAILERS_ALREADY_SENT,
     ERR_HTTP2_TRAILERS_NOT_READY,
     ERR_HTTP2_UNSUPPORTED_PROTOCOL,
@@ -247,6 +250,7 @@ const kInit = Symbol('init');
 const kInfoHeaders = Symbol('sent-info-headers');
 const kLocalSettings = Symbol('local-settings');
 const kNativeFields = Symbol('kNativeFields');
+const kMaxOriginSetSize = Symbol('max-ORIGIN-set-size');
 const kOptions = Symbol('options');
 const kOwner = owner_symbol;
 const kOrigin = Symbol('origin');
@@ -714,8 +718,13 @@ function onOrigin(origins) {
   if (!session.encrypted || session.destroyed)
     return undefined;
   const originSet = initOriginSet(session);
-  for (let n = 0; n < origins.length; n++)
+  for (let n = 0; n < origins.length; n++) {
+    if (originSet.size >= session[kMaxOriginSetSize]) {
+      session.destroy(new ERR_HTTP2_TOO_MANY_ORIGINS(session[kMaxOriginSetSize]));
+      return;
+    }
     originSet.add(origins[n]);
+  }
   session.emit('origin', origins);
 }
 
@@ -752,6 +761,11 @@ function onGoawayData(code, lastStreamID, buf) {
   }
 }
 
+// TODO(aduh95): remove this in future semver-major
+const deprecateWeight = deprecateProperty('weight',
+                                          'Priority signaling has been deprecated as of RFC 9113.',
+                                          'DEP0194');
+
 // When a ClientHttp2Session is first created, the socket may not yet be
 // connected. If request() is called during this time, the actual request
 // will be deferred until the socket is ready to go.
@@ -780,12 +794,14 @@ function requestOnConnect(headersList, options) {
   if (options.waitForTrailers)
     streamOptions |= STREAM_OPTION_GET_TRAILERS;
 
+  deprecateWeight(options);
+
   // `ret` will be either the reserved stream ID (if positive)
   // or an error code (if negative)
   const ret = session[kHandle].request(headersList,
                                        streamOptions,
                                        options.parent | 0,
-                                       options.weight | 0,
+                                       NGHTTP2_DEFAULT_WEIGHT,
                                        !!options.exclusive);
 
   // In an error condition, one of three possible response codes will be
@@ -830,11 +846,7 @@ function requestOnConnect(headersList, options) {
 //
 // Also sets the default priority options if they are not set.
 const setAndValidatePriorityOptions = hideStackFrames((options) => {
-  if (options.weight === undefined) {
-    options.weight = NGHTTP2_DEFAULT_WEIGHT;
-  } else {
-    validateNumber.withoutStackTrace(options.weight, 'options.weight');
-  }
+  deprecateWeight(options);
 
   if (options.parent === undefined) {
     options.parent = 0;
@@ -888,25 +900,6 @@ function submitSettings(settings, callback) {
   if (!this[kHandle].settings(settingsCallback.bind(this, callback))) {
     this.destroy(new ERR_HTTP2_MAX_PENDING_SETTINGS_ACK());
   }
-}
-
-// Submits a PRIORITY frame to be sent to the remote peer
-// Note: If the silent option is true, the change will be made
-// locally with no PRIORITY frame sent.
-function submitPriority(options) {
-  if (this.destroyed)
-    return;
-  this[kUpdateTimer]();
-
-  // If the parent is the id, do nothing because a
-  // stream cannot be made to depend on itself.
-  if (options.parent === this[kID])
-    return;
-
-  this[kHandle].priority(options.parent | 0,
-                         options.weight | 0,
-                         !!options.exclusive,
-                         !!options.silent);
 }
 
 // Submit a GOAWAY frame to be sent to the remote peer.
@@ -2357,25 +2350,6 @@ class Http2Stream extends Duplex {
     }
   }
 
-  priority(options) {
-    if (this.destroyed)
-      throw new ERR_HTTP2_INVALID_STREAM();
-
-    assertIsObject(options, 'options');
-    options = { ...options };
-    setAndValidatePriorityOptions(options);
-
-    const priorityFn = submitPriority.bind(this, options);
-
-    // If the handle has not yet been assigned, queue up the priority
-    // frame to be sent as soon as the ready event is emitted.
-    if (this.pending) {
-      this.once('ready', priorityFn);
-      return;
-    }
-    priorityFn();
-  }
-
   sendTrailers(headers) {
     if (this.destroyed || this.closed)
       throw new ERR_HTTP2_INVALID_STREAM();
@@ -2548,6 +2522,12 @@ class Http2Stream extends Duplex {
   }
 }
 
+// TODO(aduh95): remove this in future semver-major
+Http2Stream.prototype.priority = deprecate(function priority(options) {
+  if (this.destroyed)
+    throw new ERR_HTTP2_INVALID_STREAM();
+}, 'http2Stream.priority is longer supported after priority signalling was deprecated in RFC 9113', 'DEP0194');
+
 function callTimeout(self, session) {
   // If the session is destroyed, this should never actually be invoked,
   // but just in case...
@@ -2699,6 +2679,8 @@ function processRespondWithFD(self, fd, headers, offset = 0, length = -1,
   try {
     headersList = buildNgHeaderString(headers, assertValidPseudoHeaderResponse);
   } catch (err) {
+    if (self.ownsFd)
+      tryClose(fd);
     self.destroy(err);
     return;
   }
@@ -2712,6 +2694,8 @@ function processRespondWithFD(self, fd, headers, offset = 0, length = -1,
   const ret = self[kHandle].respond(headersList, streamOptions);
 
   if (ret < 0) {
+    if (self.ownsFd)
+      tryClose(fd);
     self.destroy(new NghttpError(ret));
     return;
   }
@@ -3532,6 +3516,13 @@ function connect(authority, options, listener) {
   assertIsObject(options, 'options');
   options = { ...options };
 
+  let { maxOriginSetSize } = options;
+  if (maxOriginSetSize != null) {
+    validateNumber(maxOriginSetSize, 'options.maxOriginSetSize', 0);
+  } else {
+    maxOriginSetSize = 128;
+  }
+
   assertIsArray(options.remoteCustomSettings, 'options.remoteCustomSettings');
   if (options.remoteCustomSettings) {
     options.remoteCustomSettings = [ ...options.remoteCustomSettings ];
@@ -3578,6 +3569,7 @@ function connect(authority, options, listener) {
 
   session[kAuthority] = `${options.servername || host}:${port}`;
   session[kProtocol] = protocol;
+  session[kMaxOriginSetSize] = maxOriginSetSize;
 
   if (typeof listener === 'function')
     session.once('connect', listener);

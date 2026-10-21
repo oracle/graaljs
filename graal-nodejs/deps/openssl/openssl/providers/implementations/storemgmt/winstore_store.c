@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2025 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 2022-2026 The OpenSSL Project Authors. All Rights Reserved.
  *
  * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
@@ -272,13 +272,16 @@ static int winstore_load_using(struct winstore_ctx_st *ctx,
     const unsigned char *der_ = der;
     size_t der_len_ = der_len;
 
-    if (setup_decoder(ctx) == 0)
+    if (setup_decoder(ctx) == 0) {
+        ctx->state = STATE_EOF;
         return 0;
+    }
 
     data.object_cb = object_cb;
     data.object_cbarg = object_cbarg;
 
-    OSSL_DECODER_CTX_set_construct_data(ctx->dctx, &data);
+    if (!OSSL_DECODER_CTX_set_construct_data(ctx->dctx, &data))
+        return 0;
     OSSL_DECODER_CTX_set_passphrase_cb(ctx->dctx, pw_cb, pw_cbarg);
 
     if (OSSL_DECODER_from_data(ctx->dctx, &der_, &der_len_) == 0)

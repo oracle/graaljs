@@ -278,7 +278,7 @@ This method allows one or more SQL statements to be executed without returning
 any results. This method is useful when executing SQL statements read from a
 file. This method is a wrapper around [`sqlite3_exec()`][].
 
-### `database.function(name[, options], function)`
+### `database.function(name[, options], fn)`
 
 <!-- YAML
 added: v22.13.0
@@ -298,10 +298,10 @@ added: v22.13.0
     arguments (between zero and [`SQLITE_MAX_FUNCTION_ARG`][]). If `false`,
     `function` must be invoked with exactly `function.length` arguments.
     **Default:** `false`.
-* `function` {Function} The JavaScript function to call when the SQLite
-  function is invoked. The return value of this function should be a valid
-  SQLite data type: see [Type conversion between JavaScript and SQLite][].
-  The result defaults to `NULL` if the return value is `undefined`.
+* `fn` {Function} The JavaScript function to call when the SQLite function is
+  invoked. The return value of this function should be a valid SQLite data type:
+  see [Type conversion between JavaScript and SQLite][]. The result defaults to
+  `NULL` if the return value is `undefined`.
 
 This method is used to create SQLite user-defined functions. This method is a
 wrapper around [`sqlite3_create_function_v2()`][].
@@ -366,8 +366,12 @@ added: v22.12.0
 
 * `changeset` {Uint8Array} A binary changeset or patchset.
 * `options` {Object} The configuration options for how the changes will be applied.
-  * `filter` {Function} Skip changes that, when targeted table name is supplied to this function, return a truthy value.
-    By default, all changes are attempted.
+  * `filter` {Function} for each table affected by at least
+    one change in the changeset, the `filter` callback is invoked with the
+    table name as the first argument. If the return value is falsy, then no
+    attempt is made to apply any changes to the table.
+    Otherwise, if the return value is truthy or no `filter` callback is provided,
+    all changes related to the table are attempted.
   * `onConflict` {Function} A function that determines how to handle conflicts. The function receives one argument,
     which can be one of the following values:
 

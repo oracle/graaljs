@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2025 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 2022-2026 The OpenSSL Project Authors. All Rights Reserved.
  *
  * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
@@ -497,7 +497,7 @@ static int tls_record_app_data_waiting(OSSL_RECORD_LAYER *rl)
 static int rlayer_early_data_count_ok(OSSL_RECORD_LAYER *rl, size_t length,
     size_t overhead, int send)
 {
-    uint32_t max_early_data = rl->max_early_data;
+    uint64_t max_early_data = rl->max_early_data;
 
     if (max_early_data == 0) {
         RLAYERfatal(rl, send ? SSL_AD_INTERNAL_ERROR : SSL_AD_UNEXPECTED_MESSAGE,
@@ -620,6 +620,11 @@ int tls_get_more_records(OSSL_RECORD_LAYER *rl)
 
                 thisrr->length = sslv2len & 0x7fff;
 
+                if (!rl->funcs->validate_record_header(rl, thisrr)) {
+                    /* RLAYERfatal already called */
+                    return OSSL_RECORD_RETURN_FATAL;
+                }
+
                 if (thisrr->length > TLS_BUFFER_get_len(rbuf)
                         - SSL2_RT_HEADER_LENGTH) {
                     RLAYERfatal(rl, SSL_AD_RECORD_OVERFLOW,
@@ -656,16 +661,16 @@ int tls_get_more_records(OSSL_RECORD_LAYER *rl)
                 if (rl->msg_callback != NULL)
                     rl->msg_callback(0, version, SSL3_RT_HEADER, p, 5, rl->cbarg);
 
+                if (!rl->funcs->validate_record_header(rl, thisrr)) {
+                    /* RLAYERfatal already called */
+                    return OSSL_RECORD_RETURN_FATAL;
+                }
+
                 if (thisrr->length > TLS_BUFFER_get_len(rbuf) - SSL3_RT_HEADER_LENGTH) {
                     RLAYERfatal(rl, SSL_AD_RECORD_OVERFLOW,
                         SSL_R_PACKET_LENGTH_TOO_LONG);
                     return OSSL_RECORD_RETURN_FATAL;
                 }
-            }
-
-            if (!rl->funcs->validate_record_header(rl, thisrr)) {
-                /* RLAYERfatal already called */
-                return OSSL_RECORD_RETURN_FATAL;
             }
 
             /* now rl->rstate == SSL_ST_READ_BODY */
@@ -1450,7 +1455,7 @@ err:
 static void tls_int_free(OSSL_RECORD_LAYER *rl)
 {
     BIO_free(rl->prev);
-    BIO_free(rl->bio);
+    BIO_free_all(rl->bio);
     BIO_free(rl->next);
     ossl_tls_buffer_release(&rl->rbuf);
 
@@ -1914,13 +1919,14 @@ int tls_retry_write_records(OSSL_RECORD_LAYER *rl)
 {
     int i, ret;
     TLS_BUFFER *thiswb;
-    size_t tmpwrit = 0;
+    size_t tmpwrit = 0, left;
 
     if (rl->nextwbuf >= rl->numwpipes)
         return OSSL_RECORD_RETURN_SUCCESS;
 
     for (;;) {
         thiswb = &rl->wbuf[rl->nextwbuf];
+        left = TLS_BUFFER_get_left(thiswb);
 
         clear_sys_error();
         if (rl->bio != NULL) {
@@ -1930,13 +1936,24 @@ int tls_retry_write_records(OSSL_RECORD_LAYER *rl)
                     return ret;
             }
             i = BIO_write(rl->bio, (char *)&(TLS_BUFFER_get_buf(thiswb)[TLS_BUFFER_get_offset(thiswb)]),
-                (unsigned int)TLS_BUFFER_get_left(thiswb));
+                (unsigned int)left);
             if (i >= 0) {
                 tmpwrit = i;
-                if (i == 0 && BIO_should_retry(rl->bio))
-                    ret = OSSL_RECORD_RETURN_RETRY;
-                else
+                if (i == 0 && left != 0) {
+                    if (BIO_should_retry(rl->bio)) {
+                        ret = OSSL_RECORD_RETURN_RETRY;
+                    } else {
+                        /*
+                         * Treat this as a fatal I/O condition. Do not queue an
+                         * SSL reason: a zero return with no retry flag may come
+                         * from a custom BIO and does not imply an SSL library
+                         * or protocol error.
+                         */
+                        ret = OSSL_RECORD_RETURN_FATAL;
+                    }
+                } else {
                     ret = OSSL_RECORD_RETURN_SUCCESS;
+                }
             } else {
                 if (BIO_should_retry(rl->bio)) {
                     ret = OSSL_RECORD_RETURN_RETRY;
@@ -1959,7 +1976,7 @@ int tls_retry_write_records(OSSL_RECORD_LAYER *rl)
          * Treat i == 0 as success rather than an error for zero byte
          * writes to permit this case.
          */
-        if (i >= 0 && tmpwrit == TLS_BUFFER_get_left(thiswb)) {
+        if (i >= 0 && tmpwrit == left) {
             TLS_BUFFER_set_left(thiswb, 0);
             TLS_BUFFER_add_offset(thiswb, tmpwrit);
             if (++(rl->nextwbuf) < rl->numwpipes)
@@ -1970,6 +1987,28 @@ int tls_retry_write_records(OSSL_RECORD_LAYER *rl)
                 tls_release_write_buffer(rl);
             return OSSL_RECORD_RETURN_SUCCESS;
         } else if (i <= 0) {
+            /*
+             * If the app buffer is used directly (kTLS) and the caller is
+             * allowed to move it, copy the unsent data so the original
+             * buffer can be safely released.
+             */
+            if (TLS_BUFFER_is_app_buffer(thiswb)
+                && (rl->mode & SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER) != 0) {
+                unsigned char *buf;
+
+                left = TLS_BUFFER_get_left(thiswb);
+                buf = OPENSSL_malloc(left);
+                if (buf == NULL) {
+                    RLAYERfatal(rl, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
+                    return OSSL_RECORD_RETURN_FATAL;
+                }
+                memcpy(buf,
+                    TLS_BUFFER_get_buf(thiswb) + TLS_BUFFER_get_offset(thiswb),
+                    left);
+                TLS_BUFFER_set_buf(thiswb, buf);
+                TLS_BUFFER_set_offset(thiswb, 0);
+                TLS_BUFFER_set_app_buffer(thiswb, 0);
+            }
             if (rl->isdtls) {
                 /*
                  * For DTLS, just drop it. That's kind of the whole point in
@@ -1996,7 +2035,7 @@ int tls_set1_bio(OSSL_RECORD_LAYER *rl, BIO *bio)
 {
     if (bio != NULL && !BIO_up_ref(bio))
         return 0;
-    BIO_free(rl->bio);
+    BIO_free_all(rl->bio);
     rl->bio = bio;
 
     return 1;
