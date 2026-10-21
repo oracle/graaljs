@@ -182,6 +182,7 @@ test-vm-module-evaluate-synthethic-module: FAIL
 test-vm-module-modulerequests: FAIL
 
 # run-time user-land snapshots are not supported
+test-crypto-random-cache-snapshot: FAIL
 test-snapshot-api: FAIL
 test-snapshot-argv1: FAIL
 test-snapshot-basic: FAIL
