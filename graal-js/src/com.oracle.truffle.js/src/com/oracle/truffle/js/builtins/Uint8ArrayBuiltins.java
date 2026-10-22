@@ -185,8 +185,7 @@ public final class Uint8ArrayBuiltins {
             return typedArrayLengthNode.execute(null, view, getContext());
         }
 
-        protected final byte[] getUint8ArrayBytes(JSTypedArrayObject ta, InteropLibrary interop) {
-            int byteLength = getByteLengthOrThrow(ta);
+        protected final byte[] getUint8ArrayBytes(JSTypedArrayObject ta, int byteLength, InteropLibrary interop) {
             byte[] buffer = new byte[byteLength];
             JSInteropUtil.copyFromBuffer(ta.getArrayBuffer(), ta.getByteOffset(), buffer, 0, byteLength, interop);
             reportLoopCount(this, byteLength);
@@ -701,7 +700,15 @@ public final class Uint8ArrayBuiltins {
             boolean base64url = Strings.equals(equalNode, alphabet, BASE64URL);
             boolean omitPadding = getOmitPaddingOptionNode.executeValue(opts);
 
-            byte[] bytes = getUint8ArrayBytes(thisObj, interop);
+            int byteLength = getByteLengthOrThrow(thisObj);
+            // Three bytes encode to four characters. Without padding, the length is
+            // ceil(4 * byteLength / 3); with padding, it is 4 * ceil(byteLength / 3).
+            long resultLength = omitPadding ? (byteLength * 4L + 2) / 3 : ((byteLength + 2L) / 3) * 4;
+            if (resultLength > getContext().getStringLengthLimit()) {
+                errorBranch.enter();
+                throw Errors.createRangeErrorInvalidStringLength(this);
+            }
+            byte[] bytes = getUint8ArrayBytes(thisObj, byteLength, interop);
 
             String result = base64EncodeToString(bytes, base64url, omitPadding);
             return Strings.fromJavaString(fromJavaStringNode, result);
@@ -740,11 +747,12 @@ public final class Uint8ArrayBuiltins {
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
                         @Cached TruffleString.FromByteArrayNode fromByteArrayNode,
                         @Cached TruffleString.SwitchEncodingNode switchEncodingNode) {
-            byte[] buffer = getUint8ArrayBytes(thisObj, interop);
-            if (buffer.length > JSConfig.SOFT_MAX_ARRAY_LENGTH / 2) {
+            int byteLength = getByteLengthOrThrow(thisObj);
+            if (byteLength > getContext().getStringLengthLimit() / 2) {
                 errorBranch.enter();
-                throw Errors.createRangeErrorInvalidArrayLength(this);
+                throw Errors.createRangeErrorInvalidStringLength(this);
             }
+            byte[] buffer = getUint8ArrayBytes(thisObj, byteLength, interop);
             byte[] hex = new byte[buffer.length * 2];
 
             for (int i = 0; i < buffer.length; i++) {
