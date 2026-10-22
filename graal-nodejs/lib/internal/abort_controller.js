@@ -149,8 +149,8 @@ function refreshCompositeSignal(signal) {
       continue;
     }
 
-    if (sourceSignal.aborted) {
-      abortSignal(signal, sourceSignal.reason);
+    if (sourceSignal[kAborted]) {
+      abortSignal(signal, sourceSignal[kReason]);
       return;
     }
   }
@@ -170,8 +170,8 @@ function followCompositeSignal(signal) {
       continue;
     }
 
-    if (sourceSignal.aborted) {
-      abortSignal(signal, sourceSignal.reason);
+    if (sourceSignal[kAborted]) {
+      abortSignal(signal, sourceSignal[kReason]);
       return;
     }
 
@@ -217,6 +217,14 @@ function setWeakAbortSignalTimeout(weakRef, delay) {
 }
 
 class AbortSignal extends EventTarget {
+  #brand;
+
+  static {
+    converters.AbortSignal = createInterfaceConverter(
+      'AbortSignal',
+      (value) => typeof value === 'object' && value !== null && #brand in value,
+    );
+  }
 
   /**
    * @param {symbol | undefined} dontThrowSymbol
@@ -337,8 +345,9 @@ class AbortSignal extends EventTarget {
         gcPersistentSignals.add(signal);
       }
 
-      if (signal.aborted) {
-        abortSignal(resultSignal, signal.reason);
+      refreshCompositeSignal(signal);
+      if (signal[kAborted]) {
+        abortSignal(resultSignal, signal[kReason]);
         return resultSignal;
       }
 
@@ -348,11 +357,6 @@ class AbortSignal extends EventTarget {
       } else if (!signal[kSourceSignals]) {
         continue;
       } else {
-        refreshCompositeSignal(signal);
-        if (signal.aborted) {
-          abortSignal(resultSignal, signal.reason);
-          return resultSignal;
-        }
         for (const sourceSignalWeakRef of signal[kSourceSignals]) {
           const sourceSignal = sourceSignalWeakRef.deref();
           if (!sourceSignal) {
@@ -360,8 +364,8 @@ class AbortSignal extends EventTarget {
           }
           assert(!sourceSignal[kComposite]);
 
-          if (sourceSignal.aborted) {
-            abortSignal(resultSignal, sourceSignal.reason);
+          if (sourceSignal[kAborted]) {
+            abortSignal(resultSignal, sourceSignal[kReason]);
             return resultSignal;
           }
 
@@ -376,6 +380,10 @@ class AbortSignal extends EventTarget {
     if (hasTimeoutSignals && resultSignal[kSourceSignals].size > 0) {
       resultSignal[kTimeout] = true;
     }
+
+    // Preserve abort state even if sources are collected before this signal is
+    // observed. Following uses weak references so unused signals can be collected.
+    followCompositeSignal(resultSignal);
 
     return resultSignal;
   }
@@ -466,7 +474,6 @@ class AbortSignal extends EventTarget {
   }
 }
 
-converters.AbortSignal = createInterfaceConverter('AbortSignal', AbortSignal.prototype);
 converters['sequence<AbortSignal>'] = createSequenceConverter(converters.AbortSignal);
 
 function ClonedAbortSignal() {
@@ -522,6 +529,13 @@ function abortSignal(signal, reason) {
   for (let i = 0; i < dependentSignalsToAbort.length; i++) {
     const dependentSignal = dependentSignalsToAbort[i];
     runAbort(dependentSignal);
+    // A transitively-aborted dependent signal can never abort again, so there
+    // is no longer any reason to keep it alive. Dropping it from
+    // gcPersistentSignals lets it be collected, which in turn prunes its
+    // WeakRef from its sources' kDependantSignals sets. Otherwise, an observed
+    // composite that follows a long-lived source stays retained forever and
+    // its entry accumulates in that source's kDependantSignals.
+    gcPersistentSignals.delete(dependentSignal);
   }
 
   // Clean up the signal from gcPersistentSignals

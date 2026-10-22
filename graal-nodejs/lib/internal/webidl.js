@@ -20,7 +20,7 @@ const {
   NumberIsNaN,
   NumberMAX_SAFE_INTEGER,
   NumberMIN_SAFE_INTEGER,
-  ObjectPrototypeIsPrototypeOf,
+  ObjectPrototypeHasOwnProperty,
   SafeArrayIterator,
   SafeSet,
   String,
@@ -35,6 +35,8 @@ const {
   isSharedArrayBuffer,
   isTypedArray,
 } = require('internal/util/types');
+
+const { getSharedArrayBufferGrowable } = internalBinding('util');
 
 const BIGINT_2_63 = 1n << 63n;
 const BIGINT_2_64 = 1n << 64n;
@@ -107,6 +109,28 @@ function makeException(message, options = kEmptyObject) {
     `${prefix}${context}${message}`,
     options.code || 'ERR_INVALID_ARG_TYPE',
   );
+}
+
+/**
+ * Builds derived conversion options for nested converter calls and adjusted
+ * error codes. These objects are allocated on dictionary/sequence conversion
+ * hot paths, so keep their shape stable and avoid object spread and
+ * null-prototype objects.
+ * @param {ConversionOptions} options Parent conversion options.
+ * @param {string} [context] Replacement context.
+ * @param {string} [code] Replacement error code.
+ * @returns {ConversionOptions}
+ */
+function makeOptions(options, context = options.context, code = options.code) {
+  return {
+    prefix: options.prefix,
+    context,
+    code,
+    enforceRange: options.enforceRange,
+    clamp: options.clamp,
+    allowShared: options.allowShared,
+    allowResizable: options.allowResizable,
+  };
 }
 
 /**
@@ -376,7 +400,7 @@ function convertToInt(
       if (integer < lowerBound || integer > upperBound) {
         throw makeException(
           `is outside the expected range of ${lowerBound} to ${upperBound}.`,
-          { __proto__: null, ...options, code: 'ERR_OUT_OF_RANGE' });
+          makeOptions(options, options.context, 'ERR_OUT_OF_RANGE'));
       }
 
       return integer;
@@ -416,7 +440,7 @@ function convertToInt(
     if (x < lowerBound || x > upperBound) {
       throw makeException(
         `is outside the expected range of ${lowerBound} to ${upperBound}.`,
-        { __proto__: null, ...options, code: 'ERR_OUT_OF_RANGE' });
+        makeOptions(options, options.context, 'ERR_OUT_OF_RANGE'));
     }
 
     return x;
@@ -593,7 +617,7 @@ function requiredArguments(length, required, options = kEmptyObject) {
       `${required} argument${
         required === 1 ? '' : 's'
       } required, but only ${length} present.`,
-      { __proto__: null, ...options, context: '', code: 'ERR_MISSING_ARGS' });
+      makeOptions(options, '', 'ERR_MISSING_ARGS'));
   }
 }
 
@@ -615,7 +639,7 @@ function createEnumConverter(name, values) {
     if (!E.has(S)) {
       throw makeException(
         `'${S}' is not a valid enum value of type ${name}.`,
-        { __proto__: null, ...options, code: 'ERR_INVALID_ARG_VALUE' });
+        makeOptions(options, options.context, 'ERR_INVALID_ARG_VALUE'));
     }
 
     // Step 3: return the matching enumeration value.
@@ -675,17 +699,47 @@ function createDictionaryConverter(
   };
 
   const dictionaries = ArrayIsArray(members[0]) ? members : [members];
-  const sortedDictionaries = [];
+  const sortedMembers = [];
+
+  function ownMember(member, key) {
+    return ObjectPrototypeHasOwnProperty(member, key) ? member[key] : undefined;
+  }
+
+  // Dictionaries with no defaults and no required members skip steps
+  // 4.1.5/4.1.6 entirely, keeping the absent-member path free.
+  let anyMissingMemberHandling = false;
 
   // Web IDL dictionary conversion steps 3-4 process inherited dictionaries
   // from least-derived to most-derived and sort only within each dictionary.
   // Callers with inheritance pass one member array per dictionary level.
   for (let i = 0; i < dictionaries.length; i++) {
-    ArrayPrototypePush(
-      sortedDictionaries,
-      ArrayPrototypeToSorted(dictionaries[i], compareMembers),
+    const sortedDictionary = ArrayPrototypeToSorted(
+      dictionaries[i],
+      compareMembers,
     );
+    // Definition sites spell out only the members they need, so reading the
+    // optional ones below would resolve through %Object.prototype%.
+    // Re-materialize each descriptor once with every key present, copied from
+    // own properties only. The ordinary prototype is deliberate: nothing
+    // consults it now, and detaching it measurably slows these reads down.
+    for (let j = 0; j < sortedDictionary.length; j++) {
+      const member = sortedDictionary[j];
+      const defaultValue = ownMember(member, 'defaultValue');
+      const required = ownMember(member, 'required');
+      if (typeof defaultValue === 'function' || required) {
+        anyMissingMemberHandling = true;
+      }
+      setOwnProperty(sortedMembers, sortedMembers.length, {
+        key: ownMember(member, 'key'),
+        converter: ownMember(member, 'converter'),
+        defaultValue,
+        required,
+        validator: ownMember(member, 'validator'),
+      });
+    }
   }
+
+  const hasMissingMemberHandling = anyMissingMemberHandling;
 
   return function(jsDict, options = kEmptyObject) {
     // Step 1: reject non-object, non-null, non-undefined values.
@@ -698,45 +752,41 @@ function createDictionaryConverter(
 
     // Step 2: create the IDL dictionary value.
     const idlDict = { __proto__: null };
+    if (jsDict == null && !hasMissingMemberHandling) return idlDict;
 
-    // Steps 3-4: iterate each dictionary level, then its sorted members.
-    for (let i = 0; i < sortedDictionaries.length; i++) {
-      const sortedMembers = sortedDictionaries[i];
-      for (let j = 0; j < sortedMembers.length; j++) {
-        const member = sortedMembers[j];
-        // Step 4.1.1: get the dictionary member identifier.
-        const key = member.key;
-        // Steps 4.1.2-4.1.3: read the JavaScript member value.
-        const jsMemberValue = jsDict == null ? undefined : jsDict[key];
+    // Steps 3-4: members retain their per-dictionary order from construction.
+    for (let i = 0; i < sortedMembers.length; i++) {
+      const member = sortedMembers[i];
+      // Step 4.1.1: get the dictionary member identifier.
+      const key = member.key;
+      // Steps 4.1.2-4.1.3: read the JavaScript member value.
+      const jsMemberValue = jsDict == null ? undefined : jsDict[key];
 
-        // Step 4.1.4: convert and store present member values.
-        if (jsMemberValue !== undefined) {
-          const converter = member.converter;
-          // Step 4.1.4.1: convert the JavaScript value to IDL.
-          const idlMemberValue = converter(
-            jsMemberValue,
-            {
-              __proto__: null,
-              ...options,
-              context: dictionaryMemberContext(key, options),
-            },
-          );
-          // Validators are a Node.js extension after conversion. They let
-          // consumers reject known unsupported values while dictionary
-          // conversion still has precise member context. Web Crypto uses this
-          // so SubtleCrypto.supports() can make accurate decisions from
-          // normalized dictionaries instead of probing by running operations.
-          member.validator?.(idlMemberValue, jsDict);
-          // Step 4.1.4.2: set idlDict[key] to the IDL value.
-          idlDict[key] = idlMemberValue;
-        } else if (typeof member.defaultValue === 'function') {
+      // Step 4.1.4: convert and store present member values.
+      if (jsMemberValue !== undefined) {
+        const converter = member.converter;
+        // Step 4.1.4.1: convert the JavaScript value to IDL.
+        const idlMemberValue = converter(
+          jsMemberValue,
+          makeOptions(options, dictionaryMemberContext(key, options)),
+        );
+        // Validators are a Node.js extension after conversion. They let
+        // consumers reject known unsupported values while dictionary
+        // conversion still has precise member context. Web Crypto uses this
+        // so SubtleCrypto.supports() can make accurate decisions from
+        // normalized dictionaries instead of probing by running operations.
+        member.validator?.(idlMemberValue, jsDict);
+        // Step 4.1.4.2: set idlDict[key] to the IDL value.
+        idlDict[key] = idlMemberValue;
+      } else if (hasMissingMemberHandling) {
+        if (typeof member.defaultValue === 'function') {
           // Step 4.1.5: store the member default value.
           idlDict[key] = member.defaultValue();
         } else if (member.required) {
           // Step 4.1.6: required missing members throw.
           throw makeException(
             missingDictionaryMemberMessage(dictionaryName, key),
-            { __proto__: null, ...options, code: 'ERR_MISSING_OPTION' });
+            makeOptions(options, options.context, 'ERR_MISSING_OPTION'));
         }
       }
     }
@@ -772,7 +822,12 @@ function createSequenceConverter(converter) {
 
     // Step 4 and create-sequence step 1: get the iterator record.
     const iterator = FunctionPrototypeCall(method, V);
-    const nextMethod = iterator?.next;
+    if (type(iterator) !== 'Object') {
+      throw makeException(
+        'cannot be converted to sequence.',
+        options);
+    }
+    const nextMethod = iterator.next;
     if (typeof nextMethod !== 'function') {
       throw makeException(
         'cannot be converted to sequence.',
@@ -794,11 +849,10 @@ function createSequenceConverter(converter) {
         break;
       }
       // Step 3.3: convert next to an IDL value of type T.
-      const idlValue = converter(next.value, {
-        __proto__: null,
-        ...options,
-        context: sequenceElementContext(idlSequence.length, options),
-      });
+      const idlValue = converter(
+        next.value,
+        makeOptions(options, sequenceElementContext(idlSequence.length, options)),
+      );
       // Step 3.4: store the value and advance i.
       ArrayPrototypePush(idlSequence, idlValue);
     }
@@ -810,13 +864,13 @@ function createSequenceConverter(converter) {
  * Creates a converter for a Web IDL interface type.
  * @see https://webidl.spec.whatwg.org/#js-interface
  * @param {string} name Interface identifier.
- * @param {object} prototype Interface prototype object.
+ * @param {(value: any) => boolean} brandCheck Interface brand predicate.
  * @returns {Converter}
  */
-function createInterfaceConverter(name, prototype) {
+function createInterfaceConverter(name, brandCheck) {
   return (V, options = kEmptyObject) => {
     // Web IDL interface conversion step 1: return V if it implements I.
-    if (ObjectPrototypeIsPrototypeOf(prototype, V)) {
+    if (brandCheck(V)) {
       return V;
     }
     // Step 2: otherwise throw.
@@ -882,12 +936,8 @@ function validateBufferSourceBacking(buffer, options) {
 function validateAllowGrowableSharedArrayBuffer(buffer, options) {
   // SharedArrayBuffer and ArrayBufferView conversion step 3:
   // IsFixedLengthArrayBuffer(buffer) must be true without [AllowResizable].
-  // Do not use a primordial getter here. When this module is included in the
-  // startup snapshot, an early-captured SharedArrayBuffer.prototype.growable
-  // getter does not detect growable buffers created after deserialization.
-  // Lazily capturing the getter would work, but it would observe the runtime
-  // prototype at first comparison, so it would not be an actual primordial.
-  if (!options.allowResizable && buffer.growable) {
+  if (!options.allowResizable &&
+      FunctionPrototypeCall(getSharedArrayBufferGrowable, buffer)) {
     throw makeException(
       'is backed by a growable SharedArrayBuffer, which is not allowed.',
       options);

@@ -65,6 +65,7 @@ const customTypesMap = {
     'https://tc39.github.io/ecma262/#sec-module-namespace-exotic-objects',
 
   'AsyncLocalStorage': 'async_context.html#class-asynclocalstorage',
+  'RunScope': 'async_context.html#class-runscope',
 
   'AsyncHook': 'async_hooks.html#async_hookscreatehookoptions',
   'AsyncResource': 'async_hooks.html#class-asyncresource',
@@ -85,6 +86,7 @@ const customTypesMap = {
   'Hash': 'crypto.html#class-hash',
   'Hmac': 'crypto.html#class-hmac',
   'KeyObject': 'crypto.html#class-keyobject',
+  'Mac': 'crypto.html#class-mac',
   'Sign': 'crypto.html#class-sign',
   'Verify': 'crypto.html#class-verify',
   'crypto.constants': 'crypto.html#cryptoconstants',
@@ -201,6 +203,7 @@ const customTypesMap = {
   'require': 'modules.html#requireid',
 
   'Handle': 'net.html#serverlistenhandle-backlog-callback',
+  'net.BoundSocket': 'net.html#class-netboundsocket',
   'net.BlockList': 'net.html#class-netblocklist',
   'net.Server': 'net.html#class-netserver',
   'net.Socket': 'net.html#class-netsocket',
@@ -212,8 +215,8 @@ const customTypesMap = {
   'os.constants.dlopen': 'os.html#dlopen-constants',
 
   'Histogram': 'perf_hooks.html#class-histogram',
-  'IntervalHistogram':
-     'perf_hooks.html#class-intervalhistogram-extends-histogram',
+  'ELDHistogram':
+     'perf_hooks.html#class-eldhistogram-extends-histogram',
   'RecordableHistogram':
      'perf_hooks.html#class-recordablehistogram-extends-histogram',
   'PerformanceEntry': 'perf_hooks.html#class-performanceentry',
@@ -223,6 +226,8 @@ const customTypesMap = {
     'perf_hooks.html#class-performanceobserver',
   'PerformanceObserverEntryList':
     'perf_hooks.html#class-performanceobserverentrylist',
+  'SlidingWindowHistogram':
+    'perf_hooks.html#class-slidingwindowhistogram',
 
   'readline.Interface':
     'readline.html#class-readlineinterface',
@@ -252,6 +257,8 @@ const customTypesMap = {
   'Timer': 'timers.html#timers',
 
   'TestsStream': 'test.html#class-testsstream',
+  'TestContext': 'test.html#class-testcontext',
+  'SuiteContext': 'test.html#class-suitecontext',
 
   'tls.SecureContext': 'tls.html#tlscreatesecurecontextoptions',
   'tls.Server': 'tls.html#class-tlsserver',
@@ -266,6 +273,7 @@ const customTypesMap = {
   'URLSearchParams': 'url.html#class-urlsearchparams',
 
   'MIMEParams': 'util.html#class-utilmimeparams',
+  'MIMEType': 'util.html#class-utilmimetype',
 
   'vm.Module': 'vm.html#class-vmmodule',
   'vm.Script': 'vm.html#class-vmscript',
@@ -314,6 +322,11 @@ const customTypesMap = {
     'webstreams.html#class-textencoderstream',
   'TextDecoderStream':
     'webstreams.html#class-textdecoderstream',
+
+  'Shareable': 'stream_iter.html#interface-shareable',
+  'Share': 'stream_iter.html#class-share',
+  'SyncShareable': 'stream_iter.html#interface-syncshareable',
+  'SyncShare': 'stream_iter.html#class-syncshare',
 
   'FormData': 'https://developer.mozilla.org/en-US/docs/Web/API/FormData',
   'Headers': 'https://developer.mozilla.org/en-US/docs/Web/API/Headers',

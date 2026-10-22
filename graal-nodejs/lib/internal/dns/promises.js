@@ -207,7 +207,8 @@ function lookup(hostname, options) {
 
   if (typeof options === 'number') {
     validateOneOf(options, 'family', validFamilies);
-    family = options;
+    // Coerce -0 to +0.
+    family = options + 0;
   } else if (options !== undefined && typeof options !== 'object') {
     throw new ERR_INVALID_ARG_TYPE('options', ['integer', 'object'], options);
   } else {
@@ -218,7 +219,8 @@ function lookup(hostname, options) {
     }
     if (options?.family != null) {
       validateOneOf(options.family, 'options.family', validFamilies);
-      family = options.family;
+      // Coerce -0 to +0.
+      family = options.family + 0;
     }
     if (options?.all != null) {
       validateBoolean(options.all, 'options.all');
@@ -281,6 +283,8 @@ function lookupService(address, port) {
   if (arguments.length !== 2)
     throw new ERR_MISSING_ARGS('address', 'port');
 
+  validateString(address, 'address');
+
   if (isIP(address) === 0)
     throw new ERR_INVALID_ARG_VALUE('address', address);
 
@@ -336,7 +340,7 @@ function createResolverPromise(resolver, bindingName, hostname, ttl) {
 
 function resolver(bindingName) {
   function query(name, options) {
-    validateString(name, 'name');
+    validateStringWithoutNullBytes(name, 'name');
 
     const ttl = !!(options?.ttl);
     return createResolverPromise(this, bindingName, name, ttl);

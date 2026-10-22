@@ -117,13 +117,15 @@ class WorkerThreadsTaskRunner::DelayedTaskScheduler {
                        double delay_in_seconds) {
     auto locked = tasks_.Lock();
 
+    if (has_shut_down_) return;
+
     auto entry = std::make_unique<TaskQueueEntry>(std::move(task), priority);
     auto delayed = std::make_unique<ScheduleTask>(
         this, std::move(entry), delay_in_seconds);
 
     // The delayed task scheuler is on is own thread with its own loop that
     // runs the timers for the scheduled tasks to pop the original task back
-    // into the the worker task queue. This first pushes the tasks that
+    // into the worker task queue. This first pushes the tasks that
     // schedules the timers into the local task queue that will be flushed
     // by the local event loop.
     locked.Push(std::move(delayed));
@@ -132,6 +134,7 @@ class WorkerThreadsTaskRunner::DelayedTaskScheduler {
 
   void Stop() {
     auto locked = tasks_.Lock();
+    has_shut_down_ = true;
     locked.Push(std::make_unique<StopTask>(this));
     uv_async_send(&flush_tasks_);
   }
@@ -241,6 +244,7 @@ class WorkerThreadsTaskRunner::DelayedTaskScheduler {
   uv_loop_t loop_;
   uv_async_t flush_tasks_;
   std::unordered_set<uv_timer_t*> timers_;
+  bool has_shut_down_ = false;
 };
 
 WorkerThreadsTaskRunner::WorkerThreadsTaskRunner(
@@ -608,9 +612,9 @@ void NodePlatform::DrainTasks(Isolate* isolate) {
     // However, not blocking on the worker tasks at all can lead to loss of some
     // critical user-blocking worker tasks e.g. wasm async compilation tasks,
     // which should block the main thread until they are completed, as the
-    // documentation suggets. As a compromise, we currently only block on
+    // documentation suggests. As a compromise, we currently only block on
     // user-blocking tasks to reduce the chance of deadlocks while making sure
-    // that criticl user-blocking tasks are not lost.
+    // that critical user-blocking tasks are not lost.
     worker_thread_task_runner_->BlockingDrain();
   } while (per_isolate->FlushForegroundTasksInternal());
 }

@@ -5,6 +5,8 @@ const {
   ObjectDefineProperties,
   ObjectSetPrototypeOf,
   PromisePrototypeThen,
+  PromiseReject,
+  PromiseResolve,
   PromiseWithResolvers,
   Symbol,
   SymbolToStringTag,
@@ -43,12 +45,15 @@ const {
 } = require('internal/worker/js_transferable');
 
 const {
-  createPromiseCallback,
+  createPromiseCallback1Param,
+  createRawCallback2Params,
   customInspect,
   extractHighWaterMark,
   extractSizeAlgorithm,
   getNonWritablePropertyDescriptor,
   isBrandCheck,
+  kParkedAlgorithmResult,
+  kResolvedPromise,
   kState,
   kType,
   nonOpCancel,
@@ -248,23 +253,38 @@ ObjectDefineProperties(TransformStream.prototype, {
   [SymbolToStringTag]: getNonWritablePropertyDescriptor(TransformStream.name),
 });
 
+// The state record classes null out their prototype chain to keep
+// Object.prototype out of property lookups; every field ever assigned
+// is declared so the shape never transitions.
+class TransformStreamState {
+  readable = undefined;
+  writable = undefined;
+  controller = undefined;
+  backpressure = undefined;
+  // Continuation slots replacing the spec's
+  // [[backpressureChangePromise]]; see transformStreamSetBackpressure.
+  pullPending = false;
+  pendingWriteParked = false;
+  pendingWriteChunk = undefined;
+  writeContinuation = undefined;
+}
+ObjectSetPrototypeOf(TransformStreamState.prototype, null);
+
+class TransformStreamControllerState {
+  stream = undefined;
+  transformAlgorithm = undefined;
+  flushAlgorithm = undefined;
+  cancelAlgorithm = undefined;
+  performTransformRejected = undefined;
+  finishPromise = undefined;
+}
+ObjectSetPrototypeOf(TransformStreamControllerState.prototype, null);
+
 function InternalTransferredTransformStream() {
   ObjectSetPrototypeOf(this, TransformStream.prototype);
   markTransferMode(this, false, true);
   this[kType] = 'TransformStream';
-  this[kState] = {
-    __proto__: null,
-    readable: undefined,
-    writable: undefined,
-    backpressure: undefined,
-    backpressureChange: {
-      __proto__: null,
-      promise: undefined,
-      resolve: undefined,
-      reject: undefined,
-    },
-    controller: undefined,
-  };
+  this[kState] = new TransformStreamState();
 }
 
 ObjectSetPrototypeOf(InternalTransferredTransformStream.prototype, TransformStream.prototype);
@@ -352,7 +372,9 @@ const isTransformStream =
 const isTransformStreamDefaultController =
   isBrandCheck('TransformStreamDefaultController');
 
-async function defaultTransformAlgorithm(chunk, controller) {
+// Raw callback (see createRawCallback*): invoked inside the try/catch of
+// transformStreamDefaultControllerPerformTransform.
+function defaultTransformAlgorithm(chunk, controller) {
   transformStreamDefaultControllerEnqueue(controller, chunk);
 }
 
@@ -383,19 +405,10 @@ function initializeTransformStream(
     readableSizeAlgorithm,
   );
 
-  stream[kState] = {
-    __proto__: null,
-    readable,
-    writable,
-    controller: undefined,
-    backpressure: undefined,
-    backpressureChange: {
-      __proto__: null,
-      promise: undefined,
-      resolve: undefined,
-      reject: undefined,
-    },
-  };
+  const state = new TransformStreamState();
+  state.readable = readable;
+  state.writable = writable;
+  stream[kState] = state;
 
   transformStreamSetBackpressure(stream, true);
 }
@@ -428,12 +441,33 @@ function transformStreamUnblockWrite(stream) {
     transformStreamSetBackpressure(stream, false);
 }
 
+// The spec's [[backpressureChangePromise]] is only ever observed by the
+// source pull algorithm (settles when backpressure next becomes true) and
+// by a sink write arriving while backpressure is set (settles when
+// backpressure next becomes false). Both observers are internal, so the
+// promise record is replaced by continuation slots: a parked pull is
+// completed by delivering the readable controller's pull-fulfilled step,
+// and a parked write by the cached write continuation (see
+// transformStreamDefaultSinkWriteAlgorithm). Each is enqueued on the
+// shared resolved promise at the exact microtask position the old
+// record's reaction would have had.
 function transformStreamSetBackpressure(stream, backpressure) {
-  assert(stream[kState].backpressure !== backpressure);
-  if (stream[kState].backpressureChange.promise !== undefined)
-    stream[kState].backpressureChange.resolve?.();
-  stream[kState].backpressureChange = PromiseWithResolvers();
-  stream[kState].backpressure = backpressure;
+  const state = stream[kState];
+  assert(state.backpressure !== backpressure);
+  state.backpressure = backpressure;
+  if (backpressure) {
+    if (state.pullPending) {
+      state.pullPending = false;
+      // The pull-fulfilled step exists: a pull parked it (see
+      // transformStreamDefaultSourcePullAlgorithm), and the readable
+      // controller creates it before invoking the pull algorithm.
+      PromisePrototypeThen(
+        kResolvedPromise,
+        state.readable[kState].controller[kState].pullFulfilled);
+    }
+  } else if (state.pendingWriteParked) {
+    PromisePrototypeThen(kResolvedPromise, state.writeContinuation);
+  }
 }
 
 function setupTransformStreamDefaultController(
@@ -444,13 +478,12 @@ function setupTransformStreamDefaultController(
   cancelAlgorithm) {
   assert(isTransformStream(stream));
   assert(stream[kState].controller === undefined);
-  controller[kState] = {
-    __proto__: null,
-    stream,
-    transformAlgorithm,
-    flushAlgorithm,
-    cancelAlgorithm,
-  };
+  const controllerState = new TransformStreamControllerState();
+  controllerState.stream = stream;
+  controllerState.transformAlgorithm = transformAlgorithm;
+  controllerState.flushAlgorithm = flushAlgorithm;
+  controllerState.cancelAlgorithm = cancelAlgorithm;
+  controller[kState] = controllerState;
   stream[kState].controller = controller;
 }
 
@@ -462,13 +495,13 @@ function setupTransformStreamDefaultControllerFromTransformer(
   const flush = transformer?.flush;
   const cancel = transformer?.cancel;
   const transformAlgorithm = transform ?
-    createPromiseCallback('transformer.transform', transform, transformer) :
+    createRawCallback2Params('transformer.transform', transform, transformer) :
     defaultTransformAlgorithm;
   const flushAlgorithm = flush ?
-    createPromiseCallback('transformer.flush', flush, transformer) :
+    createPromiseCallback1Param('transformer.flush', flush, transformer) :
     nonOpFlush;
   const cancelAlgorithm = cancel ?
-    createPromiseCallback('transformer.cancel', cancel, transformer) :
+    createPromiseCallback1Param('transformer.cancel', cancel, transformer) :
     nonOpCancel;
 
   setupTransformStreamDefaultController(
@@ -515,18 +548,40 @@ function transformStreamDefaultControllerError(controller, error) {
   transformStreamError(controller[kState].stream, error);
 }
 
-async function transformStreamDefaultControllerPerformTransform(controller, chunk) {
+// Mirrors the reference implementation's
+// `promiseCall(transformAlgorithm, ...).then(undefined, rejectionSteps)`:
+// the returned promise settles one microtask after the (coerced) result
+// does, and a rejection errors the transform stream before propagating.
+// The raw transform callback plus the shared resolved promise for
+// non-thenable results replace the previous async wrapper's two implicit
+// promises per chunk.
+function transformStreamDefaultControllerPerformTransform(controller, chunk) {
+  const controllerState = controller[kState];
+  const transformAlgorithm = controllerState.transformAlgorithm;
+  if (transformAlgorithm === undefined) {
+    // Algorithms were cleared by a concurrent cancel/abort/close.
+    return kResolvedPromise;
+  }
+  let result;
   try {
-    const transformAlgorithm = controller[kState].transformAlgorithm;
-    if (transformAlgorithm === undefined) {
-      // Algorithms were cleared by a concurrent cancel/abort/close.
-      return;
-    }
-    return await transformAlgorithm(chunk, controller);
+    result = transformAlgorithm(chunk, controller);
   } catch (error) {
+    result = PromiseReject(error);
+  }
+  if (result === null ||
+      (typeof result !== 'object' && typeof result !== 'function')) {
+    result = kResolvedPromise;
+  } else {
+    result = PromiseResolve(result);
+  }
+  controllerState.performTransformRejected ??= (error) => {
     transformStreamError(controller[kState].stream, error);
     throw error;
-  }
+  };
+  return PromisePrototypeThen(
+    result,
+    undefined,
+    controllerState.performTransformRejected);
 }
 
 function transformStreamDefaultControllerTerminate(controller) {
@@ -547,26 +602,48 @@ function transformStreamDefaultControllerTerminate(controller) {
 }
 
 function transformStreamDefaultSinkWriteAlgorithm(stream, chunk) {
+  const state = stream[kState];
   const {
     writable,
     controller,
-  } = stream[kState];
+  } = state;
   assert(writable[kState].state === 'writable');
-  if (stream[kState].backpressure) {
-    const backpressureChange = stream[kState].backpressureChange.promise;
-    return PromisePrototypeThen(
-      backpressureChange,
-      () => {
-        const {
-          writable,
-        } = stream[kState];
-        if (writable[kState].state === 'erroring')
-          throw writable[kState].storedError;
-        assert(writable[kState].state === 'writable');
-        return transformStreamDefaultControllerPerformTransform(
+  if (state.backpressure) {
+    // Park the chunk; the backpressure -> false flip delivers the cached
+    // continuation (see transformStreamSetBackpressure) at the same
+    // microtask position as the old [[backpressureChangePromise]]
+    // reaction. The continuation completes the parked write by wiring
+    // the perform-transform promise directly to the writable
+    // controller's write reactions (they exist: the controller creates
+    // them before invoking the write algorithm), replacing the promise
+    // record the old code allocated and resolved per parked chunk. The
+    // writable dispatches a single write at a time, so one pending slot
+    // suffices.
+    assert(!state.pendingWriteParked);
+    state.pendingWriteParked = true;
+    state.pendingWriteChunk = chunk;
+    state.writeContinuation ??= () => {
+      const pendingChunk = state.pendingWriteChunk;
+      state.pendingWriteParked = false;
+      state.pendingWriteChunk = undefined;
+      const writableState = state.writable[kState];
+      const writableControllerState = writableState.controller[kState];
+      if (writableState.state === 'erroring') {
+        const error = writableState.storedError;
+        PromisePrototypeThen(
+          kResolvedPromise,
+          () => writableControllerState.writeRejected(error));
+        return;
+      }
+      assert(writableState.state === 'writable');
+      PromisePrototypeThen(
+        transformStreamDefaultControllerPerformTransform(
           controller,
-          chunk);
-      });
+          pendingChunk),
+        writableControllerState.writeFulfilled,
+        writableControllerState.writeRejected);
+    };
+    return kParkedAlgorithmResult;
   }
   return transformStreamDefaultControllerPerformTransform(controller, chunk);
 }
@@ -636,10 +713,15 @@ function transformStreamDefaultSinkCloseAlgorithm(stream) {
 }
 
 function transformStreamDefaultSourcePullAlgorithm(stream) {
-  assert(stream[kState].backpressure);
-  assert(stream[kState].backpressureChange.promise !== undefined);
+  const state = stream[kState];
+  assert(state.backpressure);
   transformStreamSetBackpressure(stream, false);
-  return stream[kState].backpressureChange.promise;
+  // Park the pull: the next backpressure -> true flip delivers the
+  // pull-fulfilled step (see transformStreamSetBackpressure). The old
+  // [[backpressureChangePromise]] this replaces was only ever resolved,
+  // so the parked pull needs no rejection delivery.
+  state.pullPending = true;
+  return kParkedAlgorithmResult;
 }
 
 function transformStreamDefaultSourceCancelAlgorithm(stream, reason) {

@@ -12,7 +12,6 @@ const {
   ArrayPrototypePush,
   ArrayPrototypePushApply,
   ArrayPrototypeShift,
-  ArrayPrototypeSlice,
   ArrayPrototypeSome,
   ArrayPrototypeSort,
   MathMax,
@@ -68,6 +67,7 @@ const { getInspectPort, isUsingInspector, isInspectorMessage } = require('intern
 const { isRegExp } = require('internal/util/types');
 const { pathToFileURL } = require('internal/url');
 const {
+  emitExperimentalWarning,
   kEmptyObject,
 } = require('internal/util');
 const { kEmitMessage } = require('internal/test_runner/tests_stream');
@@ -92,6 +92,9 @@ const {
   kDefaultPattern,
   parseCommandLine,
 } = require('internal/test_runner/utils');
+const {
+  validateAndCanonicalizeTagFilter,
+} = require('internal/test_runner/tag_filter');
 const { Glob } = require('internal/fs/glob');
 const { once } = require('events');
 const { validatePath } = require('internal/fs/utils');
@@ -113,6 +116,7 @@ const kFilterArgs = [
   '--experimental-default-config-file',
 ];
 const kFilterArgValues = [
+  '--experimental-test-tag-filter',
   '--test-reporter',
   '--test-reporter-destination',
   '--test-random-seed',
@@ -126,7 +130,7 @@ const kCanceledTests = new SafeSet()
 // Execution-ordered events are forwarded immediately, bypassing the
 // per-file declaration-order buffer.
 const kExecutionOrderedEvents = new SafeSet()
-  .add('test:enqueue').add('test:dequeue').add('test:complete');
+  .add('test:enqueue').add('test:dequeue').add('test:complete').add('test:log');
 
 let kResistStopPropagation;
 
@@ -167,14 +171,22 @@ function createTestFileList(patterns, cwd) {
 
 function filterExecArgv(arg, i, arr) {
   return !ArrayPrototypeIncludes(kFilterArgs, arg) &&
-  !ArrayPrototypeSome(kFilterArgValues, (p) => arg === p || (i > 0 && arr[i - 1] === p) || StringPrototypeStartsWith(arg, `${p}=`));
+  !ArrayPrototypeSome(kFilterArgValues, (p) => {
+    return arg === p ||
+      StringPrototypeStartsWith(arg, `${p}=`) ||
+      (p !== '--experimental-config-file' && i > 0 && arr[i - 1] === p);
+  });
 }
 
 function getRunArgs(path, { forceExit,
                             inspectPort,
                             testNamePatterns,
                             testSkipPatterns,
+                            testTagFilters,
                             only,
+                            hasFiles,
+                            testFiles,
+                            globPatterns,
                             argv: suppliedArgs,
                             execArgv,
                             rerunFailuresFilePath,
@@ -196,7 +208,7 @@ function getRunArgs(path, { forceExit,
   const nodeOptionsSet = new SafeSet(processNodeOptions);
   const unknownProcessExecArgv = ArrayPrototypeFilter(
     process.execArgv,
-    (arg) => !nodeOptionsSet.has(arg),
+    (arg, i, arr) => !nodeOptionsSet.has(arg) && filterExecArgv(arg, i, arr),
   );
   ArrayPrototypePushApply(runArgs, unknownProcessExecArgv);
 
@@ -211,6 +223,9 @@ function getRunArgs(path, { forceExit,
   }
   if (testSkipPatterns != null) {
     ArrayPrototypeForEach(testSkipPatterns, (pattern) => ArrayPrototypePush(runArgs, `--test-skip-pattern=${pattern}`));
+  }
+  if (testTagFilters != null) {
+    ArrayPrototypeForEach(testTagFilters, (value) => ArrayPrototypePush(runArgs, `--experimental-test-tag-filter=${value}`));
   }
   if (only === true) {
     ArrayPrototypePush(runArgs, '--test-only');
@@ -232,7 +247,8 @@ function getRunArgs(path, { forceExit,
 
   if (path === kIsolatedProcessName) {
     ArrayPrototypePush(runArgs, '--test');
-    ArrayPrototypePushApply(runArgs, ArrayPrototypeSlice(process.argv, 1));
+    ArrayPrototypePush(runArgs, '--test-isolation=none');
+    ArrayPrototypePushApply(runArgs, hasFiles ? testFiles : globPatterns ?? []);
   } else {
     ArrayPrototypePush(runArgs, path);
   }
@@ -268,6 +284,14 @@ class FileTest extends Test {
     this.timeout = null;
   }
 
+  willBeFilteredByTags() {
+    // File wrappers have no tags of their own. Tag filtering applies to the
+    // tests inside the file, which run in a child process (or in-process
+    // import); filtering the wrapper would prevent the file from running at
+    // all.
+    return false;
+  }
+
   #skipReporting() {
     return this.#reportedChildren > 0 && (!this.error || this.error.failureType === kSubtestsFailed);
   }
@@ -279,6 +303,10 @@ class FileTest extends Test {
           ArrayPrototypeIncludes(kDiagnosticsFilterArgs, StringPrototypeSlice(comment, 0, firstSpaceIndex));
   }
   #handleReportItem(item) {
+    // The name is empty when a single child process runs all test files.
+    if (this.name !== '') {
+      item.data.entryFile = this.loc.file;
+    }
     const isTopLevel = item.data.nesting === 0;
     if (isTopLevel) {
       if (item.type === 'test:plan' && this.#skipReporting()) {
@@ -446,12 +474,12 @@ class FileTest extends Test {
     while (bufferHead?.length >= kSerializedSizeHeader) {
       // We call `readUInt32BE` manually here, because this is faster than first converting
       // it to a buffer and using `readUInt32BE` on that.
-      const fullMessageSize = (
+      const fullMessageSize = ((
         bufferHead[kV8HeaderLength] << 24 |
         bufferHead[kV8HeaderLength + 1] << 16 |
         bufferHead[kV8HeaderLength + 2] << 8 |
         bufferHead[kV8HeaderLength + 3]
-      ) + kSerializedSizeHeader;
+      ) >>> 0) + kSerializedSizeHeader;
 
       if (this.#rawBufferSize < fullMessageSize) break;
 
@@ -684,6 +712,7 @@ function run(options = kEmptyObject) {
   let {
     testNamePatterns,
     testSkipPatterns,
+    testTagFilters,
     shard,
     coverageExcludeGlobs,
     coverageIncludeGlobs,
@@ -841,6 +870,21 @@ function run(options = kEmptyObject) {
       throw new ERR_INVALID_ARG_TYPE(name, ['string', 'RegExp'], value);
     });
   }
+
+  if (testTagFilters != null) {
+    if (!ArrayIsArray(testTagFilters)) {
+      testTagFilters = [testTagFilters];
+    }
+    if (testTagFilters.length === 0) {
+      testTagFilters = null;
+    } else {
+      emitExperimentalWarning('Test tags');
+      testTagFilters = ArrayPrototypeMap(testTagFilters, (value, i) => (
+        validateAndCanonicalizeTagFilter(value, `options.testTagFilters[${i}]`)
+      ));
+    }
+  }
+
   validateOneOf(isolation, 'options.isolation', ['process', 'none']);
   validateBoolean(coverage, 'options.coverage');
   if (coverageExcludeGlobs != null) {
@@ -869,7 +913,7 @@ function run(options = kEmptyObject) {
   }
 
   if (env != null) {
-    validateObject(env);
+    validateObject(env, 'options.env');
 
     if (isolation === 'none') {
       throw new ERR_INVALID_ARG_VALUE('options.env', env, 'is not supported with isolation=\'none\'');
@@ -894,7 +938,20 @@ function run(options = kEmptyObject) {
     globalSetupPath,
     randomize,
     randomSeed,
+    testTagFilters,
   };
+
+  if (isolation === 'none') {
+    if (testNamePatterns != null) {
+      globalOptions.testNamePatterns = testNamePatterns;
+    }
+    if (testSkipPatterns != null) {
+      globalOptions.testSkipPatterns = testSkipPatterns;
+    }
+    if (only != null) {
+      globalOptions.only = only;
+    }
+  }
 
   const root = createTestTree(rootTestOptions, globalOptions);
   let testFiles = files ?? createTestFileList(globPatterns, cwd);
@@ -938,6 +995,7 @@ function run(options = kEmptyObject) {
     inspectPort,
     testNamePatterns,
     testSkipPatterns,
+    testTagFilters,
     hasFiles: files != null,
     globPatterns,
     only,
@@ -951,6 +1009,7 @@ function run(options = kEmptyObject) {
     workerIdPool: isolation === 'process' ? workerIdPool : null,
     randomize,
     randomSeed,
+    testFiles,
   };
 
   if (isolation === 'process') {

@@ -84,7 +84,6 @@ const {
 
 const {
   FSReqCallback,
-  statValues,
 } = binding;
 const { toPathIfFileURL } = require('internal/url');
 const {
@@ -116,6 +115,8 @@ const {
   handleErrorFromBinding,
   preprocessSymlinkDestination,
   Stats,
+  getReadFileBuffer,
+  getReadFileBufferByteLengthName,
   getStatFsFromBinding,
   getStatsFromBinding,
   realpathCacheKey,
@@ -128,6 +129,7 @@ const {
   validateOffsetLengthWrite,
   validatePath,
   validatePosition,
+  validateReadFileBufferOptions,
   validateRmOptions,
   validateRmOptionsSync,
   validateRmdirOptions,
@@ -264,7 +266,7 @@ function exists(path, callback) {
 
 ObjectDefineProperty(exists, kCustomPromisifiedSymbol, {
   __proto__: null,
-  value: function exists(path) { // eslint-disable-line func-name-matching
+  value: function exists(path) {
     return new Promise((resolve) => fs.exists(path, resolve));
   },
 });
@@ -324,13 +326,7 @@ function readFileAfterStat(err, stats) {
   }
 
   try {
-    if (size === 0) {
-      // TODO(BridgeAR): If an encoding is set, use the StringDecoder to concat
-      // the result and reuse the buffer instead of allocating a new one.
-      context.buffers = [];
-    } else {
-      context.buffer = Buffer.allocUnsafeSlow(size);
-    }
+    context.prepare();
   } catch (err) {
     return context.close(err);
   }
@@ -363,8 +359,9 @@ function readFile(path, options, callback) {
   callback ||= options;
   validateFunction(callback, 'cb');
   options = getOptions(options, { flag: 'r' });
+  validateReadFileBufferOptions(options);
   ReadFileContext ??= require('internal/fs/read/context');
-  const context = new ReadFileContext(callback, options.encoding);
+  const context = new ReadFileContext(callback, options);
   context.isUserFd = isFd(path); // File descriptor ownership
 
   if (options.signal) {
@@ -410,6 +407,18 @@ function tryCreateBuffer(size, fd, isUserFd) {
   return buffer;
 }
 
+function tryGetReadFileBuffer(options, size, fd, isUserFd) {
+  let threw = true;
+  let buffer;
+  try {
+    buffer = getReadFileBuffer(options, size);
+    threw = false;
+  } finally {
+    if (threw && !isUserFd) fs.closeSync(fd);
+  }
+  return buffer;
+}
+
 function tryReadSync(fd, isUserFd, buffer, pos, len) {
   let threw = true;
   let bytesRead;
@@ -420,6 +429,36 @@ function tryReadSync(fd, isUserFd, buffer, pos, len) {
     if (threw && !isUserFd) fs.closeSync(fd);
   }
   return bytesRead;
+}
+
+function tryReadSyncWithUserBuffer(fd, isUserFd, buffer, byteLengthName) {
+  let pos = 0;
+  let bytesRead = 0;
+
+  while (pos < buffer.byteLength) {
+    bytesRead = tryReadSync(fd, isUserFd, buffer, pos, buffer.byteLength - pos);
+    pos += bytesRead;
+
+    if (bytesRead === 0) {
+      return pos;
+    }
+  }
+
+  const extraBuffer = tryCreateBuffer(1, fd, isUserFd);
+  bytesRead = tryReadSync(fd, isUserFd, extraBuffer, 0, 1);
+
+  if (bytesRead !== 0) {
+    if (!isUserFd) {
+      fs.closeSync(fd);
+    }
+    throw new ERR_INVALID_ARG_VALUE(
+      byteLengthName,
+      buffer.byteLength,
+      'is too small to contain the entire file',
+    );
+  }
+
+  return pos;
 }
 
 /**
@@ -433,8 +472,11 @@ function tryReadSync(fd, isUserFd, buffer, pos, len) {
  */
 function readFileSync(path, options) {
   options = getOptions(options, { flag: 'r' });
+  validateReadFileBufferOptions(options);
+  const hasUserBuffer = options.buffer !== undefined;
 
-  if (options.encoding === 'utf8' || options.encoding === 'utf-8') {
+  if ((options.encoding === 'utf8' || options.encoding === 'utf-8') &&
+      !hasUserBuffer) {
     if (!isInt32(path)) {
       path = getValidatedPath(path);
     }
@@ -450,7 +492,9 @@ function readFileSync(path, options) {
   let buffer; // Single buffer with file data
   let buffers; // List for when size is unknown
 
-  if (size === 0) {
+  if (hasUserBuffer) {
+    buffer = tryGetReadFileBuffer(options, size, fd, isUserFd);
+  } else if (size === 0) {
     buffers = [];
   } else {
     buffer = tryCreateBuffer(size, fd, isUserFd);
@@ -458,7 +502,21 @@ function readFileSync(path, options) {
 
   let bytesRead;
 
-  if (size !== 0) {
+  if (hasUserBuffer) {
+    if (size !== 0) {
+      do {
+        bytesRead = tryReadSync(fd, isUserFd, buffer, pos, size - pos);
+        pos += bytesRead;
+      } while (bytesRead !== 0 && pos < size);
+    } else {
+      pos = tryReadSyncWithUserBuffer(
+        fd,
+        isUserFd,
+        buffer,
+        getReadFileBufferByteLengthName(options),
+      );
+    }
+  } else if (size !== 0) {
     do {
       bytesRead = tryReadSync(fd, isUserFd, buffer, pos, size - pos);
       pos += bytesRead;
@@ -479,7 +537,9 @@ function readFileSync(path, options) {
   if (!isUserFd)
     fs.closeSync(fd);
 
-  if (size === 0) {
+  if (hasUserBuffer) {
+    buffer = buffer.subarray(0, pos);
+  } else if (size === 0) {
     // Data was collected into the buffers list.
     buffer = Buffer.concat(buffers, pos);
   } else if (pos < size) {
@@ -2656,12 +2716,21 @@ function unwatchFile(filename, listener) {
 
 
 let splitRoot;
+let getRealpathRootLstatPath;
 if (isWindows) {
   // Regex to find the device root on Windows (e.g. 'c:\\'), including trailing
   // slash.
   const splitRootRe = /^(?:[a-zA-Z]:|[\\/]{2}[^\\/]+[\\/][^\\/]+)?[\\/]*/;
+  const namespacedDriveRootRe = /^\\\\\?\\([a-zA-Z]:\\)$/;
   splitRoot = function splitRoot(str) {
     return SideEffectFreeRegExpPrototypeExec(splitRootRe, str)[0];
+  };
+
+  // The root probe is the only use of this path. Passing a namespaced drive
+  // root to the binding would lose its trailing separator during resolution.
+  getRealpathRootLstatPath = function getRealpathRootLstatPath(path) {
+    const match = SideEffectFreeRegExpPrototypeExec(namespacedDriveRootRe, path);
+    return match === null ? path : match[1];
   };
 } else {
   splitRoot = function splitRoot(str) {
@@ -2671,6 +2740,7 @@ if (isWindows) {
     }
     return str;
   };
+
 }
 
 function encodeRealpathResult(result, options) {
@@ -2717,6 +2787,16 @@ function realpathSync(p, options) {
   validatePath(p);
   p = pathModule.resolve(p);
 
+  // Check the resolved input path up front so that the lstat walk below cannot
+  // be used to probe the existence of paths outside the granted set.
+  if (permission.isEnabled() && !permission.has('fs.read', p)) {
+    throw new ERR_ACCESS_DENIED(
+      'Access to this API has been restricted. Use --allow-fs-read to manage permissions.',
+      'FileSystemRead',
+      p,
+    );
+  }
+
   const cache = options[realpathCacheKey];
   const maybeCachedResult = cache?.get(p);
   if (maybeCachedResult) {
@@ -2726,6 +2806,11 @@ function realpathSync(p, options) {
   const seenLinks = new SafeMap();
   const knownHard = new SafeSet();
   const original = p;
+  // Whether the symlink this walk resolved last pointed at a pipe or a
+  // socket, which is where the walk stops. It cannot be read back from the
+  // shared stat buffer, which holds the last stat made anywhere in the
+  // process rather than the last one made here.
+  let reachedPipeOrSocket = false;
 
   // Current character position in p
   let pos;
@@ -2742,7 +2827,8 @@ function realpathSync(p, options) {
 
   // On windows, check that the root exists. On unix there is no need.
   if (isWindows) {
-    const out = binding.lstat(base, false, undefined, true /* throwIfNoEntry */);
+    const out = binding.lstat(
+      getRealpathRootLstatPath(base), false, undefined, true /* throwIfNoEntry */);
     if (out === undefined) {
       return;
     }
@@ -2769,8 +2855,7 @@ function realpathSync(p, options) {
 
     // Continue if not a symlink, break if a pipe/socket
     if (knownHard.has(base) || cache?.get(base) === base) {
-      if (isFileType(statValues, S_IFIFO) ||
-          isFileType(statValues, S_IFSOCK)) {
+      if (reachedPipeOrSocket) {
         break;
       }
       continue;
@@ -2808,7 +2893,9 @@ function realpathSync(p, options) {
         }
       }
       if (linkTarget === null) {
-        binding.stat(base, false, undefined, true);
+        const targetStats = binding.stat(base, false, undefined, true);
+        reachedPipeOrSocket = isFileType(targetStats, S_IFIFO) ||
+          isFileType(targetStats, S_IFSOCK);
         linkTarget = binding.readlink(base, undefined);
       }
       resolvedLink = pathModule.resolve(previous, linkTarget);
@@ -2826,7 +2913,8 @@ function realpathSync(p, options) {
 
     // On windows, check that the root exists. On unix there is no need.
     if (isWindows && !knownHard.has(base)) {
-      const out = binding.lstat(base, false, undefined, true /* throwIfNoEntry */);
+      const out = binding.lstat(
+        getRealpathRootLstatPath(base), false, undefined, true /* throwIfNoEntry */);
       if (out === undefined) {
         return;
       }
@@ -2880,6 +2968,11 @@ function realpath(p, options, callback) {
 
   const seenLinks = new SafeMap();
   const knownHard = new SafeSet();
+  // Whether the symlink this walk resolved last pointed at a pipe or a
+  // socket, which is where the walk stops. It cannot be read back from the
+  // shared stat buffer, which holds the last stat made anywhere in the
+  // process rather than the last one made here.
+  let reachedPipeOrSocket = false;
 
   // Current character position in p
   let pos;
@@ -2895,7 +2988,7 @@ function realpath(p, options, callback) {
 
   // On windows, check that the root exists. On unix there is no need.
   if (isWindows && !knownHard.has(base)) {
-    fs.lstat(base, (err) => {
+    fs.lstat(getRealpathRootLstatPath(base), (err) => {
       if (err) return callback(err);
       knownHard.add(base);
       LOOP();
@@ -2928,8 +3021,7 @@ function realpath(p, options, callback) {
 
     // Continue if not a symlink, break if a pipe/socket
     if (knownHard.has(base)) {
-      if (isFileType(statValues, S_IFIFO) ||
-          isFileType(statValues, S_IFSOCK)) {
+      if (reachedPipeOrSocket) {
         return callback(null, encodeRealpathResult(p, options));
       }
       return process.nextTick(LOOP);
@@ -2959,8 +3051,10 @@ function realpath(p, options, callback) {
         return gotTarget(null, seenLinks.get(id));
       }
     }
-    fs.stat(base, (err) => {
+    fs.stat(base, (err, targetStats) => {
       if (err) return callback(err);
+
+      reachedPipeOrSocket = targetStats.isFIFO() || targetStats.isSocket();
 
       fs.readlink(base, (err, target) => {
         if (!isWindows) seenLinks.set(id, target);
@@ -2983,7 +3077,7 @@ function realpath(p, options, callback) {
 
     // On windows, check that the root exists. On unix there is no need.
     if (isWindows && !knownHard.has(base)) {
-      fs.lstat(base, (err) => {
+      fs.lstat(getRealpathRootLstatPath(base), (err) => {
         if (err) return callback(err);
         knownHard.add(base);
         LOOP();

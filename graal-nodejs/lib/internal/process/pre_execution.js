@@ -115,6 +115,7 @@ function prepareExecution(options) {
   setupNavigator();
   setupWarningHandler();
   setupSQLite();
+  setupStreamIter();
   setupQuic();
   setupWebStorage();
   setupWebsocket();
@@ -124,7 +125,7 @@ function prepareExecution(options) {
   // Process initial diagnostic reporting configuration, if present.
   initializeReport();
 
-  setupDiagnosticsChannel();
+  setupDiagnosticsChannel(isMainThread);
 
   // Load permission system API
   initializePermission();
@@ -394,10 +395,19 @@ function setupSQLite() {
 }
 
 function initializeConfigFileSupport() {
-  if (getOptionValue('--experimental-default-config-file') ||
-      getOptionValue('--experimental-config-file')) {
+  if (getOptionValue('--experimental-config-file')) {
     emitExperimentalWarning('--experimental-config-file');
   }
+}
+
+function setupStreamIter() {
+  if (!getOptionValue('--experimental-stream-iter')) {
+    return;
+  }
+
+  const { BuiltinModule } = require('internal/bootstrap/realm');
+  BuiltinModule.allowRequireByUsers('stream/iter');
+  BuiltinModule.allowRequireByUsers('zlib/iter');
 }
 
 function setupQuic() {
@@ -614,35 +624,50 @@ function initializeClusterIPC() {
   }
 }
 
-function setupDiagnosticsChannel() {
+function setupDiagnosticsChannel(isMainThread) {
   // Re-link native channels after snapshot deserialization since
   // JS references are cleared during serialization.
+  // Keep this callback in sync with the initial registration in
+  // lib/diagnostics_channel.js.
   const dc = require('diagnostics_channel');
   const dc_binding = internalBinding('diagnostics_channel');
-  dc_binding.linkNativeChannel((name) => dc.channel(name));
+  dc_binding.linkNativeChannel((name, index) => {
+    const channel = dc.channel(name);
+    channel._index = index;
+    dc_binding.subscribers[index] =
+      (channel._subscribers?.length || 0) +
+      (channel._stores?.size || 0);
+    return channel;
+  });
+  if (isMainThread &&
+      process.versions.openssl !== undefined &&
+      getOptionValue('--enable-fips-indicator-events')) {
+    internalBinding('crypto').setupFipsIndicatorChannel();
+  }
 }
 
 function initializePermission() {
-  const permission = getOptionValue('--permission');
+  const permission = getOptionValue('--permission') || getOptionValue('--permission-audit');
   if (permission) {
     process.binding = function binding(_module) {
       throw new ERR_ACCESS_DENIED('process.binding');
     };
     // Guarantee path module isn't monkey-patched to bypass permission model
     ObjectFreeze(require('path'));
-    const { has } = require('internal/process/permission');
+    const { has, drop } = require('internal/process/permission');
     const warnFlags = [
-      '--allow-addons',
-      '--allow-child-process',
-      '--allow-inspector',
-      '--allow-wasi',
-      '--allow-worker',
+      { flag: '--allow-addons', enabled: true, code: 'PERM0001' },
+      { flag: '--allow-child-process', enabled: true, code: 'PERM0002' },
+      { flag: '--allow-inspector', enabled: true, code: 'PERM0004' },
+      { flag: '--allow-wasi', enabled: true, code: 'PERM0005' },
+      { flag: '--allow-worker', enabled: true, code: 'PERM0006' },
+      { flag: '--allow-openssl-store', enabled: true, code: 'PERM0007' },
     ];
-    for (const flag of warnFlags) {
-      if (getOptionValue(flag)) {
+    for (const { flag, enabled, code } of warnFlags) {
+      if (enabled && getOptionValue(flag)) {
         process.emitWarning(
           `The flag ${flag} must be used with extreme caution. ` +
-        'It could invalidate the permission model.', 'SecurityWarning');
+        'It could invalidate the permission model.', 'SecurityWarning', code);
       }
     }
     const warnCommaFlags = [
@@ -668,6 +693,7 @@ function initializePermission() {
       configurable: false,
       value: {
         has,
+        drop,
       },
     });
   } else {

@@ -48,6 +48,7 @@ const {
   StringPrototypeEndsWith,
   StringPrototypeIncludes,
   StringPrototypeIndexOf,
+  StringPrototypeRepeat,
   StringPrototypeSlice,
   StringPrototypeSplit,
   StringPrototypeStartsWith,
@@ -1021,11 +1022,16 @@ function determineSpecificType(value) {
       return `type symbol (${String(value)})`;
     case 'function':
       return `function ${value.name}`;
-    case 'object':
-      if (value.constructor && 'name' in value.constructor) {
-        return `an instance of ${value.constructor.name}`;
+    case 'object': {
+      // `constructor` may be user-controlled: it need not be an object, and
+      // its `name` need not be a non-empty string. Reading either can invoke
+      // an accessor, so read each one once.
+      const name = value.constructor?.name;
+      if (typeof name === 'string' && name !== '') {
+        return `an instance of ${name}`;
       }
       return `${lazyInternalUtilInspect().inspect(value, { depth: -1 })}`;
+    }
     case 'string':
       value.length > 28 && (value = `${StringPrototypeSlice(value, 0, 25)}...`);
       if (StringPrototypeIndexOf(value, "'") === -1) {
@@ -1172,8 +1178,12 @@ E('ERR_CRYPTO_INVALID_DIGEST', 'Invalid digest: %s', TypeError);
 E('ERR_CRYPTO_INVALID_JWK', 'Invalid JWK data', TypeError);
 E('ERR_CRYPTO_INVALID_KEY_OBJECT_TYPE',
   'Invalid key object type %s, expected %s.', TypeError);
+E('ERR_CRYPTO_INVALID_MAC', 'Invalid MAC: %s', TypeError);
 E('ERR_CRYPTO_INVALID_STATE', 'Invalid state for operation %s', Error);
 E('ERR_CRYPTO_KEM_NOT_SUPPORTED', 'KEM is not supported', Error);
+E('ERR_CRYPTO_MAC_FINALIZED', 'MAC already finalized', Error);
+E('ERR_CRYPTO_MAC_NOT_SUPPORTED', 'MAC is not supported', Error);
+E('ERR_CRYPTO_MAC_UPDATE_FAILED', 'MAC update failed', Error);
 E('ERR_CRYPTO_PBKDF2_ERROR', 'PBKDF2 error', Error);
 E('ERR_CRYPTO_SCRYPT_NOT_SUPPORTED', 'Scrypt algorithm not supported', Error);
 // Switch to TypeError. The current implementation does not seem right.
@@ -1655,6 +1665,15 @@ E('ERR_PACKAGE_IMPORT_NOT_DEFINED', (specifier, packagePath, base) => {
   return `Package import specifier "${specifier}" is not defined${packagePath ?
     ` in package ${packagePath}package.json` : ''} imported from ${base}`;
 }, TypeError);
+E('ERR_PACKAGE_MAP_EXTERNAL_FILE', (specifier, parentPath, configPath) => {
+  return `Cannot resolve "${specifier}" from "${parentPath}": file is not within any package defined in ${configPath}`;
+}, Error);
+E('ERR_PACKAGE_MAP_INVALID', (configPath, reason) => {
+  return `Invalid package-map.json at "${configPath}": ${reason}`;
+}, SyntaxError);
+E('ERR_PACKAGE_MAP_KEY_NOT_FOUND', (key, configPath) => {
+  return `Package key "${key}" referenced in dependencies but not defined in ${configPath}`;
+}, Error);
 E('ERR_PACKAGE_PATH_NOT_EXPORTED', (pkgPath, subpath, base = undefined) => {
   if (subpath === '.')
     return `No "exports" main defined in ${pkgPath}package.json${base ?
@@ -1676,21 +1695,49 @@ E('ERR_PERFORMANCE_INVALID_TIMESTAMP',
 E('ERR_PERFORMANCE_MEASURE_INVALID_OPTIONS', '%s', TypeError);
 E('ERR_PROXY_INVALID_CONFIG', '%s', Error);
 E('ERR_PROXY_TUNNEL', '%s', Error);
-E('ERR_QUIC_APPLICATION_ERROR', 'A QUIC application error occurred. %d [%s]', Error);
 E('ERR_QUIC_CONNECTION_FAILED', 'QUIC connection failed', Error);
 E('ERR_QUIC_ENDPOINT_CLOSED', 'QUIC endpoint closed: %s (%d)', Error);
 E('ERR_QUIC_OPEN_STREAM_FAILED', 'Failed to open QUIC stream', Error);
-E('ERR_QUIC_TRANSPORT_ERROR', 'A QUIC transport error occurred. %d [%s]', Error);
+E('ERR_QUIC_STREAM_ABORTED', '%s', Error);
+E('ERR_QUIC_STREAM_RESET',
+  'The QUIC stream was reset by the peer with error code %d', Error);
 E('ERR_QUIC_VERSION_NEGOTIATION_ERROR', 'The QUIC session requires version negotiation', Error);
-E('ERR_REQUIRE_ASYNC_MODULE', function(filename, parentFilename) {
-  let message = 'require() cannot be used on an ESM ' +
-  'graph with top-level await. Use import() instead. To see where the' +
-  ' top-level await comes from, use --experimental-print-required-tla.';
-  if (parentFilename) {
-    message += `\n  From ${parentFilename} `;
+E('ERR_REQUIRE_ASYNC_MODULE', function(filename, parent, locations) {
+  let message = 'require() cannot be used on an ESM graph with top-level await. Use import() instead.';
+  const { getOptionValue } = require('internal/options');
+  if (!getOptionValue('--experimental-print-required-tla')) {
+    message += ' To see where the top-level await comes from, use --experimental-print-required-tla.';
   }
   if (filename) {
-    message += `\n  Requiring ${filename} `;
+    message += `\nRequired module: ${filename}`;
+  }
+  if (parent) {
+    const { getRequireStack } = require('internal/modules/helpers');
+    const requireStack = getRequireStack(parent);
+    if (requireStack.length > 0) {
+      message += '\nRequire stack:\n- ' +
+                ArrayPrototypeJoin(requireStack, '\n- ');
+    }
+    ObjectDefineProperty(this, 'requireStack', {
+      __proto__: null,
+      enumerable: false,
+      configurable: true,
+      writable: true,
+      value: requireStack,
+    });
+  }
+  if (locations && locations.length > 0) {
+    const { urlToFilename } = require('internal/modules/helpers');
+    const frames = ArrayPrototypeMap(locations, ({ url, line, column, sourceLine }) =>
+      `${urlToFilename(url)}:${line}\n\n${sourceLine}\n${StringPrototypeRepeat(' ', column - 1)}^\n`);
+    setArrowMessage(this, ArrayPrototypeJoin(frames, '\n'));
+    ObjectDefineProperty(this, 'topLevelAwaitLocations', {
+      __proto__: null,
+      enumerable: false,
+      configurable: true,
+      writable: true,
+      value: locations,
+    });
   }
   return message;
 }, Error);
@@ -1763,6 +1810,8 @@ E('ERR_SOCKET_CONNECTION_TIMEOUT',
 E('ERR_SOCKET_DGRAM_IS_CONNECTED', 'Already connected', Error);
 E('ERR_SOCKET_DGRAM_NOT_CONNECTED', 'Not connected', Error);
 E('ERR_SOCKET_DGRAM_NOT_RUNNING', 'Not running', Error);
+E('ERR_SOCKET_HANDLE_ADOPTED',
+  'The bound socket has already been adopted by a server or socket', Error);
 E('ERR_SOURCE_MAP_CORRUPT', `The source map for '%s' does not exist or is corrupt.`, Error);
 E('ERR_SOURCE_MAP_MISSING_SOURCE', `Cannot find '%s' imported from the source map for '%s'`, Error);
 E('ERR_SRI_PARSE',
@@ -1773,6 +1822,8 @@ E('ERR_STREAM_ALREADY_FINISHED',
   Error);
 E('ERR_STREAM_CANNOT_PIPE', 'Cannot pipe, not readable', Error);
 E('ERR_STREAM_DESTROYED', 'Cannot call %s after a stream was destroyed', Error);
+E('ERR_STREAM_ITER_MISSING_FLAG',
+  'The stream/iter API requires the --experimental-stream-iter flag', TypeError);
 E('ERR_STREAM_NULL_VALUES', 'May not write null values to stream', TypeError);
 E('ERR_STREAM_PREMATURE_CLOSE', 'Premature close', Error);
 E('ERR_STREAM_PUSH_AFTER_EOF', 'stream.push() after EOF', Error);
@@ -1798,6 +1849,7 @@ E('ERR_TEST_FAILURE', function(error, failureType) {
   this.cause = error;
   return msg;
 }, Error);
+E('ERR_THROTTLED', 'The call was dropped by the throttled function', Error);
 E('ERR_TLS_ALPN_CALLBACK_INVALID_RESULT', (value, protocols) => {
   return `ALPN callback returned a value (${
     value
@@ -1914,6 +1966,10 @@ E('ERR_WEBASSEMBLY_NOT_SUPPORTED',
   'WebAssembly is not supported in this environment, but is required for %s',
   Error);
 E('ERR_WEBASSEMBLY_RESPONSE', 'WebAssembly response %s', TypeError);
+E('ERR_WORKER_HANDLE_NOT_TRANSFERABLE',
+  '%s cannot be transferred in its current state; it must be a freshly ' +
+  'created or accepted handle that has not started reading and has no ' +
+  'pending writes', Error);
 E('ERR_WORKER_INIT_FAILED', 'Worker initialization failure: %s', Error);
 E('ERR_WORKER_INVALID_EXEC_ARGV', (errors, msg = 'invalid execArgv flags') =>
   `Initiated Worker with ${msg}: ${ArrayPrototypeJoin(errors, ', ')}`,

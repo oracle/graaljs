@@ -2,11 +2,14 @@ all: \
   ca1-cert.pem \
   ca2-cert.pem \
   ca2-crl.pem \
+  ca2-crl-agent3.pem \
   ca3-cert.pem \
   ca4-cert.pem \
   ca5-cert.pem \
   ca6-cert.pem \
+  cert-without-key-fips.pfx \
   agent1-cert.pem \
+  agent1-fips.pfx \
   agent1.pfx \
   agent2-cert.pem \
   agent3-cert.pem \
@@ -38,6 +41,7 @@ all: \
   dsa_private_encrypted_1025.pem \
   dsa_public_1025.pem \
   ec-cert.pem \
+  ec-fips.pfx \
   ec.pfx \
   fake-cnnic-root-cert.pem \
   intermediate-ca-cert.pem \
@@ -67,9 +71,12 @@ all: \
   rsa_spkac.spkac \
   rsa_spkac_invalid.spkac \
   rsa_private_2048.pem \
+  rsa_private_2048_3_primes.pem \
   rsa_private_4096.pem \
   rsa_public_2048.pem \
   rsa_public_4096.pem \
+  rsa_pss_cert_2048.pem \
+  rsa_pss_cert_2048_sha256_sha256_16.pem \
   rsa_pss_private_2048.pem \
   rsa_pss_private_2048_sha256_sha256_16.pem \
   rsa_pss_private_2048_sha512_sha256_20.pem \
@@ -98,6 +105,8 @@ all: \
   incorrect_san_correct_subject-key.pem \
   irrelevant_san_correct_subject-cert.pem \
   irrelevant_san_correct_subject-key.pem \
+  non-canonical-ip-dns-cert.pem \
+  non-canonical-ip-dns-key.pem \
   ml_dsa_44_private.pem \
   ml_dsa_44_private_seed_only.pem \
   ml_dsa_44_private_priv_only.pem \
@@ -441,6 +450,20 @@ agent1.pfx: agent1-cert.pem agent1-key.pem ca1-cert.pem
 		-out agent1.pfx \
 		-password pass:sample
 
+# PKCS12KDF is unavailable under FIPS properties. Use PBMAC1 with PBKDF2
+# instead, alongside AES-256/PBKDF2 key protection.
+agent1-fips.pfx: agent1-cert.pem agent1-key.pem ca1-cert.pem
+	openssl pkcs12 -export \
+		-keypbe AES-256-CBC \
+		-certpbe AES-256-CBC \
+		-iter 2048 \
+		-pbmac1_pbkdf2 \
+		-in agent1-cert.pem \
+		-inkey agent1-key.pem \
+		-certfile ca1-cert.pem \
+		-out agent1-fips.pfx \
+		-password pass:password
+
 agent1-verify: agent1-cert.pem ca1-cert.pem
 	openssl verify -CAfile ca1-cert.pem agent1-cert.pem
 
@@ -532,6 +555,28 @@ ca2-crl.pem: ca2-key.pem ca2-cert.pem ca2.cnf agent4-cert.pem
 		-gencrl \
 		-out ca2-crl.pem \
 		-passin 'pass:password'
+
+#
+# Make CRL with agent3 being rejected
+# Uses a separate temporary database so the ca2-crl.pem revocation of agent4
+# does not contaminate this CRL.
+#
+ca2-crl-agent3.pem: ca2-key.pem ca2-cert.pem ca2.cnf agent3-cert.pem
+	@> ca2-crl-agent3-database.txt
+	@sed 's/ca2-database/ca2-crl-agent3-database/' ca2.cnf > ca2-crl-agent3.cnf
+	openssl ca -revoke agent3-cert.pem \
+		-keyfile ca2-key.pem \
+		-cert ca2-cert.pem \
+		-config ca2-crl-agent3.cnf \
+		-passin 'pass:password'
+	openssl ca \
+		-keyfile ca2-key.pem \
+		-cert ca2-cert.pem \
+		-config ca2-crl-agent3.cnf \
+		-gencrl \
+		-out ca2-crl-agent3.pem \
+		-passin 'pass:password'
+	@rm -f ca2-crl-agent3.cnf ca2-crl-agent3-database.txt*
 
 #
 # agent5 is signed by ca2 (client cert)
@@ -762,6 +807,30 @@ ec.pfx: ec-cert.pem ec-key.pem
 		-out ec.pfx \
 		-password pass:
 
+# See agent1-fips.pfx for why the FIPS fixture uses PBMAC1.
+ec-fips.pfx: ec-cert.pem ec-key.pem
+	openssl pkcs12 -export \
+		-keypbe AES-256-CBC \
+		-certpbe AES-256-CBC \
+		-iter 2048 \
+		-pbmac1_pbkdf2 \
+		-in ec-cert.pem \
+		-inkey ec-key.pem \
+		-out ec-fips.pfx \
+		-password pass:password
+
+# A bundle of certificates with no private key. See agent1-fips.pfx for why the
+# FIPS fixture uses PBMAC1.
+cert-without-key-fips.pfx: ca1-cert.pem
+	openssl pkcs12 -export \
+		-nokeys \
+		-certpbe AES-256-CBC \
+		-iter 2048 \
+		-pbmac1_pbkdf2 \
+		-in ca1-cert.pem \
+		-out cert-without-key-fips.pfx \
+		-password pass:password
+
 dh512.pem:
 	openssl dhparam -out dh512.pem 512
 
@@ -790,7 +859,8 @@ dsa_private.pem: dsa_params.pem
 	openssl gendsa -out dsa_private.pem dsa_params.pem
 
 dsa_private_encrypted.pem: dsa_private.pem
-	openssl dsa -aes256 -in dsa_private.pem -passout 'pass:password' -out dsa_private_encrypted.pem
+	openssl pkcs8 -topk8 -v2 aes-256-cbc -v2prf hmacWithSHA256 -iter 2048 -saltlen 16 \
+	  -in $< -passout 'pass:password' -out $@
 
 dsa_private_pkcs8.pem: dsa_private.pem
 	openssl pkcs8 -topk8 -inform PEM -outform PEM -in dsa_private.pem -out dsa_private_pkcs8.pem -nocrypt
@@ -814,7 +884,8 @@ rsa_private.pem:
 	openssl genrsa -out rsa_private.pem 2048
 
 rsa_private_encrypted.pem: rsa_private.pem
-	openssl rsa -aes256 -in rsa_private.pem -passout 'pass:password' -out rsa_private_encrypted.pem
+	openssl pkcs8 -topk8 -v2 aes-256-cbc -v2prf hmacWithSHA256 -iter 2048 -saltlen 16 \
+	  -in $< -passout 'pass:password' -out $@
 
 rsa_private_pkcs8.pem: rsa_private.pem
 	openssl pkcs8 -topk8 -inform PEM -outform PEM -in rsa_private.pem -out rsa_private_pkcs8.pem -nocrypt
@@ -874,6 +945,13 @@ rsa_spkac_invalid.spkac: rsa_spkac.spkac
 rsa_private_2048.pem:
 	openssl genrsa -out rsa_private_2048.pem 2048
 
+rsa_private_2048_3_primes.pem:
+	openssl genpkey \
+		-algorithm RSA \
+		-pkeyopt rsa_keygen_bits:2048 \
+		-pkeyopt rsa_keygen_primes:3 \
+		-out rsa_private_2048_3_primes.pem
+
 rsa_private_4096.pem:
 	openssl genrsa -out rsa_private_4096.pem 4096
 
@@ -894,6 +972,12 @@ rsa_pss_private_2048_sha512_sha256_20.pem:
 
 rsa_pss_private_2048_sha1_sha1_20.pem:
 	openssl genpkey -algorithm RSA-PSS -pkeyopt rsa_keygen_bits:2048 -pkeyopt rsa_keygen_pubexp:65537 -pkeyopt rsa_pss_keygen_md:sha1 -pkeyopt rsa_pss_keygen_mgf1_md:sha1 -pkeyopt rsa_pss_keygen_saltlen:20 -out rsa_pss_private_2048_sha1_sha1_20.pem
+
+rsa_pss_cert_2048.pem: rsa_pss_private_2048.pem
+	openssl req -new -x509 -key rsa_pss_private_2048.pem -subj "/CN=Node.js" -days 36500 -set_serial 1 -out rsa_pss_cert_2048.pem
+
+rsa_pss_cert_2048_sha256_sha256_16.pem: rsa_pss_private_2048_sha256_sha256_16.pem
+	openssl req -new -x509 -key rsa_pss_private_2048_sha256_sha256_16.pem -subj "/CN=Node.js" -days 36500 -set_serial 1 -out rsa_pss_cert_2048_sha256_sha256_16.pem
 
 rsa_pss_public_2048.pem: rsa_pss_private_2048.pem
 	openssl pkey -in rsa_pss_private_2048.pem -pubout -out rsa_pss_public_2048.pem
@@ -1176,8 +1260,30 @@ irrelevant_san_correct_subject-cert.pem: irrelevant_san_correct_subject-key.pem
 irrelevant_san_correct_subject-key.pem:
 	openssl ecparam -name prime256v1 -genkey -noout -out irrelevant_san_correct_subject-key.pem
 
+non-canonical-ip-dns-cert.pem: non-canonical-ip-dns-key.pem ca1-cert.pem ca1-key.pem
+	openssl req -new \
+	            -key non-canonical-ip-dns-key.pem \
+	            -out non-canonical-ip-dns-cert.csr \
+	            -sha256 \
+	            -subj "/CN=Example Operator" \
+	            -addext "subjectAltName = DNS:87.0.0.1"
+	openssl x509 -req \
+	             -in non-canonical-ip-dns-cert.csr \
+	             -CA ca1-cert.pem \
+	             -CAkey ca1-key.pem \
+	             -passin "pass:password" \
+	             -set_serial 0x1001 \
+	             -out non-canonical-ip-dns-cert.pem \
+	             -days 99999 \
+	             -copy_extensions copy \
+	             -sha256
+	rm non-canonical-ip-dns-cert.csr
+
+non-canonical-ip-dns-key.pem:
+	openssl ecparam -name prime256v1 -genkey -noout -out non-canonical-ip-dns-key.pem
+
 clean:
-	rm -f *.pfx *.pem *.srl ca2-database.txt ca2-serial fake-startcom-root-serial *.print *.old fake-startcom-root-issued-certs/*.pem
+	rm -f *.pfx *.pem *.srl ca2-database.txt ca2-crl-agent3-database.txt* ca2-crl-agent3.cnf ca2-serial fake-startcom-root-serial *.print *.old fake-startcom-root-issued-certs/*.pem
 	@> fake-startcom-root-database.txt
 
 test: agent1-verify agent2-verify agent3-verify agent4-verify agent5-verify agent6-verify agent7-verify agent8-verify agent10-verify ec10-verify

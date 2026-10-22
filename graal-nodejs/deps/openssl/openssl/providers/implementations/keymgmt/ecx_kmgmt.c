@@ -26,6 +26,7 @@
 #include "prov/provider_ctx.h"
 #include "prov/ecx.h"
 #include "prov/securitycheck.h"
+#include "fips/fipsindicator.h"
 #ifdef S390X_EC_ASM
 #include "s390x_arch.h"
 #include <openssl/sha.h> /* For SHA512_DIGEST_LENGTH */
@@ -102,6 +103,19 @@ static ossl_inline int ecx_key_type_is_ed(ECX_KEY_TYPE type)
 {
     return type == ECX_KEY_TYPE_ED25519 || type == ECX_KEY_TYPE_ED448;
 }
+
+#ifdef FIPS_MODULE
+static int ecx_gen_get_params(void *genctx, OSSL_PARAM params[])
+{
+    struct ecx_gen_ctx *gctx = genctx;
+    OSSL_PARAM *p;
+
+    if (gctx == NULL)
+        return 0;
+    p = OSSL_PARAM_locate(params, OSSL_PKEY_PARAM_FIPS_APPROVED_INDICATOR);
+    return p == NULL || OSSL_PARAM_set_int(p, ecx_key_type_is_ed(gctx->type));
+}
+#endif
 
 static void *x25519_new_key(void *provctx)
 {
@@ -811,7 +825,6 @@ static void *ed25519_gen(void *genctx, OSSL_CALLBACK *osslcb, void *cbarg)
     if (!key || ((gctx->selection & OSSL_KEYMGMT_SELECT_KEYPAIR) == 0))
         return key;
     if (ecd_fips140_pairwise_test(key, ECX_KEY_TYPE_ED25519, 1) != 1) {
-        ossl_set_error_state(OSSL_SELF_TEST_TYPE_PCT);
         ossl_ecx_key_free(key);
         return NULL;
     }
@@ -844,7 +857,6 @@ static void *ed448_gen(void *genctx, OSSL_CALLBACK *osslcb, void *cbarg)
     if (!key || ((gctx->selection & OSSL_KEYMGMT_SELECT_KEYPAIR) == 0))
         return key;
     if (ecd_fips140_pairwise_test(key, ECX_KEY_TYPE_ED448, 1) != 1) {
-        ossl_set_error_state(OSSL_SELF_TEST_TYPE_PCT);
         ossl_ecx_key_free(key);
         return NULL;
     }
@@ -1036,7 +1048,9 @@ static void ecx_free_key(void *keydata)
         { OSSL_FUNC_KEYMGMT_GEN_CLEANUP, (void (*)(void))ecx_gen_cleanup },           \
         { OSSL_FUNC_KEYMGMT_LOAD, (void (*)(void))ecx_load },                         \
         { OSSL_FUNC_KEYMGMT_DUP, (void (*)(void))ecx_dup },                           \
-        OSSL_DISPATCH_END                                                             \
+        OSSL_FIPS_IND_DISPATCH(OSSL_FUNC_KEYMGMT_GEN_GET_PARAMS,                      \
+            OSSL_FUNC_KEYMGMT_GEN_GETTABLE_PARAMS, ecx_gen_get_params)                \
+            OSSL_DISPATCH_END                                                         \
     };
 
 MAKE_KEYMGMT_FUNCTIONS(x25519)

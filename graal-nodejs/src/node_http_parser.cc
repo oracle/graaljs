@@ -96,6 +96,7 @@ const uint32_t kLenientOptionalLFAfterCR = 1 << 6;
 const uint32_t kLenientOptionalCRLFAfterChunk = 1 << 7;
 const uint32_t kLenientOptionalCRBeforeLF = 1 << 8;
 const uint32_t kLenientSpacesAfterChunkSize = 1 << 9;
+const uint32_t kLenientHeaderValueRelaxed = 1 << 10;
 const uint32_t kLenientAll =
     kLenientHeaders | kLenientChunkedLength | kLenientKeepAlive |
     kLenientTransferEncoding | kLenientVersion | kLenientDataAfterClose |
@@ -321,6 +322,7 @@ class Parser : public AsyncWrap, public StreamListener {
     allocator_.Reset();
     url_.Reset();
     status_message_.Reset();
+    max_header_pairs_ = -1;
 
     if (connectionsList_ != nullptr) {
       connectionsList_->Push(this);
@@ -463,6 +465,7 @@ class Parser : public AsyncWrap, public StreamListener {
     num_fields_ = 0;
     num_values_ = 0;
     header_pairs_ = 0;
+    max_header_pairs_ = -1;
 
     // METHOD
     if (parser_.type == HTTP_REQUEST) {
@@ -1014,6 +1017,11 @@ class Parser : public AsyncWrap, public StreamListener {
     if (lenient_flags & kLenientSpacesAfterChunkSize) {
       llhttp_set_lenient_spaces_after_chunk_size(&parser_, 1);
     }
+#if LLHTTP_VERSION_MAJOR * 1000 + LLHTTP_VERSION_MINOR >= 9004
+    if (lenient_flags & kLenientHeaderValueRelaxed) {
+      llhttp_set_lenient_header_value_relaxed(&parser_, 1);
+    }
+#endif
 
     header_nread_ = 0;
     url_.Reset();
@@ -1026,6 +1034,7 @@ class Parser : public AsyncWrap, public StreamListener {
     headers_completed_ = false;
     max_http_header_size_ = max_http_header_size;
     header_pairs_ = 0;
+    max_header_pairs_ = -1;
   }
 
 
@@ -1045,21 +1054,23 @@ class Parser : public AsyncWrap, public StreamListener {
 
     header_pairs_ += 2;
 
-    Local<Value> max_header_pairs_v;
-    if (!object()
-             ->Get(env()->context(),
-                   FIXED_ONE_BYTE_STRING(env()->isolate(), "maxHeaderPairs"))
-             .ToLocal(&max_header_pairs_v)) {
-      got_exception_ = true;
-      return -1;
+    if (max_header_pairs_ < 0) {
+      Local<Value> max_header_pairs_v;
+      if (!object()
+               ->Get(env()->context(),
+                     FIXED_ONE_BYTE_STRING(env()->isolate(), "maxHeaderPairs"))
+               .ToLocal(&max_header_pairs_v)) {
+        got_exception_ = true;
+        return -1;
+      }
+
+      const double value = max_header_pairs_v->IsNumber()
+                               ? max_header_pairs_v.As<Number>()->Value()
+                               : 0;
+      max_header_pairs_ = value > 0 ? value : 0;
     }
 
-    if (!max_header_pairs_v->IsNumber()) {
-      return 0;
-    }
-
-    const double max_header_pairs = max_header_pairs_v.As<Number>()->Value();
-    if (max_header_pairs > 0 && header_pairs_ > max_header_pairs) {
+    if (max_header_pairs_ > 0 && header_pairs_ > max_header_pairs_) {
       llhttp_set_error_reason(&parser_, "HPE_HEADER_OVERFLOW:Header overflow");
       return HPE_USER;
     }
@@ -1101,6 +1112,7 @@ class Parser : public AsyncWrap, public StreamListener {
   const char* current_buffer_data_;
   bool headers_completed_ = false;
   size_t header_pairs_ = 0;
+  double max_header_pairs_ = -1;
   bool pending_pause_ = false;
   uint64_t header_nread_ = 0;
   uint64_t chunk_extensions_nread_ = 0;
@@ -1370,6 +1382,16 @@ void CreatePerIsolateProperties(IsolateData* isolate_data,
          Integer::NewFromUnsigned(isolate, kLenientOptionalCRBeforeLF));
   t->Set(FIXED_ONE_BYTE_STRING(isolate, "kLenientSpacesAfterChunkSize"),
          Integer::NewFromUnsigned(isolate, kLenientSpacesAfterChunkSize));
+  // kLenientHeaderValueRelaxed requires llhttp >= 9.4.0 for the
+  // llhttp_set_lenient_header_value_relaxed() API. Export 0 on older
+  // shared-library builds so JS can detect feature availability.
+#if LLHTTP_VERSION_MAJOR * 1000 + LLHTTP_VERSION_MINOR >= 9004
+  t->Set(FIXED_ONE_BYTE_STRING(isolate, "kLenientHeaderValueRelaxed"),
+         Integer::NewFromUnsigned(isolate, kLenientHeaderValueRelaxed));
+#else
+  t->Set(FIXED_ONE_BYTE_STRING(isolate, "kLenientHeaderValueRelaxed"),
+         Integer::NewFromUnsigned(isolate, 0));
+#endif
 
   t->Set(FIXED_ONE_BYTE_STRING(isolate, "kLenientAll"),
          Integer::NewFromUnsigned(isolate, kLenientAll));

@@ -3,7 +3,6 @@
 const {
   ArrayPrototypeMap,
   FunctionPrototypeCall,
-  ObjectDefineProperty,
   Symbol,
 } = primordials;
 
@@ -21,7 +20,7 @@ const {
 
 const {
   validateFunction,
-  validateString,
+  validateStringWithoutNullBytes,
 } = require('internal/validators');
 
 const {
@@ -33,6 +32,7 @@ const {
   startPerf,
   stopPerf,
 } = require('internal/perf/observe');
+const { assignFunctionName } = require('internal/util');
 
 const kPerfHooksDnsLookupResolveContext = Symbol('kPerfHooksDnsLookupResolveContext');
 
@@ -59,7 +59,7 @@ function resolver(bindingName) {
       callback = arguments[2];
     }
 
-    validateString(name, 'name');
+    validateStringWithoutNullBytes(name, 'name');
     validateFunction(callback, 'callback');
 
     const req = new QueryReqWrap();
@@ -82,8 +82,7 @@ function resolver(bindingName) {
     }
     return req;
   }
-  ObjectDefineProperty(query, 'name', { __proto__: null, value: bindingName });
-  return query;
+  return assignFunctionName(bindingName, query);
 }
 
 // This is the callback-based resolver. There is another similar

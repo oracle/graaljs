@@ -7,7 +7,6 @@ const {
   ArrayPrototypePop,
   ArrayPrototypePush,
   ArrayPrototypeReduce,
-  ArrayPrototypeSlice,
   ArrayPrototypeSome,
   JSONParse,
   MathFloor,
@@ -29,6 +28,10 @@ const {
   StringPrototypeSlice,
   StringPrototypeSplit,
 } = primordials;
+
+const {
+  validateAndCanonicalizeTagFilter,
+} = require('internal/test_runner/tag_filter');
 
 const { AsyncResource } = require('async_hooks');
 const { tracingChannel } = require('diagnostics_channel');
@@ -52,7 +55,7 @@ const {
   validateUint32,
 } = require('internal/validators');
 const { validatePath } = require('internal/fs/utils');
-const { kEmptyObject } = require('internal/util');
+const { emitExperimentalWarning, kEmptyObject } = require('internal/util');
 
 const coverageColors = {
   __proto__: null,
@@ -162,31 +165,6 @@ function createSeededGenerator(seed) {
   };
 }
 
-/**
- * Return a deterministically shuffled copy of an array.
- * @template T
- * @param {T[]} values
- * @param {number} seed
- * @returns {T[]}
- */
-function shuffleArrayWithSeed(values, seed) {
-  if (values.length < 2) {
-    return values;
-  }
-
-  const randomized = ArrayPrototypeSlice(values);
-  const random = createSeededGenerator(seed);
-
-  for (let i = randomized.length - 1; i > 0; i--) {
-    const j = MathFloor(random() * (i + 1));
-    const tmp = randomized[i];
-    randomized[i] = randomized[j];
-    randomized[j] = tmp;
-  }
-
-  return randomized;
-}
-
 function tryBuiltinReporter(name) {
   const builtinPath = kBuiltinReporters.get(name);
 
@@ -293,6 +271,7 @@ function parseCommandLine() {
   let shard;
   let testNamePatterns = mapPatternFlagToRegExArray('--test-name-pattern');
   let testSkipPatterns = mapPatternFlagToRegExArray('--test-skip-pattern');
+  let testTagFilters = null;
 
   if (isChildProcessV8) {
     kBuiltinReporters.set('v8-serializer', 'internal/test_runner/reporter/v8-serializer');
@@ -324,6 +303,19 @@ function parseCommandLine() {
 
   if (isTestRunner) {
     isolation = getOptionValue('--test-isolation');
+
+    const tagFilterFlag = getOptionValue('--experimental-test-tag-filter');
+    if (tagFilterFlag?.length > 0) {
+      emitExperimentalWarning('Test tags');
+      // File wrappers are exempt from tag filtering, so holding the filters
+      // in the parent is safe under any isolation mode; under
+      // isolation='process' the canonical values are re-emitted to the
+      // child processes, which apply the filter themselves.
+      testTagFilters = ArrayPrototypeMap(
+        tagFilterFlag,
+        (value, i) => validateAndCanonicalizeTagFilter(value, `--experimental-test-tag-filter[${i}]`),
+      );
+    }
 
     if (isolation === 'none') {
       concurrency = 1;
@@ -363,6 +355,14 @@ function parseCommandLine() {
     const testSkipPatternFlag = getOptionValue('--test-skip-pattern');
     testSkipPatterns = testSkipPatternFlag?.length > 0 ?
       ArrayPrototypeMap(testSkipPatternFlag, (re) => convertStringToRegExp(re, '--test-skip-pattern')) : null;
+    const tagFilterFlag = getOptionValue('--experimental-test-tag-filter');
+    if (tagFilterFlag?.length > 0) {
+      emitExperimentalWarning('Test tags');
+      testTagFilters = ArrayPrototypeMap(
+        tagFilterFlag,
+        (value, i) => validateAndCanonicalizeTagFilter(value, `--experimental-test-tag-filter[${i}]`),
+      );
+    }
   }
 
   if (coverage) {
@@ -424,6 +424,7 @@ function parseCommandLine() {
     sourceMaps,
     testNamePatterns,
     testSkipPatterns,
+    testTagFilters,
     timeout,
     updateSnapshots,
     watch,
@@ -726,7 +727,6 @@ module.exports = {
   kDefaultPattern,
   kMaxRandomSeed,
   parseCommandLine,
-  shuffleArrayWithSeed,
   reporterScope,
   shouldColorizeTestFiles,
   getCoverageReport,

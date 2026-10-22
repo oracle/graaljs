@@ -1,7 +1,6 @@
 'use strict';
 
 const {
-  SafeSet,
   StringPrototypeToLowerCase,
   TypedArrayPrototypeGetBuffer,
   TypedArrayPrototypeSet,
@@ -13,22 +12,20 @@ const {
   KEMDecapsulateJob,
   KEMEncapsulateJob,
   kKeyFormatDER,
-  kKeyFormatRawPrivate,
   kKeyFormatRawPublic,
+  kKeyFormatRawSeed,
+  kKeyTypePublic,
   kWebCryptoKeyFormatPKCS8,
   kWebCryptoKeyFormatRaw,
   kWebCryptoKeyFormatSPKI,
-  NidKeyPairGenJob,
-  EVP_PKEY_ML_KEM_512,
-  EVP_PKEY_ML_KEM_768,
-  EVP_PKEY_ML_KEM_1024,
+  NamedKeyPairGenJob,
 } = internalBinding('crypto');
 
 const {
   getUsagesMask,
-  getUsagesUnion,
-  hasAnyNotIn,
   jobPromise,
+  toUsagesSet,
+  getBufferSourceByteLength,
 } = require('internal/crypto/util');
 
 const {
@@ -39,54 +36,39 @@ const {
   getCryptoKeyAlgorithm,
   getCryptoKeyHandle,
   getCryptoKeyType,
-  getKeyObjectHandle,
-  getKeyObjectType,
   InternalCryptoKey,
 } = require('internal/crypto/keys');
 
 const {
+  createKeyUsages,
+  getKeyPairUsages,
   importDerKey,
   importJwkKey,
   importRawKey,
   validateJwk,
+  validateKeyUsages,
+  validateUsagesNotEmpty,
+  verifyAcceptableKeyUse,
 } = require('internal/crypto/webcrypto_util');
 
-function mlKemGenerateKey(algorithm, extractable, keyUsages) {
+const kUsages = createKeyUsages(
+  ['encapsulateKey', 'encapsulateBits'],
+  ['decapsulateKey', 'decapsulateBits']);
+
+function mlKemGenerateKey(algorithm, extractable, usages) {
   const { name } = algorithm;
-
-  const usageSet = new SafeSet(keyUsages);
-  if (hasAnyNotIn(usageSet, ['encapsulateKey', 'encapsulateBits', 'decapsulateKey', 'decapsulateBits'])) {
-    throw lazyDOMException(
-      `Unsupported key usage for an ${name} key`,
-      'SyntaxError');
-  }
-
-  const nid = {
-    '__proto__': null,
-    'ML-KEM-512': EVP_PKEY_ML_KEM_512,
-    'ML-KEM-768': EVP_PKEY_ML_KEM_768,
-    'ML-KEM-1024': EVP_PKEY_ML_KEM_1024,
-  }[name];
-
-  const publicUsages =
-    getUsagesUnion(usageSet, 'encapsulateKey', 'encapsulateBits');
-  const privateUsages =
-    getUsagesUnion(usageSet, 'decapsulateKey', 'decapsulateBits');
+  const usagesSet = validateKeyUsages(usages, kUsages.keygen, name);
 
   const keyAlgorithm = { name };
+  const keyUsages = getKeyPairUsages(usagesSet, kUsages);
+  validateUsagesNotEmpty(keyUsages.private);
 
-  if (privateUsages.size === 0) {
-    throw lazyDOMException(
-      'Usages cannot be empty when creating a key.',
-      'SyntaxError');
-  }
-
-  return jobPromise(() => new NidKeyPairGenJob(
+  return jobPromise(() => new NamedKeyPairGenJob(
     kCryptoJobWebCrypto,
-    nid,
+    name,
     keyAlgorithm,
-    getUsagesMask(publicUsages),
-    getUsagesMask(privateUsages),
+    getUsagesMask(keyUsages.public),
+    getUsagesMask(keyUsages.private),
     extractable));
 }
 
@@ -129,39 +111,33 @@ function mlKemExportKey(key, format) {
   }
 }
 
-function verifyAcceptableMlKemKeyUse(name, isPublic, usages) {
-  const checkSet = isPublic ? ['encapsulateKey', 'encapsulateBits'] : ['decapsulateKey', 'decapsulateBits'];
-  if (hasAnyNotIn(usages, checkSet)) {
-    throw lazyDOMException(
-      `Unsupported key usage for a ${name} key`,
-      'SyntaxError');
-  }
-}
-
 function mlKemImportKey(
   format,
   keyData,
   algorithm,
   extractable,
-  keyUsages) {
+  usages) {
 
   const { name } = algorithm;
   let handle;
-  const usagesSet = new SafeSet(keyUsages);
+  const usagesSet = toUsagesSet(usages);
   switch (format) {
-    case 'KeyObject': {
-      verifyAcceptableMlKemKeyUse(
-        name, getKeyObjectType(keyData) === 'public', usagesSet);
-      handle = getKeyObjectHandle(keyData);
+    case 'KeyObjectHandle':
+      verifyAcceptableKeyUse(
+        name,
+        usagesSet,
+        keyData.getKeyType() === kKeyTypePublic ?
+          kUsages.public :
+          kUsages.private);
+      handle = keyData;
       break;
-    }
     case 'spki': {
-      verifyAcceptableMlKemKeyUse(name, true, usagesSet);
+      verifyAcceptableKeyUse(name, usagesSet, kUsages.public);
       handle = importDerKey(keyData, true);
       break;
     }
     case 'pkcs8': {
-      verifyAcceptableMlKemKeyUse(name, false, usagesSet);
+      verifyAcceptableKeyUse(name, usagesSet, kUsages.private);
 
       const privOnlyLengths = {
         '__proto__': null,
@@ -169,7 +145,7 @@ function mlKemImportKey(
         'ML-KEM-768': 2428,
         'ML-KEM-1024': 3196,
       };
-      if (keyData.byteLength === privOnlyLengths[name]) {
+      if (getBufferSourceByteLength(keyData) === privOnlyLengths[name]) {
         throw lazyDOMException(
           'Importing an ML-KEM PKCS#8 key without a seed is not supported',
           'NotSupportedError');
@@ -181,19 +157,28 @@ function mlKemImportKey(
     case 'raw-public':
     case 'raw-seed': {
       const isPublic = format === 'raw-public';
-      verifyAcceptableMlKemKeyUse(name, isPublic, usagesSet);
-      handle = importRawKey(isPublic, keyData, isPublic ? kKeyFormatRawPublic : kKeyFormatRawPrivate, name);
+      verifyAcceptableKeyUse(
+        name,
+        usagesSet,
+        isPublic ? kUsages.public : kUsages.private);
+      handle = importRawKey(isPublic, keyData,
+                            isPublic ? kKeyFormatRawPublic : kKeyFormatRawSeed,
+                            StringPrototypeToLowerCase(name));
       break;
     }
     case 'jwk': {
+      const isPublic = keyData.priv === undefined;
+      verifyAcceptableKeyUse(
+        name,
+        usagesSet,
+        isPublic ? kUsages.public : kUsages.private);
+
       validateJwk(keyData, 'AKP', extractable, usagesSet, 'enc');
 
       if (keyData.alg !== name)
         throw lazyDOMException(
           'JWK "alg" Parameter and algorithm name mismatch', 'DataError');
 
-      const isPublic = keyData.priv === undefined;
-      verifyAcceptableMlKemKeyUse(name, isPublic, usagesSet);
       handle = importJwkKey(isPublic, keyData);
       break;
     }

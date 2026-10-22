@@ -50,6 +50,11 @@
 #if HAVE_OPENSSL
 #include "ncrypto.h"
 #include "node_crypto.h"
+#if OPENSSL_VERSION_MAJOR >= 3 && !defined(CONF_MFLAGS_IGNORE_MISSING_FILE)
+// OpenSSL hides this deprecated macro under OPENSSL_NO_DEPRECATED, but the
+// non-deprecated OPENSSL_INIT settings API still accepts the flag value.
+#define CONF_MFLAGS_IGNORE_MISSING_FILE 0x10
+#endif
 #endif
 
 #if defined(NODE_HAVE_I18N_SUPPORT)
@@ -895,15 +900,6 @@ static ExitCode InitializeNodeWithArgsInternal(
   // default value.
   V8::SetFlagsFromString("--rehash-snapshot");
 
-#if HAVE_OPENSSL
-  // TODO(joyeecheung): make this a per-env option and move the normalization
-  // into HandleEnvOptions.
-  std::string use_system_ca;
-  if (credentials::SafeGetenv("NODE_USE_SYSTEM_CA", &use_system_ca) &&
-      use_system_ca == "1") {
-    per_process::cli_options->use_system_ca = true;
-  }
-#endif  // HAVE_OPENSSL
   HandleEnvOptions(per_process::cli_options->per_isolate->per_env);
 
   std::string node_options;
@@ -939,15 +935,21 @@ static ExitCode InitializeNodeWithArgsInternal(
   }
 
   std::string node_options_from_config;
-  if (auto path = per_process::config_reader.GetDataFromArgs(*argv)) {
-    switch (per_process::config_reader.ParseConfig(*path)) {
+  auto config_path = per_process::config_reader.GetDataFromArgs(argv);
+  if (per_process::config_reader.HasInvalidDefaultConfigFileArgument()) {
+    errors->push_back("--experimental-default-config-file does not take an "
+                      "argument");
+    return ExitCode::kInvalidCommandLineArgument;
+  }
+  if (config_path) {
+    switch (per_process::config_reader.ParseConfig(*config_path)) {
       case ParseResult::Valid:
         break;
       case ParseResult::InvalidContent:
-        errors->push_back(std::string(*path) + ": invalid content");
+        errors->push_back(std::string(*config_path) + ": invalid content");
         break;
       case ParseResult::FileError:
-        errors->push_back(std::string(*path) + ": not found");
+        errors->push_back(std::string(*config_path) + ": not found");
         break;
       default:
         UNREACHABLE();
@@ -1094,6 +1096,45 @@ int InitializeNodeWithArgs(std::vector<std::string>* argv,
       InitializeNodeWithArgsInternal(argv, exec_argv, errors, flags));
 }
 
+#if NODE_USE_V8_WASM_TRAP_HANDLER
+bool CanEnableWebAssemblyTrapHandler() {
+// On POSIX, the machine may have a limit on the amount of virtual memory
+// available, if it's not enough to allocate at least one cage for WASM,
+// then the trap-handler-based bound checks cannot be used.
+#ifdef __POSIX__
+  struct rlimit lim;
+  if (getrlimit(RLIMIT_AS, &lim) != 0 || lim.rlim_cur == RLIM_INFINITY) {
+    // Can't get the limit or there's no limit, assume trap handler can be
+    // enabled.
+    return true;
+  }
+  uint64_t virtual_memory_available = static_cast<uint64_t>(lim.rlim_cur);
+
+  size_t byte_capacity = 64 * 1024;  // 64KB, the minimum size of a WASM memory.
+  uint64_t cage_size_needed_32 = V8::GetWasmMemoryReservationSizeInBytes(
+      V8::WasmMemoryType::kMemory32, byte_capacity);
+  uint64_t cage_size_needed_64 = V8::GetWasmMemoryReservationSizeInBytes(
+      V8::WasmMemoryType::kMemory64, byte_capacity);
+  uint64_t cage_size_needed =
+      std::max(cage_size_needed_32, cage_size_needed_64);
+  bool can_enable = virtual_memory_available >= cage_size_needed;
+  per_process::Debug(DebugCategory::BOOTSTRAP,
+                     "Virtual memory available: %" PRIu64 " bytes,\n"
+                     "cage size needed for 32-bit: %" PRIu64 " bytes,\n"
+                     "cage size needed for 64-bit: %" PRIu64 " bytes,\n"
+                     "Can%senable WASM trap handler\n",
+                     virtual_memory_available,
+                     cage_size_needed_32,
+                     cage_size_needed_64,
+                     can_enable ? " " : " not ");
+
+  return can_enable;
+#else
+  return true;
+#endif  // __POSIX__
+}
+#endif  // NODE_USE_V8_WASM_TRAP_HANDLER
+
 static std::shared_ptr<InitializationResultImpl>
 InitializeOncePerProcessInternal(const std::vector<std::string>& args,
                                  ProcessInitializationFlags::Flags flags =
@@ -1128,7 +1169,8 @@ InitializeOncePerProcessInternal(const std::vector<std::string>& args,
     }
   }
 
-  if (!per_process::cli_options->run.empty()) {
+  // A bare `--run` (empty value) lists the available scripts; a value runs it.
+  if (per_process::cli_options->has_run) {
     auto positional_args = task_runner::GetPositionalArgs(args);
     result->early_return_ = true;
     task_runner::RunTask(
@@ -1163,6 +1205,7 @@ InitializeOncePerProcessInternal(const std::vector<std::string>& args,
   if (!(flags & ProcessInitializationFlags::kNoInitOpenSSL)) {
 #if HAVE_OPENSSL
 #ifndef OPENSSL_IS_BORINGSSL
+#if OPENSSL_VERSION_MAJOR >= 3
     auto GetOpenSSLErrorString = []() -> std::string {
       std::string ret;
       ERR_print_errors_cb(
@@ -1178,7 +1221,6 @@ InitializeOncePerProcessInternal(const std::vector<std::string>& args,
 
     // In the case of FIPS builds we should make sure
     // the random source is properly initialized first.
-#if OPENSSL_VERSION_MAJOR >= 3
     // Call OPENSSL_init_crypto to initialize OPENSSL_INIT_LOAD_CONFIG to
     // avoid the default behavior where errors raised during the parsing of the
     // OpenSSL configuration file are not propagated and cannot be detected.
@@ -1216,6 +1258,7 @@ InitializeOncePerProcessInternal(const std::vector<std::string>& args,
     }
 
     OPENSSL_INIT_SETTINGS* settings = OPENSSL_INIT_new();
+    CHECK_NOT_NULL(settings);
     OPENSSL_INIT_set_config_filename(settings, conf_file);
     OPENSSL_INIT_set_config_appname(settings, conf_section_name);
     OPENSSL_INIT_set_config_file_flags(settings,
@@ -1239,14 +1282,13 @@ InitializeOncePerProcessInternal(const std::vector<std::string>& args,
       OPENSSL_init();
     }
 #endif
-    if (!crypto::ProcessFipsOptions()) {
+    if (auto fips_error = crypto::ProcessFipsOptions()) {
       result->exit_code_ = ExitCode::kGenericUserError;
       result->early_return_ = true;
-      result->errors_.emplace_back(
-          "OpenSSL error when trying to enable FIPS:\n" +
-          GetOpenSSLErrorString());
+      result->errors_.emplace_back(std::move(*fips_error));
       return result;
     }
+    crypto::InstallFipsIndicatorCallback();
 
     // Ensure CSPRNG is properly seeded.
     CHECK(ncrypto::CSPRNG(nullptr, 0));
@@ -1296,7 +1338,9 @@ InitializeOncePerProcessInternal(const std::vector<std::string>& args,
   bool use_wasm_trap_handler =
       !per_process::cli_options->disable_wasm_trap_handler;
   if (!(flags & ProcessInitializationFlags::kNoDefaultSignalHandling) &&
-      use_wasm_trap_handler) {
+      use_wasm_trap_handler && CanEnableWebAssemblyTrapHandler()) {
+    per_process::Debug(DebugCategory::BOOTSTRAP,
+                       "Enabling WebAssembly trap handler for bounds checks\n");
 #if defined(_WIN32)
     constexpr ULONG first = TRUE;
     per_process::old_vectored_exception_handler =

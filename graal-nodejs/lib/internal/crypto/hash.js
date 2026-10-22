@@ -6,9 +6,12 @@ const {
   StringPrototypeReplace,
   StringPrototypeToLowerCase,
   Symbol,
+  TypedArrayPrototypeGetBuffer,
+  TypedArrayPrototypeIncludes,
 } = primordials;
 
 const {
+  CShakeJob,
   Hash: _Hash,
   HashJob,
   Hmac: _Hmac,
@@ -21,11 +24,17 @@ const {
 const {
   getStringOption,
   jobPromise,
+  jobPromiseThen,
   normalizeHashName,
+  numBitsToBytes,
+  truncateToBitLength,
   validateMaxBufferLength,
   kHandle,
   getCachedHashId,
   getHashCache,
+  getArrayBufferOrView,
+  getBufferSourceBytes,
+  getOptionalByteLength,
 } = require('internal/crypto/util');
 
 const {
@@ -89,20 +98,60 @@ const maybeEmitDeprecationWarning = getDeprecationWarningEmitter(
   },
 );
 
+function normalizeCShakeParameter(value, name) {
+  if (value === undefined) return undefined;
+
+  value = getArrayBufferOrView(value, name);
+  if (TypedArrayPrototypeIncludes(getBufferSourceBytes(value), 0)) {
+    throw new ERR_INVALID_ARG_VALUE(
+      name, value, 'must not contain NUL bytes');
+  }
+  return value;
+}
+
 function Hash(algorithm, options) {
   if (!new.target)
     return new Hash(algorithm, options);
   const isCopy = algorithm instanceof _Hash;
   if (!isCopy)
     validateString(algorithm, 'algorithm');
-  const xofLen = typeof options === 'object' && options !== null ?
+  let xofLen = typeof options === 'object' && options !== null ?
     options.outputLength : undefined;
-  if (xofLen !== undefined)
+  if (xofLen !== undefined) {
     validateUint32(xofLen, 'options.outputLength');
+    // Coerce -0 to +0.
+    xofLen += 0;
+  }
+  let functionName;
+  let customization;
+  if (!isCopy && options !== undefined && options !== null) {
+    const functionNameOption = options.functionName;
+    if (functionNameOption !== undefined) {
+      functionName = normalizeCShakeParameter(
+        functionNameOption, 'options.functionName');
+    }
+    const customizationOption = options.customization;
+    if (customizationOption !== undefined) {
+      customization = normalizeCShakeParameter(
+        customizationOption, 'options.customization');
+    }
+  }
   // Lookup the cached ID from JS land because it's faster than decoding
   // the string in C++ land.
   const algorithmId = isCopy ? -1 : getCachedHashId(algorithm);
-  this[kHandle] = new _Hash(algorithm, xofLen, algorithmId, getHashCache());
+  if (functionName === undefined && customization === undefined) {
+    this[kHandle] = new _Hash(
+      algorithm, xofLen, algorithmId, getHashCache());
+  } else {
+    this[kHandle] = new _Hash(
+      algorithm,
+      xofLen,
+      algorithmId,
+      getHashCache(),
+      functionName,
+      customization,
+    );
+  }
   this[kState] = {
     [kFinalized]: false,
   };
@@ -124,7 +173,8 @@ Hash.prototype.copy = function copy(options) {
 };
 
 Hash.prototype._transform = function _transform(chunk, encoding, callback) {
-  this[kHandle].update(chunk, encoding);
+  if (!this[kHandle].update(chunk, encoding))
+    return callback(new ERR_CRYPTO_HASH_UPDATE_FAILED());
   callback();
 };
 
@@ -197,7 +247,12 @@ Hmac.prototype.digest = function digest(outputEncoding) {
   return ret;
 };
 
-Hmac.prototype._flush = Hash.prototype._flush;
+Hmac.prototype._flush = function _flush(callback) {
+  this.push(this[kHandle].digest());
+  this[kState][kFinalized] = true; // This diverges from Hash.prototype._flush:
+  // Hash instances are still usable after a flush, Hmac are not, see DEP0206.
+  callback();
+};
 Hmac.prototype._transform = Hash.prototype._transform;
 
 // Implementation for WebCrypto subtle.digest()
@@ -219,15 +274,41 @@ function asyncDigest(algorithm, data) {
     case 'SHA3-384':
       // Fall through
     case 'SHA3-512':
-      // Fall through
-    case 'cSHAKE128':
-      // Fall through
-    case 'cSHAKE256':
       return jobPromise(() => new HashJob(
         kCryptoJobWebCrypto,
         normalizeHashName(algorithm.name),
+        data));
+    case 'cSHAKE128':
+      // Fall through
+    case 'cSHAKE256': {
+      const outputLength = algorithm.outputLength;
+      if (getOptionalByteLength(algorithm.functionName) ||
+          getOptionalByteLength(algorithm.customization)) {
+        if (CShakeJob === undefined) {
+          throw lazyDOMException(
+            'Non-empty CShakeParams functionName or customization is not supported',
+            'NotSupportedError');
+        }
+
+        return jobPromise(() => new CShakeJob(
+          kCryptoJobWebCrypto,
+          algorithm.name,
+          data,
+          algorithm.functionName,
+          algorithm.customization,
+          outputLength));
+      }
+
+      const bits = jobPromise(() => new HashJob(
+        kCryptoJobWebCrypto,
+        normalizeHashName(algorithm.name),
         data,
-        algorithm.outputLength));
+        numBitsToBytes(outputLength) * 8));
+      if (outputLength % 8 === 0)
+        return bits;
+      return jobPromiseThen(bits, (bits) =>
+        TypedArrayPrototypeGetBuffer(truncateToBitLength(outputLength, bits)));
+    }
     case 'TurboSHAKE128':
       // Fall through
     case 'TurboSHAKE256':
@@ -246,9 +327,13 @@ function asyncDigest(algorithm, data) {
         algorithm.customization,
         algorithm.outputLength / 8,
         data));
+    /* c8 ignore start */
+    default: {
+      const assert = require('internal/assert');
+      assert.fail('Unreachable code');
+    }
+    /* c8 ignore stop */
   }
-
-  throw lazyDOMException('Unrecognized algorithm name', 'NotSupportedError');
 }
 
 function hash(algorithm, input, options) {
@@ -256,8 +341,15 @@ function hash(algorithm, input, options) {
   if (typeof input !== 'string' && !isArrayBufferView(input)) {
     throw new ERR_INVALID_ARG_TYPE('input', ['Buffer', 'TypedArray', 'DataView', 'string'], input);
   }
+  if (options === undefined) {
+    maybeEmitDeprecationWarning(algorithm);
+    return oneShotDigest(algorithm, getCachedHashId(algorithm), getHashCache(),
+                         input, 'hex', encodingsMap.hex, undefined);
+  }
   let outputEncoding;
   let outputLength;
+  let functionName;
+  let customization;
 
   if (typeof options === 'string') {
     outputEncoding = options;
@@ -265,6 +357,16 @@ function hash(algorithm, input, options) {
     validateObject(options, 'options');
     outputLength = options.outputLength;
     outputEncoding = options.outputEncoding;
+    const functionNameOption = options.functionName;
+    if (functionNameOption !== undefined) {
+      functionName = normalizeCShakeParameter(
+        functionNameOption, 'options.functionName');
+    }
+    const customizationOption = options.customization;
+    if (customizationOption !== undefined) {
+      customization = normalizeCShakeParameter(
+        customizationOption, 'options.customization');
+    }
   }
 
   outputEncoding ??= 'hex';
@@ -287,14 +389,21 @@ function hash(algorithm, input, options) {
 
   if (outputLength !== undefined) {
     validateUint32(outputLength, 'outputLength');
+    // Coerce -0 to +0.
+    outputLength += 0;
   }
 
   if (outputLength === undefined) {
     maybeEmitDeprecationWarning(algorithm);
   }
 
+  if (functionName === undefined && customization === undefined) {
+    return oneShotDigest(algorithm, getCachedHashId(algorithm), getHashCache(),
+                         input, normalized, encodingsMap[normalized], outputLength);
+  }
   return oneShotDigest(algorithm, getCachedHashId(algorithm), getHashCache(),
-                       input, normalized, encodingsMap[normalized], outputLength);
+                       input, normalized, encodingsMap[normalized], outputLength,
+                       functionName, customization);
 }
 
 module.exports = {

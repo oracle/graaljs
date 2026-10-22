@@ -1,6 +1,8 @@
 'use strict';
 const {
+  ArrayFrom,
   ArrayPrototypeEvery,
+  ArrayPrototypeJoin,
   ArrayPrototypePush,
   ArrayPrototypePushApply,
   ArrayPrototypeShift,
@@ -17,6 +19,7 @@ const {
   MathRound,
   Number,
   NumberPrototypeToFixed,
+  ObjectFreeze,
   ObjectKeys,
   ObjectSeal,
   Promise,
@@ -30,6 +33,7 @@ const {
   SafePromiseAllReturnVoid,
   SafePromiseRace,
   SafeSet,
+  SetPrototypeUnion,
   StringPrototypeStartsWith,
   StringPrototypeTrim,
   Symbol,
@@ -50,6 +54,11 @@ const {
   },
 } = require('internal/errors');
 const { MockTracker } = require('internal/test_runner/mock/mock');
+const {
+  evaluateTagFilters,
+  kEmptyTagArray,
+  validateAndCanonicalizeTagValues,
+} = require('internal/test_runner/tag_filter');
 const { TestsStream } = require('internal/test_runner/tests_stream');
 const {
   createDeferredCallback,
@@ -72,6 +81,7 @@ const {
   validateNumber,
   validateObject,
   validateOneOf,
+  validateString,
   validateUint32,
 } = require('internal/validators');
 const {
@@ -294,6 +304,10 @@ class TestContext {
     return this.#test.attempt ?? 0;
   }
 
+  get tags() {
+    return this.#test.tags;
+  }
+
   get workerId() {
     const envWorkerId = process.env.NODE_TEST_WORKER_ID;
     return Number(envWorkerId) || undefined;
@@ -301,6 +315,10 @@ class TestContext {
 
   diagnostic(message) {
     this.#test.diagnostic(message);
+  }
+
+  log(message, data) {
+    this.#test.log(message, data);
   }
 
   plan(count, options = kEmptyObject) {
@@ -511,6 +529,10 @@ class SuiteContext {
   diagnostic(message) {
     this.#suite.diagnostic(message);
   }
+
+  log(message, data) {
+    this.#suite.log(message, data);
+  }
 }
 
 function parseExpectFailure(expectFailure) {
@@ -551,12 +573,14 @@ class Test extends AsyncResource {
   abortController;
   outerSignal;
   #reportedSubtest;
+  #tagsArray = null;
 
   constructor(options) {
     super('Test');
 
     let { fn, name, parent } = options;
     const { concurrency, entryFile, expectFailure, loc, only, timeout, todo, skip, signal, plan } = options;
+    const rawTags = options.tags;
 
     if (typeof fn !== 'function') {
       fn = noop;
@@ -577,7 +601,18 @@ class Test extends AsyncResource {
     this.diagnostics = [];
     this.filtered = false;
     this.filteredByName = false;
+    this.filteredByTag = false;
     this.hasOnlyTests = false;
+
+    // Hooks pass no tags option, so rawTags is undefined for them.
+    const ownTags = rawTags !== undefined ?
+      validateAndCanonicalizeTagValues(rawTags, 'options.tags') :
+      kEmptyTagArray;
+
+    const ownTagSet = new SafeSet(ownTags);
+    this.tagSet = parent !== null && parent.tagSet.size > 0 ?
+      SetPrototypeUnion(parent.tagSet, ownTagSet) :
+      ownTagSet;
 
     if (parent === null) {
       this.root = this;
@@ -597,7 +632,7 @@ class Test extends AsyncResource {
     } else {
       const nesting = parent.parent === null ? parent.nesting :
         parent.nesting + 1;
-      const { config, isFilteringByName, isFilteringByOnly } = parent.root.harness;
+      const { config, isFilteringByName, isFilteringByOnly, isFilteringByTags } = parent.root.harness;
 
       this.root = parent.root;
       this.harness = null;
@@ -617,6 +652,15 @@ class Test extends AsyncResource {
         if (!this.filteredByName) {
           for (let t = this.parent; t !== null && t.filteredByName; t = t.parent) {
             t.filteredByName = false;
+          }
+        }
+      }
+
+      if (isFilteringByTags) {
+        this.filteredByTag = this.willBeFilteredByTags();
+        if (!this.filteredByTag) {
+          for (let t = this.parent; t !== null && t.filteredByTag; t = t.parent) {
+            t.filteredByTag = false;
           }
         }
       }
@@ -804,6 +848,16 @@ class Test extends AsyncResource {
     }
   }
 
+  get tags() {
+    if (this.#tagsArray !== null) {
+      return this.#tagsArray;
+    }
+    this.#tagsArray = this.tagSet.size === 0 ?
+      kEmptyTagArray :
+      ObjectFreeze(ArrayFrom(this.tagSet));
+    return this.#tagsArray;
+  }
+
   applyFilters() {
     if (this.error) {
       // Never filter out errors.
@@ -820,7 +874,12 @@ class Test extends AsyncResource {
           this.parent.hasOnlyTests ||
           this.only === false) {
         this.filtered = true;
+        return;
       }
+    }
+
+    if (this.filteredByTag) {
+      this.filtered = true;
     }
   }
 
@@ -834,6 +893,10 @@ class Test extends AsyncResource {
       return true;
     }
     return false;
+  }
+
+  willBeFilteredByTags() {
+    return !evaluateTagFilters(this.config.testTagFilters, this.tagSet);
   }
 
   /**
@@ -907,7 +970,7 @@ class Test extends AsyncResource {
       const deferred = this.dequeuePendingSubtest();
       const test = deferred.test;
       this.assignReportOrder(test);
-      test.reporter.dequeue(test.nesting, test.loc, test.name, this.reportedType, test.testId);
+      test.reporter.dequeue(test.nesting, test.loc, test.name, this.reportedType, test.testId, this.testId, test.tags);
       await test.run();
       deferred.resolve();
     }
@@ -1149,6 +1212,12 @@ class Test extends AsyncResource {
     ArrayPrototypePush(this.diagnostics, message);
   }
 
+  log(message, data) {
+    validateString(message, 'message');
+    this.reporter.log(this.nesting, this.loc, message, data,
+                      this.name, this.testId, this.parent?.testId);
+  }
+
   start() {
     this.applyFilters();
 
@@ -1164,7 +1233,8 @@ class Test extends AsyncResource {
     // it. Otherwise, return a Promise to the caller and mark the test as
     // pending for later execution.
     this.parent.unfinishedSubtests.add(this);
-    this.reporter.enqueue(this.nesting, this.loc, this.name, this.reportedType, this.testId);
+    this.reporter.enqueue(this.nesting, this.loc, this.name, this.reportedType,
+                          this.testId, this.parent?.testId, this.tags);
     if (this.root.harness.buildPromise || !this.parent.hasConcurrency()) {
       const deferred = PromiseWithResolvers();
 
@@ -1187,7 +1257,8 @@ class Test extends AsyncResource {
     }
 
     this.parent.assignReportOrder(this);
-    this.reporter.dequeue(this.nesting, this.loc, this.name, this.reportedType, this.testId);
+    this.reporter.dequeue(this.nesting, this.loc, this.name, this.reportedType,
+                          this.testId, this.parent?.testId, this.tags);
     return this.run();
   }
 
@@ -1198,8 +1269,14 @@ class Test extends AsyncResource {
     }
   }
 
+  #ctx;
+  getCtx() {
+    this.#ctx ??= new TestContext(this);
+    return this.#ctx;
+  }
+
   getRunArgs() {
-    const ctx = new TestContext(this);
+    const ctx = this.getCtx();
     return { __proto__: null, ctx, args: [ctx] };
   }
 
@@ -1455,7 +1532,7 @@ class Test extends AsyncResource {
         this.testNumber ||= ++this.parent.outputSubtestCount;
         this.reporter.complete(
           this.nesting, this.loc, this.testNumber, this.name,
-          report.details, report.directive, this.testId,
+          report.details, report.directive, this.testId, this.parent?.testId, this.tags,
         );
         this.parent.activeSubtests--;
       }
@@ -1596,6 +1673,17 @@ class Test extends AsyncResource {
       details.passed_on_attempt = this.passedAttempt;
     }
 
+    // Generate classname from suite hierarchy for JUnit reporter
+    if (this.parent && this.parent !== this.root) {
+      const parts = [];
+      for (let t = this.parent; t !== t.root; t = t.parent) {
+        ArrayPrototypeUnshift(parts, t.name);
+      }
+      if (parts.length > 0) {
+        details.classname = ArrayPrototypeJoin(parts, '.');
+      }
+    }
+
     return { __proto__: null, details, directive };
   }
 
@@ -1611,12 +1699,12 @@ class Test extends AsyncResource {
     if (this.passed) {
       this.reporter.ok(
         this.nesting, this.loc, this.testNumber, this.name,
-        report.details, report.directive, this.testId,
+        report.details, report.directive, this.testId, this.parent?.testId, this.tags,
       );
     } else {
       this.reporter.fail(
         this.nesting, this.loc, this.testNumber, this.name,
-        report.details, report.directive, this.testId,
+        report.details, report.directive, this.testId, this.parent?.testId, this.tags,
       );
     }
 
@@ -1631,7 +1719,7 @@ class Test extends AsyncResource {
     }
     this.#reportedSubtest = true;
     this.parent.reportStarted();
-    this.reporter.start(this.nesting, this.loc, this.name, this.testId);
+    this.reporter.start(this.nesting, this.loc, this.name, this.testId, this.parent?.testId, this.tags);
   }
 
   clearExecutionTime() {
@@ -1668,6 +1756,11 @@ class TestHook extends Test {
     this.#args = args;
     return super.run();
   }
+
+  getCtx() {
+    return this.parentTest.getCtx();
+  }
+
   getRunArgs() {
     return this.#args;
   }
@@ -1688,7 +1781,7 @@ class TestHook extends Test {
         __proto__: null,
         duration_ms: this.duration(),
         error,
-      }, undefined);
+      }, undefined, undefined, undefined, parent.tags);
     }
   }
 }
@@ -1750,18 +1843,36 @@ class Suite extends Test {
         publishError(err);
       }
       this.fail(new ERR_TEST_FAILURE(err, kTestCodeFailure));
-    } finally {
-      if (testChannel.end.hasSubscribers) {
-        publishEnd();
-      }
     }
 
+    this.#publishEnd = publishEnd;
     this.buildPhaseFinished = true;
+  }
+
+  #publishEnd = null;
+
+  #publishSuiteEnd() {
+    const publishEnd = this.#publishEnd;
+    this.#publishEnd = null;
+    if (publishEnd !== null && testChannel.end.hasSubscribers) {
+      publishEnd();
+    }
+  }
+
+  #ctx;
+  getCtx() {
+    this.#ctx ??= new TestContext(this);
+    return this.#ctx;
   }
 
   getRunArgs() {
     const ctx = new SuiteContext(this);
     return { __proto__: null, ctx, args: [ctx] };
+  }
+
+  async filteredRun() {
+    await this.buildSuite;
+    return super.filteredRun();
   }
 
   async run() {
@@ -1804,6 +1915,7 @@ class Suite extends Test {
       }
     } finally {
       stopPromise?.[SymbolDispose]();
+      this.#publishSuiteEnd();
     }
 
     this.postRun();
@@ -1831,4 +1943,6 @@ module.exports = {
   kUnwrapErrors,
   Suite,
   Test,
+  TestContext,
+  SuiteContext,
 };

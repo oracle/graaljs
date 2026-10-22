@@ -23,7 +23,7 @@ const noRestrictedSyntax = [
     message: "`btoa` supports only latin-1 charset, use Buffer.from(str).toString('base64') instead",
   },
   {
-    selector: 'NewExpression[callee.name=/Error$/]:not([callee.name=/^(AssertionError|NghttpError|AbortError|NodeAggregateError)$/])',
+    selector: 'NewExpression[callee.name=/Error$/]:not([callee.name=/^(AssertionError|NghttpError|AbortError|NodeAggregateError|QuicError)$/])',
     message: "Use an error exported by 'internal/errors' instead.",
   },
   {
@@ -147,10 +147,6 @@ export default [
         {
           name: 'Intl',
           message: 'Use `const { Intl } = globalThis;` instead of the global.',
-        },
-        {
-          name: 'Iterator',
-          message: 'Use `const { Iterator } = globalThis;` instead of the global.',
         },
         {
           name: 'MessageChannel',
@@ -402,8 +398,8 @@ export default [
       'node-core/lowercase-name-for-primitive': 'error',
       'node-core/non-ascii-character': 'error',
       'node-core/no-array-destructuring': 'error',
+      'node-core/no-crypto-class-instanceof': 'error',
       'node-core/no-cryptokey-public-accessors': 'error',
-      'node-core/no-keyobject-cryptokey-instanceof': 'error',
       'node-core/no-keyobject-public-accessors': 'error',
       'node-core/prefer-primordials': [
         'error',
@@ -441,6 +437,7 @@ export default [
         { name: 'Int16Array' },
         { name: 'Int32Array' },
         { name: 'Int8Array' },
+        { name: 'Iterator' },
         {
           name: 'isFinite',
           into: 'Number',

@@ -227,7 +227,8 @@ void SetIsolateCreateParamsForNode(Isolate::CreateParams* params) {
 #endif
 }
 
-void SetIsolateErrorHandlers(v8::Isolate* isolate, const IsolateSettings& s) {
+static void SetIsolateErrorHandlers(v8::Isolate* isolate,
+                                    const IsolateSettings& s) {
   if (s.flags & MESSAGE_LISTENER_WITH_ERROR_LEVEL)
     isolate->AddMessageListenerWithErrorLevel(
             errors::PerIsolateMessageListener,
@@ -313,6 +314,34 @@ IsolateGroup GetOrCreateIsolateGroup() {
   return IsolateGroup::GetDefault();
 }
 
+// V8 shares the read-only heap between isolates and requires them all to be
+// created from the same snapshot, so every isolate gets the blob and external
+// references the first NewIsolate() call used. ~SnapshotData() leaves that blob
+// alone because its owner may be gone before the last isolate is created.
+static Mutex first_snapshot_mutex;
+static bool first_snapshot_recorded = false;
+static v8::StartupData first_snapshot_blob{nullptr, 0};
+static const intptr_t* first_external_references = nullptr;
+
+static void UseFirstSnapshot(Isolate::CreateParams* params) {
+  Mutex::ScopedLock lock(first_snapshot_mutex);
+  if (!first_snapshot_recorded) {
+    first_snapshot_recorded = true;
+    if (params->snapshot_blob != nullptr) {
+      first_snapshot_blob = *params->snapshot_blob;
+    }
+    first_external_references = params->external_references;
+  }
+  params->snapshot_blob =
+      first_snapshot_blob.data != nullptr ? &first_snapshot_blob : nullptr;
+  params->external_references = first_external_references;
+}
+
+bool IsFirstSnapshotBlob(const char* data) {
+  Mutex::ScopedLock lock(first_snapshot_mutex);
+  return first_snapshot_recorded && data == first_snapshot_blob.data;
+}
+
 // TODO(joyeecheung): we may want to expose this, but then we need to be
 // careful about what we override in the params.
 Isolate* NewIsolate(Isolate::CreateParams* params,
@@ -328,15 +357,7 @@ Isolate* NewIsolate(Isolate::CreateParams* params,
     SnapshotBuilder::InitializeIsolateParams(snapshot_data, params);
   }
 
-  {
-    // Because it uses a shared readonly-heap, V8 requires all snapshots used
-    // for creating Isolates to be identical. This isn't really memory-safe
-    // but also otherwise just doesn't work, and the only real alternative
-    // is disabling shared-readonly-heap mode altogether.
-    static Isolate::CreateParams first_params = *params;
-    params->snapshot_blob = first_params.snapshot_blob;
-    params->external_references = first_params.external_references;
-  }
+  UseFirstSnapshot(params);
 
   // Register the isolate on the platform before the isolate gets initialized,
   // so that the isolate can access the platform during initialization.
@@ -352,16 +373,7 @@ Isolate* NewIsolate(Isolate::CreateParams* params,
 
   SetIsolateCreateParamsForNode(params);
   Isolate::Initialize(isolate, *params);
-
-  Isolate::Scope isolate_scope(isolate);
-
-  if (snapshot_data == nullptr) {
-    // If in deserialize mode, delay until after the deserialization is
-    // complete.
-    SetIsolateUpForNode(isolate, settings);
-  } else {
-    SetIsolateMiscHandlers(isolate, settings);
-  }
+  SetIsolateUpForNode(isolate, settings);
 
   return isolate;
 }
@@ -401,7 +413,11 @@ IsolateData* CreateIsolateData(
     ArrayBufferAllocator* allocator,
     const EmbedderSnapshotData* embedder_snapshot_data) {
   return IsolateData::CreateIsolateData(
-      isolate, loop, platform, allocator, embedder_snapshot_data);
+      isolate,
+      loop,
+      platform,
+      allocator,
+      SnapshotData::FromEmbedderWrapper(embedder_snapshot_data));
 }
 
 void FreeIsolateData(IsolateData* isolate_data) {
@@ -489,7 +505,6 @@ Environment* CreateEnvironment(
       FreeEnvironment(env);
       return nullptr;
     }
-    SetIsolateErrorHandlers(isolate, {});
   }
 
   Context::Scope context_scope(context);
@@ -523,6 +538,9 @@ void FreeEnvironment(Environment* env) {
   Isolate* isolate = env->isolate();
   Isolate::DisallowJavascriptExecutionScope disallow_js(isolate,
       Isolate::DisallowJavascriptExecutionScope::THROW_ON_FAILURE);
+  // A termination requested by Stop() targets this Environment; if no JS ran
+  // since, it is still pending and must not hit the isolate's next user.
+  isolate->CancelTerminateExecution();
   {
     HandleScope handle_scope(isolate);  // For env->context().
     Context::Scope context_scope(env->context());

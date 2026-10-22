@@ -13,7 +13,7 @@ if (!common.hasCrypto)
 
 const assert = require('assert');
 const { createSecretKey } = require('crypto');
-const { hasOpenSSL } = require('../common/crypto');
+const { hasOpenSSL, hasFIPS, isBoringSSL } = require('../common/crypto');
 const { subtle } = globalThis.crypto;
 
 function assertSameSet(actual, expected, msg) {
@@ -49,6 +49,10 @@ function assertSameSet(actual, expected, msg) {
       usages: ['wrapKey', 'decrypt', 'encrypt', 'unwrapKey', 'wrapKey', 'encrypt'],
       expected: ['encrypt', 'decrypt', 'wrapKey', 'unwrapKey'] },
   ];
+
+  if (hasFIPS(3))
+    symmetric.splice(symmetric.findIndex(({ algorithm }) =>
+      algorithm.name === 'ChaCha20-Poly1305'), 1);
 
   if (hasOpenSSL(3)) {
     symmetric.push({
@@ -107,7 +111,11 @@ function assertSameSet(actual, expected, msg) {
       privateExpected: ['deriveKey', 'deriveBits'] },
   ];
 
-  if (hasOpenSSL(3, 5) || process.features.openssl_is_boringssl) {
+  if (hasFIPS(3))
+    asymmetric.splice(asymmetric.findIndex(({ algorithm }) =>
+      algorithm.name === 'X25519'), 1);
+
+  if (hasOpenSSL(3, 5) || isBoringSSL) {
     asymmetric.push({
       algorithm: { name: 'ML-DSA-65' },
       usages: ['verify', 'sign', 'verify', 'sign'],
@@ -289,7 +297,7 @@ function assertSameSet(actual, expected, msg) {
     assert.deepStrictEqual(imported.usages, ['sign']);
   })());
 
-  if (hasOpenSSL(3, 5) || process.features.openssl_is_boringssl) {
+  if (hasOpenSSL(3, 5) || isBoringSSL) {
     // ML-DSA JWK roundtrip.
     tests.push((async () => {
       const { privateKey } = await subtle.generateKey(
@@ -322,12 +330,17 @@ function assertSameSet(actual, expected, msg) {
 
   // ChaCha20-Poly1305 raw-secret import.
   tests.push((async () => {
-    const key = await subtle.importKey(
+    const imported = subtle.importKey(
       'raw-secret',
       new Uint8Array(32),
       { name: 'ChaCha20-Poly1305' },
       true,
       ['decrypt', 'encrypt', 'decrypt', 'encrypt']);
+    if (hasFIPS(3)) {
+      await assert.rejects(imported, { name: 'NotSupportedError' });
+      return;
+    }
+    const key = await imported;
     assertSameSet(key.usages, ['encrypt', 'decrypt']);
     assert.strictEqual(key.usages.length, 2);
   })());
@@ -477,7 +490,11 @@ function assertSameSet(actual, expected, msg) {
       privateExpected: ['deriveKey', 'deriveBits'] },
   ];
 
-  if (hasOpenSSL(3, 5) || process.features.openssl_is_boringssl) {
+  if (hasFIPS(3))
+    jwkPairVectors.splice(jwkPairVectors.findIndex(({ algorithm }) =>
+      algorithm.name === 'X25519'), 1);
+
+  if (hasOpenSSL(3, 5) || isBoringSSL) {
     jwkPairVectors.push({
       algorithm: { name: 'ML-DSA-65' },
       usages: ['verify', 'sign', 'verify', 'sign'],

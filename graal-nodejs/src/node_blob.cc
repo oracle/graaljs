@@ -110,9 +110,12 @@ void BlobFromFilePath(const FunctionCallbackInfo<Value>& args) {
   ToNamespacedPath(env, &path);
   THROW_IF_INSUFFICIENT_PERMISSIONS(
       env, permission::PermissionScope::kFileSystemRead, path.ToStringView());
-  auto entry = DataQueue::CreateFdEntry(env, args[0]);
+  int status = 0;
+  auto entry = DataQueue::CreateFdEntry(env, args[0], &status);
   if (entry == nullptr) {
-    return THROW_ERR_INVALID_ARG_VALUE(env, "Unable to open file as blob");
+    // The file could not be stat'd. Report the libuv error so callers can tell
+    // ENOENT apart from any other reason the path could not be used.
+    return env->ThrowUVException(status, "stat", nullptr, *path);
   }
 
   std::vector<std::unique_ptr<DataQueue::Entry>> entries;
@@ -156,8 +159,7 @@ Local<FunctionTemplate> Blob::GetConstructorTemplate(Environment* env) {
     Isolate* isolate = env->isolate();
     tmpl = NewFunctionTemplate(isolate, nullptr);
     tmpl->InstanceTemplate()->SetInternalFieldCount(Blob::kInternalFieldCount);
-    tmpl->SetClassName(
-        FIXED_ONE_BYTE_STRING(env->isolate(), "Blob"));
+    tmpl->SetClassName(FIXED_ONE_BYTE_STRING(env->isolate(), "Blob"));
     SetProtoMethod(isolate, tmpl, "getReader", GetReader);
     SetProtoMethod(isolate, tmpl, "slice", ToSlice);
     env->set_blob_constructor_template(tmpl);
@@ -255,8 +257,7 @@ void Blob::New(const FunctionCallbackInfo<Value>& args) {
   }
 
   auto blob = Create(env, DataQueue::CreateIdempotent(std::move(entries)));
-  if (blob)
-    args.GetReturnValue().Set(blob->object());
+  if (blob) args.GetReturnValue().Set(blob->object());
 }
 
 void Blob::GetReader(const FunctionCallbackInfo<Value>& args) {
@@ -278,8 +279,7 @@ void Blob::ToSlice(const FunctionCallbackInfo<Value>& args) {
   size_t start = args[0].As<Uint32>()->Value();
   size_t end = args[1].As<Uint32>()->Value();
   BaseObjectPtr<Blob> slice = blob->Slice(env, start, end);
-  if (slice)
-    args.GetReturnValue().Set(slice->object());
+  if (slice) args.GetReturnValue().Set(slice->object());
 }
 
 void Blob::MemoryInfo(MemoryTracker* tracker) const {
@@ -343,6 +343,7 @@ void Blob::Reader::Pull(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
   Blob::Reader* reader;
   ASSIGN_OR_RETURN_UNWRAP(&reader, args.This());
+  reader->pull_pending_ = false;
 
   CHECK(args[0]->IsFunction());
   Local<Function> fn = args[0].As<Function>();
@@ -414,19 +415,27 @@ void Blob::Reader::Pull(const FunctionCallbackInfo<Value>& args) {
 void Blob::Reader::SetWakeup(const FunctionCallbackInfo<Value>& args) {
   Blob::Reader* reader;
   ASSIGN_OR_RETURN_UNWRAP(&reader, args.This());
+  if (args[0]->IsUndefined()) {
+    reader->wakeup_.Reset();
+    return;
+  }
   CHECK(args[0]->IsFunction());
   reader->wakeup_.Reset(args.GetIsolate(), args[0].As<Function>());
 }
 
 void Blob::Reader::NotifyPull() {
   if (wakeup_.IsEmpty() || !env()->can_call_into_js()) return;
+  // Coalesce notifications: if a wakeup is already pending and the reader
+  // has not yet pulled, skip re-notifying to avoid redundant wakeups
+  // within a single packet.
+  if (pull_pending_) return;
+  pull_pending_ = true;
   HandleScope handle_scope(env()->isolate());
   Local<Function> fn = wakeup_.Get(env()->isolate());
   MakeCallback(fn, 0, nullptr);
 }
 
-BaseObjectPtr<BaseObject>
-Blob::BlobTransferData::Deserialize(
+BaseObjectPtr<BaseObject> Blob::BlobTransferData::Deserialize(
     Environment* env,
     Local<Context> context,
     std::unique_ptr<worker::TransferData> self) {
@@ -448,10 +457,10 @@ std::unique_ptr<worker::TransferData> Blob::CloneForMessaging() const {
 void Blob::StoreDataObject(const FunctionCallbackInfo<Value>& args) {
   Realm* realm = Realm::GetCurrent(args);
 
-  CHECK(args[0]->IsString());  // ID key
+  CHECK(args[0]->IsString());                       // ID key
   CHECK(Blob::HasInstance(realm->env(), args[1]));  // Blob
-  CHECK(args[2]->IsUint32());  // Length
-  CHECK(args[3]->IsString());  // Type
+  CHECK(args[2]->IsUint32());                       // Length
+  CHECK(args[3]->IsString());                       // Type
 
   BlobBindingData* binding_data = realm->GetBindingData<BlobBindingData>();
   Isolate* isolate = realm->isolate();
@@ -531,12 +540,8 @@ void BlobBindingData::StoredDataObject::MemoryInfo(
 }
 
 BlobBindingData::StoredDataObject::StoredDataObject(
-    const BaseObjectPtr<Blob>& blob_,
-    size_t length_,
-    const std::string& type_)
-    : blob(blob_),
-      length(length_),
-      type(type_) {}
+    const BaseObjectPtr<Blob>& blob_, size_t length_, const std::string& type_)
+    : blob(blob_), length(length_), type(type_) {}
 
 BlobBindingData::BlobBindingData(Realm* realm, Local<Object> wrap)
     : SnapshotableObject(realm, wrap, type_int) {
@@ -550,8 +555,7 @@ void BlobBindingData::MemoryInfo(MemoryTracker* tracker) const {
 }
 
 void BlobBindingData::store_data_object(
-    const std::string& uuid,
-    const BlobBindingData::StoredDataObject& object) {
+    const std::string& uuid, const BlobBindingData::StoredDataObject& object) {
   data_objects_[uuid] = object;
 }
 
@@ -566,8 +570,7 @@ void BlobBindingData::revoke_data_object(const std::string& uuid) {
 BlobBindingData::StoredDataObject BlobBindingData::get_data_object(
     const std::string& uuid) {
   auto entry = data_objects_.find(uuid);
-  if (entry == data_objects_.end())
-    return BlobBindingData::StoredDataObject {};
+  if (entry == data_objects_.end()) return BlobBindingData::StoredDataObject{};
   return entry->second;
 }
 

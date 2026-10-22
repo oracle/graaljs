@@ -90,6 +90,22 @@ assert(existing.length > 0);
   });
 }
 
+{
+  // Out-of-range ports, which should throw a clean error.
+  const invalidPorts = [2 ** 16, 2 ** 32, 2 ** 64];
+  invalidPorts.forEach((port) => {
+    assert.throws(
+      () => {
+        dns.setServers([`1.2.3.4:${port}`]);
+      },
+      {
+        name: 'RangeError',
+        code: 'ERR_SOCKET_BAD_PORT'
+      }
+    );
+  });
+}
+
 const goog = [
   '8.8.8.8',
   '8.8.4.4',
@@ -135,6 +151,10 @@ const portsExpected = [
 ];
 dns.setServers(ports);
 assert.deepStrictEqual(dns.getServers(), portsExpected);
+
+// Port 0 means "use the default port" for c-ares.
+dns.setServers(['4.4.4.4:0', '[2001:4860:4860::8888]:0']);
+assert.deepStrictEqual(dns.getServers(), ['4.4.4.4', '2001:4860:4860::8888']);
 
 dns.setServers([]);
 assert.deepStrictEqual(dns.getServers(), []);
@@ -313,6 +333,24 @@ dns.lookup('', {
     code: 'ERR_INVALID_ARG_VALUE',
     name: 'TypeError',
     message: `The argument 'address' is invalid. Received '${invalidAddress}'`
+  };
+
+  assert.throws(() => {
+    dnsPromises.lookupService(invalidAddress, 0);
+  }, err);
+
+  assert.throws(() => {
+    dns.lookupService(invalidAddress, 0, common.mustNotCall());
+  }, err);
+}
+
+{
+  const invalidAddress = Buffer.from('127.0.0.1');
+  const err = {
+    code: 'ERR_INVALID_ARG_TYPE',
+    name: 'TypeError',
+    message: 'The "address" argument must be of type string. ' +
+    'Received an instance of Buffer'
   };
 
   assert.throws(() => {

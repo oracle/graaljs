@@ -117,6 +117,12 @@ parser.add_argument('--dest-cpu',
     choices=valid_arch,
     help=f"CPU architecture to build for ({', '.join(valid_arch)})")
 
+parser.add_argument('--emulator',
+    action='store',
+    dest='emulator',
+    default=None,
+    help='emulator command that can run executables built for the target system')
+
 parser.add_argument('--cross-compiling',
     action='store_true',
     dest='cross_compiling',
@@ -311,12 +317,6 @@ shared_optgroup.add_argument('--shared-hdr-histogram-libpath',
     action='store',
     dest='shared_hdr_histogram_libpath',
     help='a directory to search for the shared HdrHistogram DLL')
-
-parser.add_argument('--experimental-http-parser',
-    action='store_true',
-    dest='experimental_http_parser',
-    default=None,
-    help='(no-op)')
 
 shared_optgroup.add_argument('--shared-http-parser',
     action='store_true',
@@ -769,7 +769,7 @@ parser.add_argument('--experimental-pointer-compression-shared-cage',
     action='store_true',
     dest='pointer_compression_shared_cage',
     default=None,
-    help='[Experimental] Use V8 pointer compression with shared cage (requires --experimental-enable-pointer-compression)')
+    help='[Experimental] Use V8 pointer compression with a shared cage and enable the V8 sandbox (requires --experimental-enable-pointer-compression)')
 
 parser.add_argument('--v8-options',
     action='store',
@@ -951,32 +951,11 @@ parser.add_argument('--control-flow-guard',
     default=None,
     help='enable Control Flow Guard (CFG)')
 
-# Dummy option for backwards compatibility
-parser.add_argument('--without-report',
-    action='store_true',
-    dest='unused_without_report',
-    default=None,
-    help=argparse.SUPPRESS)
-
-parser.add_argument('--with-snapshot',
-    action='store_true',
-    dest='unused_with_snapshot',
-    default=None,
-    help=argparse.SUPPRESS)
-
-parser.add_argument('--without-snapshot',
-    action='store_true',
-    dest='unused_without_snapshot',
-    default=None,
-    help=argparse.SUPPRESS)
-
 parser.add_argument('--without-siphash',
     action='store_true',
     dest='without_siphash',
     default=None,
     help=argparse.SUPPRESS)
-
-# End dummy list.
 
 parser.add_argument('--without-ssl',
     action='store_true',
@@ -1024,7 +1003,7 @@ parser.add_argument('--enable-static',
     action='store_true',
     dest='enable_static',
     default=None,
-    help='build as static library')
+    help=argparse.SUPPRESS) # Deprecated
 
 parser.add_argument('--no-browser-globals',
     action='store_true',
@@ -1342,49 +1321,71 @@ def get_gas_version(cc):
   warn(f'Could not recognize `gas`: {gas_ret}')
   return '0.0'
 
-def get_openssl_version():
+def get_openssl_macros(o):
+  """Extract OpenSSL preprocessor macros from the configured headers."""
+
+  # Use the C compiler to extract preprocessor macros from OpenSSL headers.
+  # crypto.h is included because BoringSSL declares OPENSSL_IS_BORINGSSL there.
+  args = ['-E', '-dM',
+          '-include', 'openssl/opensslv.h',
+          '-include', 'openssl/crypto.h',
+          '-']
+  if not options.shared_openssl:
+    args = ['-I', 'deps/openssl/openssl/include'] + args
+  elif options.shared_openssl_includes:
+    args = ['-I', options.shared_openssl_includes] + args
+  else:
+    for dir in o['include_dirs']:
+      args = ['-I', dir] + args
+
+  proc = subprocess.Popen(
+    shlex.split(CC) + args,
+    stdin=subprocess.PIPE,
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE
+  )
+  with proc:
+    proc.stdin.write(b'\n')
+    out = to_utf8(proc.communicate()[0])
+
+  if proc.returncode != 0:
+    warn('Failed to extract OpenSSL macros from headers')
+    return {}
+
+  macros = {}
+  for line in out.split('\n'):
+    if line.startswith('#define OPENSSL_'):
+      parts = line.split()
+      if len(parts) >= 2:
+        macro_name = parts[1]
+        macro_value = parts[2] if len(parts) >= 3 else '1'
+        macros[macro_name] = macro_value
+
+  return macros
+
+def get_openssl_version(o):
   """Parse OpenSSL version from opensslv.h header file.
 
   Returns the version as a number matching OPENSSL_VERSION_NUMBER format:
-  0xMNN00PPSL where M=major, NN=minor, PP=patch, S=status(0xf=release,0x0=pre), L=0
+  0xMNN00PPSL where M=major, NN=minor, PP=patch, S=status(0xf=release,0x0=pre),
+  L denotes as a long type literal
   """
 
   try:
-    # Use the C compiler to extract preprocessor macros from opensslv.h
-    args = ['-E', '-dM', '-include', 'openssl/opensslv.h', '-']
-    if not options.shared_openssl:
-      args = ['-I', 'deps/openssl/openssl/include'] + args
-    elif options.shared_openssl_includes:
-      args = ['-I', options.shared_openssl_includes] + args
-
-    proc = subprocess.Popen(
-      shlex.split(CC) + args,
-      stdin=subprocess.PIPE,
-      stdout=subprocess.PIPE,
-      stderr=subprocess.PIPE
-    )
-    with proc:
-      proc.stdin.write(b'\n')
-      out = to_utf8(proc.communicate()[0])
-
-    if proc.returncode != 0:
-      warn('Failed to extract OpenSSL version from opensslv.h header')
-      return 0
-
-    # Parse the macro definitions
-    macros = {}
-    for line in out.split('\n'):
-      if line.startswith('#define OPENSSL_VERSION_'):
-        parts = line.split()
-        if len(parts) >= 3:
-          macro_name = parts[1]
-          macro_value = parts[2]
-          macros[macro_name] = macro_value
+    macros = get_openssl_macros(o)
 
     # Extract version components
     major = int(macros.get('OPENSSL_VERSION_MAJOR', '0'))
     minor = int(macros.get('OPENSSL_VERSION_MINOR', '0'))
     patch = int(macros.get('OPENSSL_VERSION_PATCH', '0'))
+
+    # If major, minor and patch are all 0, this is probably OpenSSL < 3.
+    if (major, minor, patch) == (0, 0, 0):
+      version_number = macros.get('OPENSSL_VERSION_NUMBER')
+      # Prior to OpenSSL 3 the value should be in the format 0xMNN00PPSL.
+      # If it is, we need to strip the `L` suffix prior to parsing.
+      if version_number[:2] == "0x" and version_number[-1] == "L":
+        return int(version_number[:-1], 16)
 
     # Check if it's a pre-release (has non-empty PRE_RELEASE string)
     pre_release = macros.get('OPENSSL_VERSION_PRE_RELEASE', '""').strip('"')
@@ -1397,9 +1398,16 @@ def get_openssl_version():
 
     return version_number
 
-  except (OSError, ValueError, subprocess.SubprocessError) as e:
+  except (OSError, TypeError, ValueError, subprocess.SubprocessError) as e:
     warn(f'Failed to determine OpenSSL version from header: {e}')
     return 0
+
+def get_openssl_is_boringssl(o):
+  try:
+    return b('OPENSSL_IS_BORINGSSL' in get_openssl_macros(o))
+  except (OSError, ValueError, subprocess.SubprocessError) as e:
+    warn(f'Failed to determine whether OpenSSL headers are BoringSSL: {e}')
+    return 'false'
 
 # Note: Apple clang self-reports as clang 4.2.0 and gcc 4.2.1.  It passes
 # the version check more by accident than anything else but a more rigorous
@@ -1636,7 +1644,7 @@ def configure_node_lib_files(o):
   o['variables']['node_library_files'] = SearchFiles('lib', 'js')
 
 def configure_node_cctest_sources(o):
-  o['variables']['node_cctest_sources'] = [ 'src/node_snapshot_stub.cc' ] + \
+  o['variables']['node_cctest_sources'] = [] + \
     SearchFiles('test/cctest', 'cc') + \
     SearchFiles('test/cctest', 'h')
 
@@ -1684,8 +1692,6 @@ def configure_node(o):
                      else target_arch != host_arch)
   if cross_compiling:
     os.environ['GYP_CROSSCOMPILE'] = "1"
-  if options.unused_without_snapshot:
-    warn('building --without-snapshot is no longer possible')
 
   o['variables']['want_separate_host_toolset'] = int(cross_compiling)
 
@@ -1693,10 +1699,6 @@ def configure_node(o):
     o['variables']['arm_fpu'] = options.arm_fpu or 'neon'
 
   if options.node_snapshot_main is not None:
-    if options.shared:
-      # This should be possible to fix, but we will need to refactor the
-      # libnode target to avoid building it twice.
-      error('--node-snapshot-main is incompatible with --shared')
     if options.without_node_snapshot:
       error('--node-snapshot-main is incompatible with ' +
             '--without-node-snapshot')
@@ -1707,8 +1709,7 @@ def configure_node(o):
   if options.without_node_snapshot or options.node_builtin_modules_path:
     o['variables']['node_use_node_snapshot'] = 'false'
   else:
-    o['variables']['node_use_node_snapshot'] = b(
-      not cross_compiling and not options.shared)
+    o['variables']['node_use_node_snapshot'] = b(not cross_compiling)
 
   # Do not use code cache when Node.js is built for collecting coverage of itself, this allows more
   # precise coverage for the JS built-ins.
@@ -1716,8 +1717,7 @@ def configure_node(o):
     o['variables']['node_use_node_code_cache'] = 'false'
   else:
     # TODO(refack): fix this when implementing embedded code-cache when cross-compiling.
-    o['variables']['node_use_node_code_cache'] = b(
-      not cross_compiling and not options.shared)
+    o['variables']['node_use_node_code_cache'] = b(not cross_compiling)
 
   if options.write_snapshot_as_array_literals is not None:
      o['variables']['node_write_snapshot_as_array_literals'] = b(options.write_snapshot_as_array_literals)
@@ -1772,17 +1772,28 @@ def configure_node(o):
     msvc_dir = target_arch  # 'x64' or 'arm64'
 
     vc_tools_dir = os.environ.get('VCToolsInstallDir', '')
-    if vc_tools_dir:
-      clang_profile_lib = os.path.join(vc_tools_dir, 'lib', msvc_dir, lib_name)
-      if os.path.isfile(clang_profile_lib):
-        o['variables']['clang_profile_lib'] = clang_profile_lib
-      else:
-        raise Exception(
-          f'PGO profile runtime library not found at {clang_profile_lib}. '
-          'Ensure the ClangCL toolset is installed.')
-    else:
+    if not vc_tools_dir:
       raise Exception(
         'VCToolsInstallDir not set. Run from a Visual Studio command prompt.')
+
+    # Primary location: VS2026 and VS2022 x64
+    candidates = [os.path.join(vc_tools_dir, 'lib', msvc_dir, lib_name)]
+
+    # Secondary location: VS2022 arm64 fallback
+    clang_major = options.clang_cl.split('.', 1)[0]
+    candidates.append(os.path.normpath(os.path.join(
+      vc_tools_dir, '..', '..', 'Llvm', msvc_dir,
+      'lib', 'clang', clang_major, 'lib', 'windows', lib_name)))
+
+    clang_profile_lib = next(
+      (p for p in candidates if os.path.isfile(p)), None)
+    if clang_profile_lib:
+      o['variables']['clang_profile_lib'] = clang_profile_lib
+    else:
+      raise Exception(
+        f'PGO profile runtime library {lib_name} not found. Searched:\n  ' +
+        '\n  '.join(candidates) +
+        '\nEnsure the ClangCL toolset is installed.')
 
   if flavor != 'win' and options.enable_thin_lto:
     raise Exception(
@@ -1858,9 +1869,6 @@ def configure_node(o):
   if options.v8_options:
     o['variables']['node_v8_options'] = options.v8_options.replace('"', '\\"')
 
-  if options.enable_static:
-    o['variables']['node_target_type'] = 'static_library'
-
   o['variables']['node_debug_lib'] = b(options.node_debug_lib)
 
   if options.debug_nghttp2:
@@ -1904,10 +1912,13 @@ def configure_node(o):
   else:
     o['variables']['coverage'] = 'false'
 
+  if options.enable_static and options.shared:
+    error('--enable-static must not be set with --shared')
+  if options.enable_static:
+    warn('--enable-static is deprecated and libnode.a is always produced')
+
   if options.shared:
     o['variables']['node_target_type'] = 'shared_library'
-  elif options.enable_static:
-    o['variables']['node_target_type'] = 'static_library'
   else:
     o['variables']['node_target_type'] = 'executable'
 
@@ -1978,16 +1989,10 @@ def configure_v8(o, configs):
   o['variables']['v8_enable_maglev'] = B(not options.v8_disable_maglev and
                                          o['variables']['target_arch'] in maglev_enabled_architectures)
   o['variables']['v8_enable_pointer_compression'] = 1 if options.enable_pointer_compression else 0
-  # Using the sandbox requires always allocating array buffer backing stores in the sandbox.
-  # We currently have many backing stores tied to pointers from C++ land that are not
-  # even necessarily dynamic (e.g. in static storage) for fast communication between JS and C++.
-  # Until we manage to get rid of all those, v8_enable_sandbox cannot be used.
-  # Note that enabling pointer compression without enabling sandbox is unsupported by V8,
-  # so this can be broken at any time.
-  o['variables']['v8_enable_sandbox'] = 0
-  # We set v8_enable_pointer_compression_shared_cage to 0 always, even when
-  # pointer compression is enabled so that we don't accidentally enable shared
-  # cage mode when pointer compression is on.
+  # Like V8's own default, the sandbox goes with the shared pointer compression
+  # cage. Multi-cage builds give every IsolateGroup its own sandbox, which the
+  # array buffer allocator does not know about yet.
+  o['variables']['v8_enable_sandbox'] = 1 if options.pointer_compression_shared_cage else 0
   o['variables']['v8_enable_pointer_compression_shared_cage'] = 1 if options.pointer_compression_shared_cage else 0
   o['variables']['v8_enable_external_code_space'] = 1 if options.enable_pointer_compression else 0
   o['variables']['v8_enable_31bit_smis_on_64bit_arch'] = 1 if options.enable_pointer_compression else 0
@@ -2090,6 +2095,9 @@ def configure_openssl(o):
     variables['node_fipsinstall'] = b(True)
 
   configure_library('openssl', o)
+
+  o['variables']['openssl_version'] = get_openssl_version(o)
+  o['variables']['openssl_is_boringssl'] = get_openssl_is_boringssl(o)
 
 def configure_sqlite(o):
   o['variables']['node_use_sqlite'] = b(not options.without_sqlite)
@@ -2668,6 +2676,14 @@ if flavor == 'win' and python.lower().endswith('.exe'):
 # Always set 'python' variable, otherwise environments that only have python3
 # will fail to run python scripts.
 gyp_args += ['-Dpython=' + python]
+
+if options.emulator is not None:
+  if not options.cross_compiling:
+    # Note that emulator is a list so we have to quote the variable.
+    gyp_args += ['-Demulator=' + shlex.quote(options.emulator)]
+  else:
+    # TODO: perhaps use emulator for tests?
+    warn('The `--emulator` option has no effect when cross-compiling.')
 
 if options.use_ninja:
   gyp_args += ['-f', 'ninja-' + flavor]

@@ -100,6 +100,27 @@ const tests = [
     cert: { subject: { CN: '8.8.8.8' }, subjectaltname: 'IP Address:8.8.8.8' }
   },
 
+  // An "IP Address:" SAN also matches an IPv6 host. Regression test for the
+  // IDNA-normalization change: domainToASCII('::1') === '' (an IPv6 literal is
+  // not a domain), which made the normalized host skip IPv6 IP-SAN matching.
+  {
+    host: '::1',
+    cert: { subject: {}, subjectaltname: 'IP Address:::1' }
+  },
+
+  // IPv6 hosts and SANs are matched canonically.
+  {
+    host: '2001:db8::1',
+    cert: { subject: {}, subjectaltname: 'IP Address:2001:DB8:0:0:0:0:0:1' }
+  },
+
+  // A non-matching IPv6 "IP Address:" SAN is rejected.
+  {
+    host: '::1',
+    cert: { subject: {}, subjectaltname: 'IP Address:::2' },
+    error: 'IP: ::1 is not in the cert\'s list: ::2'
+  },
+
   // But not when it's a CIDR.
   {
     host: '8.8.8.8',
@@ -372,6 +393,44 @@ const tests = [
       subject: {}
     },
     error: 'IP: 127.0.0.1 is not in the cert\'s list: '
+  },
+  // Non-canonical IP addresses are rejected instead of being matched against
+  // an address produced by domainToASCII().
+  ...[
+    ['0127.0.0.1', '87.0.0.1'],
+    ['0177.0.0.1', '127.0.0.1'],
+    ['0x7f.0.0.1', '127.0.0.1'],
+    ['2130706433', '127.0.0.1'],
+    ['127.1', '127.0.0.1'],
+    ['\uFF11\uFF12\uFF17.0.0.1', '127.0.0.1'], // Fullwidth digits.
+    ['127\u30020.0.1', '127.0.0.1'], // Ideographic full stop.
+  ].map(([host, normalized]) => ({
+    host,
+    cert: {
+      subjectaltname: `DNS:${normalized}`,
+      subject: {},
+    },
+    error: 'Host is a non-canonical IP address',
+  })),
+  {
+    host: '0127.0.0.1', cert: {
+      subjectaltname: 'IP Address:87.0.0.1',
+      subject: { CN: '87.0.0.1' },
+    },
+    error: 'Host is a non-canonical IP address',
+  },
+  {
+    host: '0127.0.0.1', cert: {
+      subjectaltname: 'IP Address:87.0.0.1',
+      subject: { CN: 'Example Operator' },
+    },
+    error: 'Host is a non-canonical IP address',
+  },
+  {
+    host: '1.2.3.example', cert: {
+      subjectaltname: 'DNS:1.2.3.example',
+      subject: {},
+    },
   },
   {
     host: 'localhost', cert: {

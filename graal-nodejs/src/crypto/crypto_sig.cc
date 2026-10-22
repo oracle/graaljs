@@ -8,6 +8,10 @@
 #include "env-inl.h"
 #include "memory_tracker-inl.h"
 #include "openssl/ec.h"
+#if NCRYPTO_USE_OPENSSL3_PROVIDER
+#include <openssl/core_names.h>
+#include <openssl/evp.h>
+#endif
 #include "threadpoolwork-inl.h"
 #include "v8.h"
 
@@ -42,12 +46,11 @@ using v8::Value;
 namespace crypto {
 namespace {
 int GetPaddingFromJS(const EVPKeyPointer& key, Local<Value> val) {
-  int padding = key.getDefaultSignPadding();
   if (!val->IsUndefined()) [[likely]] {
     CHECK(val->IsInt32());
-    padding = val.As<Int32>()->Value();
+    return val.As<Int32>()->Value();
   }
-  return padding;
+  return key.getDefaultSignPadding();
 }
 
 std::optional<int> GetSaltLenFromJS(Local<Value> val) {
@@ -234,20 +237,80 @@ void CheckThrow(Environment* env, SignBase::Error error) {
 }
 
 bool UseP1363Encoding(const EVPKeyPointer& key, const DSASigEnc dsa_encoding) {
-  return key.isSigVariant() && dsa_encoding == DSASigEnc::P1363;
+  return dsa_encoding == DSASigEnc::P1363 && key.isSigVariant();
 }
 
-bool SupportsContextString(const EVPKeyPointer& key) {
-  if (!OPENSSL_WITH_SIGNATURE_CONTEXT_STRING) return false;
+bool CanUsePrehashedFallback(const EVPKeyPointer& key,
+                             const Digest& digest,
+                             bool has_context) {
+  if (!digest || has_context) return false;
 
-  const int id = key.id();
-#if OPENSSL_WITH_PQC
-  if (IsPqcSignatureKeyId(id)) return true;
-#endif
-#ifndef OPENSSL_IS_BORINGSSL
-  if (id == EVP_PKEY_ED25519 || id == EVP_PKEY_ED448) return true;
-#endif
-  return false;
+  if (key.isRsaVariant()) return true;
+
+  // SM2 digest signing first hashes the algorithm-specific Z value, so the
+  // lower-level prehashed sign/verify operation is not equivalent.
+  return key.isSigVariant() && !key.mayBeSM2();
+}
+
+ByteSource SignPrehashed(Environment* env,
+                         const EVPKeyPointer& key,
+                         const Digest& digest,
+                         const ByteSource& input,
+                         int padding,
+                         std::optional<int> salt_length,
+                         DSASigEnc dsa_encoding) {
+  EVPMDCtxPointer context = EVPMDCtxPointer::New();
+  if (!context || !context.digestInit(digest) || !context.digestUpdate(input))
+      [[unlikely]] {
+    return {};
+  }
+
+  auto data = context.digestFinal(context.getExpectedSize());
+  if (!data) [[unlikely]] {
+    return {};
+  }
+
+  EVPKeyCtxPointer pkctx = key.newCtx();
+  if (!pkctx || pkctx.initForSign() <= 0 ||
+      !ApplyRSAOptions(key, pkctx.get(), padding, salt_length) ||
+      !pkctx.setSignatureMd(context)) [[unlikely]] {
+    return {};
+  }
+
+  auto signature = pkctx.sign(data);
+  if (!signature) [[unlikely]] {
+    return {};
+  }
+
+  DCHECK(!signature.isSecure());
+  auto out = ByteSource::Allocated(signature.release());
+  if (UseP1363Encoding(key, dsa_encoding)) {
+    return ConvertSignatureToP1363(env, key, std::move(out));
+  }
+  return out;
+}
+
+bool VerifyPrehashed(const EVPKeyPointer& key,
+                     const Digest& digest,
+                     const ByteSource& input,
+                     const ByteSource& signature,
+                     int padding,
+                     std::optional<int> salt_length) {
+  EVPMDCtxPointer context = EVPMDCtxPointer::New();
+  if (!context || !context.digestInit(digest) || !context.digestUpdate(input))
+      [[unlikely]] {
+    return false;
+  }
+
+  auto data = context.digestFinal(context.getExpectedSize());
+  if (!data) [[unlikely]] {
+    return false;
+  }
+
+  EVPKeyCtxPointer pkctx = key.newCtx();
+  return pkctx && pkctx.initForVerify() > 0 &&
+         ApplyRSAOptions(key, pkctx.get(), padding, salt_length) &&
+         pkctx.setSignatureMd(context) && pkctx.verify(signature, data);
 }
 }  // namespace
 
@@ -391,7 +454,8 @@ void Sign::SignFinal(const FunctionCallbackInfo<Value>& args) {
   if (!key) [[unlikely]]
     return;
 
-  if (key.isOneShotVariant()) [[unlikely]] {
+  const auto* algorithm = key.getAlgorithm();
+  if (algorithm != nullptr && algorithm->isOneShot()) [[unlikely]] {
     THROW_ERR_CRYPTO_UNSUPPORTED_OPERATION(env);
     return;
   }
@@ -508,7 +572,8 @@ void Verify::VerifyFinal(const FunctionCallbackInfo<Value>& args) {
   if (!key) [[unlikely]]
     return;
 
-  if (key.isOneShotVariant()) [[unlikely]] {
+  const auto* algorithm = key.getAlgorithm();
+  if (algorithm != nullptr && algorithm->isOneShot()) [[unlikely]] {
     THROW_ERR_CRYPTO_UNSUPPORTED_OPERATION(env);
     return;
   }
@@ -543,8 +608,7 @@ void Verify::VerifyFinal(const FunctionCallbackInfo<Value>& args) {
 }
 
 SignConfiguration::SignConfiguration(SignConfiguration&& other) noexcept
-    : job_mode(other.job_mode),
-      mode(other.mode),
+    : mode(other.mode),
       key(std::move(other.key)),
       data(std::move(other.data)),
       signature(std::move(other.signature)),
@@ -564,11 +628,9 @@ SignConfiguration& SignConfiguration::operator=(
 
 void SignConfiguration::MemoryInfo(MemoryTracker* tracker) const {
   tracker->TrackField("key", key);
-  if (IsCryptoJobAsync(job_mode)) {
-    tracker->TrackFieldWithSize("data", data.size());
-    tracker->TrackFieldWithSize("signature", signature.size());
-    tracker->TrackFieldWithSize("context_string", context_string.size());
-  }
+  tracker->TraitTrackInline(data, "data");
+  tracker->TraitTrackInline(signature, "signature");
+  tracker->TraitTrackInline(context_string, "context_string");
 }
 
 Maybe<void> SignTraits::AdditionalConfig(
@@ -578,8 +640,6 @@ Maybe<void> SignTraits::AdditionalConfig(
     SignConfiguration* params) {
   ClearErrorOnReturn clear_error_on_return;
   Environment* env = Environment::GetCurrent(args);
-
-  params->job_mode = mode;
 
   CHECK(args[offset]->IsUint32());  // Sign Mode
 
@@ -671,18 +731,29 @@ bool SignTraits::DeriveBits(Environment* env,
                             ByteSource* out,
                             CryptoJobMode mode) {
   bool can_throw = mode == CryptoJobMode::kCryptoJobSync;
-  auto context = EVPMDCtxPointer::New();
-  if (!context) [[unlikely]]
-    return false;
   const auto& key = params.key.GetAsymmetricKey();
 
   bool has_context = (params.flags & SignConfiguration::kHasContextString &&
                       params.context_string.size() > 0);
 
-  if (has_context && !SupportsContextString(key)) {
+  if (has_context && !key.supportsContextString()) {
     if (can_throw) crypto::CheckThrow(env, SignBase::Error::ContextUnsupported);
     return false;
   }
+
+  int padding = params.padding;
+  if (!(params.flags & SignConfiguration::kHasPadding)) {
+    padding = key.getDefaultSignPadding();
+  }
+
+  std::optional<int> salt_length =
+      params.flags & SignConfiguration::kHasSaltLength
+          ? std::optional<int>(params.salt_length)
+          : std::nullopt;
+
+  auto context = EVPMDCtxPointer::New();
+  if (!context) [[unlikely]]
+    return false;
 
   auto ctx = ([&] {
     if (has_context) {
@@ -713,15 +784,6 @@ bool SignTraits::DeriveBits(Environment* env,
     return false;
   }
 
-  int padding = params.flags & SignConfiguration::kHasPadding
-                    ? params.padding
-                    : key.getDefaultSignPadding();
-
-  std::optional<int> salt_length =
-      params.flags & SignConfiguration::kHasSaltLength
-          ? std::optional<int>(params.salt_length)
-          : std::nullopt;
-
   if (!ApplyRSAOptions(key, *ctx, padding, salt_length)) {
     if (can_throw) crypto::CheckThrow(env, SignBase::Error::PrivateKey);
     return false;
@@ -729,7 +791,8 @@ bool SignTraits::DeriveBits(Environment* env,
 
   switch (params.mode) {
     case SignConfiguration::Mode::Sign: {
-      if (key.isOneShotVariant()) {
+      const auto* algorithm = key.getAlgorithm();
+      if (algorithm != nullptr && algorithm->isOneShot()) {
         auto data = context.signOneShot(params.data);
         if (!data) [[unlikely]] {
           if (can_throw) crypto::CheckThrow(env, SignBase::Error::PrivateKey);
@@ -739,6 +802,22 @@ bool SignTraits::DeriveBits(Environment* env,
         *out = ByteSource::Allocated(data.release());
       } else {
         auto data = context.sign(params.data);
+        // Only evaluated on the failure path: CanUsePrehashedFallback() has to
+        // reconstruct EC key material to detect SM2, which is far too
+        // expensive to pay for on every successful sign.
+        if (!data && CanUsePrehashedFallback(key, params.digest, has_context)) {
+          *out = SignPrehashed(env,
+                               key,
+                               params.digest,
+                               params.data,
+                               padding,
+                               salt_length,
+                               params.dsa_encoding);
+          if (!*out && can_throw) {
+            crypto::CheckThrow(env, SignBase::Error::PrivateKey);
+          }
+          return static_cast<bool>(*out);
+        }
         if (!data) [[unlikely]] {
           if (can_throw) crypto::CheckThrow(env, SignBase::Error::PrivateKey);
           return false;
@@ -757,7 +836,23 @@ bool SignTraits::DeriveBits(Environment* env,
     case SignConfiguration::Mode::Verify: {
       auto buf = DataPointer::Alloc(1);
       static_cast<char*>(buf.get())[0] = 0;
-      if (context.verify(params.data, params.signature)) {
+      // EVP_DigestVerify() documents 0 as a verification mismatch. In its
+      // Update/Final path, it maps a failed EVP_DigestVerifyUpdate() to -1.
+      // Some providers fail that combined operation but support raw
+      // verification of a precomputed digest, so only retry negative results.
+      // Retrying 0 would perform a second verification for every mismatch.
+      int verify_result = context.verifyOneShot(params.data, params.signature);
+      if (verify_result == 1 &&
+          !key.hasSmallOrderEdDsaPoint(params.signature)) {
+        static_cast<char*>(buf.get())[0] = 1;
+      } else if (verify_result < 0 &&
+                 CanUsePrehashedFallback(key, params.digest, has_context) &&
+                 VerifyPrehashed(key,
+                                 params.digest,
+                                 params.data,
+                                 params.signature,
+                                 padding,
+                                 salt_length)) {
         static_cast<char*>(buf.get())[0] = 1;
       }
       *out = ByteSource::Allocated(buf.release());
