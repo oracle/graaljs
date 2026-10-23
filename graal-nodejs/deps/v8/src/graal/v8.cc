@@ -3830,6 +3830,11 @@ namespace v8 {
         return std::unique_ptr<MeasureMemoryDelegate> (new DefaultMeasureMemoryDelegate(promise_resolver, mode));
     }
 
+    size_t V8::GetWasmMemoryReservationSizeInBytes(WasmMemoryType type, size_t byte_capacity) {
+        TRACE
+        return 0;
+    }
+
     bool V8::EnableWebAssemblyTrapHandler(bool use_v8_signal_handler) {
         TRACE
         return false;
@@ -4388,6 +4393,10 @@ namespace v8 {
 
     void Promise::MarkAsHandled() {
         reinterpret_cast<GraalPromise*> (this)->MarkAsHandled();
+    }
+
+    void Promise::MarkAsSilent() {
+        TRACE
     }
 
     MaybeLocal<Promise> Promise::Then(Local<Context> context, Local<Function> on_fulfilled, Local<Function> on_rejected) {
