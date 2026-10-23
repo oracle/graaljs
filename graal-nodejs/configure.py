@@ -1324,6 +1324,19 @@ def get_gas_version(cc):
 def get_openssl_macros(o):
   """Extract OpenSSL preprocessor macros from the configured headers."""
 
+  if sys.platform == 'win32' and not options.shared_openssl:
+    # MSVC cannot dump macros with -dM. Use the bundled OpenSSL metadata
+    # instead of requiring a separate Clang installation for this probe.
+    version = dict(line.split('=', 1) for line in
+                   Path('deps/openssl/openssl/VERSION.dat').read_text(encoding='utf-8').splitlines()
+                   if '=' in line)
+    return {
+      'OPENSSL_VERSION_MAJOR': version['MAJOR'],
+      'OPENSSL_VERSION_MINOR': version['MINOR'],
+      'OPENSSL_VERSION_PATCH': version['PATCH'],
+      'OPENSSL_VERSION_PRE_RELEASE': version['PRE_RELEASE_TAG'],
+    }
+
   # Use the C compiler to extract preprocessor macros from OpenSSL headers.
   # crypto.h is included because BoringSSL declares OPENSSL_IS_BORINGSSL there.
   args = ['-E', '-dM',
