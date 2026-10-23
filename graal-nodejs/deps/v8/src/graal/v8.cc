@@ -848,11 +848,13 @@ namespace v8 {
     }
 
     Maybe<bool> Object::Set(Local<Context> context, uint32_t index, Local<Value> value) {
-        return Just(reinterpret_cast<GraalObject*> (this)->Set(index, value));
+        bool success = reinterpret_cast<GraalObject*> (this)->Set(index, value);
+        return GetIsolate()->HasPendingException() ? Nothing<bool>() : Just(success);
     }
 
     Maybe<bool> Object::Set(Local<Context> context, Local<Value> key, Local<Value> value) {
-        return Just(reinterpret_cast<GraalObject*> (this)->Set(key, value));
+        bool success = reinterpret_cast<GraalObject*> (this)->Set(key, value);
+        return GetIsolate()->HasPendingException() ? Nothing<bool>() : Just(success);
     }
 
     Maybe<bool> Object::SetLazyDataProperty(
