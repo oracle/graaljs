@@ -15,7 +15,6 @@ test-typescript-transform            : FAIL
 # Missing detection of unsettled top-level-await
 test-esm-detect-ambiguous            : FAIL
 test-esm-tla-unfinished              : FAIL
-test-require-module-tla-print-execution: FAIL
 
 # Uses js-string builtins
 test-esm-wasm-js-string-builtins     : FAIL

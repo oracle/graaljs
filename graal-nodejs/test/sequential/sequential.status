@@ -16,6 +16,7 @@ test-get-heapsnapshot-options: FAIL
 test-heapdump: SKIP
 test-heapdump-flag: SKIP
 test-heapdump-flag-custom-dir: SKIP
+test-perf-hooks-histogram-heapdump: SKIP
 test-worker-heapsnapshot-options: FAIL
 test-write-heapsnapshot-options: FAIL
 
