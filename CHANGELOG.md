@@ -7,6 +7,7 @@ See [release calendar](https://www.graalvm.org/release-calendar/) for release da
 
 ## Version 25.5.5
 * Added `js.foreign-object-prototype=specialized-only` mode to make generic foreign objects inherit directly from `Object.prototype`, improving compatibility with `Object.getPrototypeOf(foreign) === Object.prototype` checks. Specialized foreign prototypes and the existing `true` (default) and `false` modes are unchanged.
+* Updated Node.js to version 24.22.1.
 
 ## Version 25.4.4
 * Implemented the [`Await Dictionary`](https://github.com/tc39/proposal-await-dictionary) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
