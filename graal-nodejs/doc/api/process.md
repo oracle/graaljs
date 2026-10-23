@@ -13,6 +13,8 @@ Node.js process.
 import process from 'node:process';
 ```
 
+<!-- eslint-disable no-restricted-syntax -->
+
 ```cjs
 const process = require('node:process');
 ```
@@ -62,8 +64,6 @@ console.log('This message is displayed first.');
 ```
 
 ```cjs
-const process = require('node:process');
-
 process.on('beforeExit', (code) => {
   console.log('Process beforeExit event with code: ', code);
 });
@@ -120,8 +120,6 @@ process.on('exit', (code) => {
 ```
 
 ```cjs
-const process = require('node:process');
-
 process.on('exit', (code) => {
   console.log(`About to exit with code: ${code}`);
 });
@@ -143,8 +141,6 @@ process.on('exit', (code) => {
 ```
 
 ```cjs
-const process = require('node:process');
-
 process.on('exit', (code) => {
   setTimeout(() => {
     console.log('This will not run');
@@ -237,8 +233,6 @@ main().then(console.log);
 ```
 
 ```cjs
-const process = require('node:process');
-
 process.on('multipleResolves', (type, promise, reason) => {
   console.error(type, promise, reason);
   setImmediate(() => process.exit(1));
@@ -310,8 +304,6 @@ process.on('rejectionHandled', (promise) => {
 ```
 
 ```cjs
-const process = require('node:process');
-
 const unhandledRejections = new Map();
 process.on('unhandledRejection', (reason, promise) => {
   unhandledRejections.set(promise, reason);
@@ -394,7 +386,6 @@ console.log('This will not run.');
 ```
 
 ```cjs
-const process = require('node:process');
 const fs = require('node:fs');
 
 process.on('uncaughtException', (err, origin) => {
@@ -483,8 +474,6 @@ nonexistentFunc();
 ```
 
 ```cjs
-const process = require('node:process');
-
 process.on('uncaughtExceptionMonitor', (err, origin) => {
   MyMonitoringTool.logSync(err, origin);
 });
@@ -534,8 +523,6 @@ somePromise.then((res) => {
 ```
 
 ```cjs
-const process = require('node:process');
-
 process.on('unhandledRejection', (reason, promise) => {
   console.log('Unhandled Rejection at:', promise, 'reason:', reason);
   // Application specific logging, throwing an error, or other logic here
@@ -562,8 +549,6 @@ const resource = new SomeResource();
 ```
 
 ```cjs
-const process = require('node:process');
-
 function SomeResource() {
   // Initially set the loaded status to a rejected promise
   this.loaded = Promise.reject(new Error('Resource not yet loaded!'));
@@ -615,8 +600,6 @@ process.on('warning', (warning) => {
 ```
 
 ```cjs
-const process = require('node:process');
-
 process.on('warning', (warning) => {
   console.warn(warning.name);    // Print the warning name
   console.warn(warning.message); // Print the warning message
@@ -752,8 +735,6 @@ process.on('SIGTERM', handle);
 ```
 
 ```cjs
-const process = require('node:process');
-
 // Begin reading from stdin so the process does not exit.
 process.stdin.resume();
 
@@ -775,7 +756,8 @@ process.on('SIGTERM', handle);
 * `'SIGTERM'` and `'SIGINT'` have default handlers on non-Windows platforms that
   reset the terminal mode before exiting with code `128 + signal number`. If one
   of these signals has a listener installed, its default behavior will be
-  removed (Node.js will no longer exit).
+  removed. Signal events are emitted asynchronously, so Node.js may exit before
+  the listener is called if the event loop is otherwise empty.
 * `'SIGPIPE'` is ignored by default. It can have a listener installed.
 * `'SIGHUP'` is generated on Windows when the console window is closed, and on
   other platforms under various similar conditions. See signal(7). It can have a
@@ -1262,8 +1244,6 @@ process.debugPort = 5858;
 ```
 
 ```cjs
-const process = require('node:process');
-
 process.debugPort = 5858;
 ```
 
@@ -1400,8 +1380,6 @@ process.on('warning', (warning) => {
 ```
 
 ```cjs
-const process = require('node:process');
-
 process.on('warning', (warning) => {
   console.warn(warning.name);    // 'Warning'
   console.warn(warning.message); // 'Something happened!'
@@ -1493,8 +1471,6 @@ process.on('warning', (warning) => {
 ```
 
 ```cjs
-const process = require('node:process');
-
 process.on('warning', (warning) => {
   console.warn(warning.name);
   console.warn(warning.message);
@@ -1888,8 +1864,6 @@ if (someConditionNotMet()) {
 ```
 
 ```cjs
-const process = require('node:process');
-
 // How to properly set the exit code while letting
 // the process exit gracefully.
 if (someConditionNotMet()) {
@@ -2425,8 +2399,6 @@ if (process.getegid) {
 ```
 
 ```cjs
-const process = require('node:process');
-
 if (process.getegid) {
   console.log(`Current gid: ${process.getegid()}`);
 }
@@ -2455,8 +2427,6 @@ if (process.geteuid) {
 ```
 
 ```cjs
-const process = require('node:process');
-
 if (process.geteuid) {
   console.log(`Current uid: ${process.geteuid()}`);
 }
@@ -2485,8 +2455,6 @@ if (process.getgid) {
 ```
 
 ```cjs
-const process = require('node:process');
-
 if (process.getgid) {
   console.log(`Current gid: ${process.getgid()}`);
 }
@@ -2516,8 +2484,6 @@ if (process.getgroups) {
 ```
 
 ```cjs
-const process = require('node:process');
-
 if (process.getgroups) {
   console.log(process.getgroups()); // [ 16, 21, 297 ]
 }
@@ -2546,8 +2512,6 @@ if (process.getuid) {
 ```
 
 ```cjs
-const process = require('node:process');
-
 if (process.getuid) {
   console.log(`Current uid: ${process.getuid()}`);
 }
@@ -2752,8 +2716,6 @@ kill(process.pid, 'SIGHUP');
 ```
 
 ```cjs
-const process = require('node:process');
-
 process.on('SIGHUP', () => {
   console.log('Got SIGHUP signal.');
 });
@@ -3189,7 +3151,8 @@ added: v20.0.0
 
 * Type: {Object}
 
-This API is available through the [`--permission`][] flag.
+This API is available through the [`--permission`][] or
+[`--permission-audit`][] flags.
 
 `process.permission` is an object whose methods are used to manage permissions
 for the current process. Additional documentation is available in the
@@ -3210,6 +3173,9 @@ If no reference is provided, a global scope is assumed, for instance,
 `process.permission.has('fs.read')` will check if the process has ALL
 file system read permissions.
 
+In audit mode ([`--permission-audit`][]), this method still returns the actual
+permission status, but denied operations will not throw `ERR_ACCESS_DENIED`.
+
 The reference has a meaning based on the provided scope. For example,
 the reference when the scope is File System means files and folders.
 
@@ -3219,6 +3185,7 @@ The available scopes are:
 * `fs.read` - File System read operations
 * `fs.write` - File System write operations
 * `child` - Child process spawning operations
+* `openssl.store` - Loading keys through OpenSSL STORE loaders
 * `worker` - Worker thread spawning operation
 
 ```js
@@ -3226,6 +3193,69 @@ The available scopes are:
 process.permission.has('fs.read', './README.md');
 // Check if the process has read permission operations
 process.permission.has('fs.read');
+```
+
+### `process.permission.drop(scope[, reference])`
+
+<!-- YAML
+added: v24.20.0
+-->
+
+> Stability: 1.1 - Active Development
+
+* `scope` {string}
+* `reference` {string}
+
+Drops the specified permission from the current process. This operation is
+**irreversible** — once a permission is dropped, it cannot be restored through
+any Node.js API.
+
+In audit mode ([`--permission-audit`][]), dropping a permission takes effect,
+but since denied operations do not throw, the impact is limited to changing the
+return value of `permission.has()`.
+
+If no reference is provided, the entire scope is dropped. For example,
+`process.permission.drop('fs.read')` will revoke ALL file system read
+permissions.
+
+When a reference is provided, only the permission for that specific resource
+is dropped. For example, `process.permission.drop('fs.read', '/etc/myapp')`
+will revoke read access to that directory while keeping other read
+permissions intact.
+
+**Important:** You can only drop the exact resource that was explicitly
+granted. The reference passed to `drop()` must match the original grant:
+
+* If a permission was granted using a wildcard (`*`), such as
+  `--allow-fs-read=*`, individual paths cannot be dropped - only the entire
+  scope can be dropped (by calling `drop()` without a reference).
+* If a directory was granted (e.g. `--allow-fs-read=/my/folder`), you cannot
+  drop access to individual files inside it. You must drop the same directory
+  that was granted. Any remaining grants continue to apply.
+
+The available scopes are the same as [`process.permission.has()`][]:
+
+* `fs` - All File System (drops both read and write)
+* `fs.read` - File System read operations
+* `fs.write` - File System write operations
+* `child` - Child process spawning operations
+* `openssl.store` - Loading keys through OpenSSL STORE loaders
+* `worker` - Worker thread spawning operation
+* `inspector` - Inspector operations
+* `wasi` - WASI operations
+* `addon` - Native addon operations
+
+```js
+const fs = require('node:fs');
+
+// Read configuration during startup
+const config = fs.readFileSync('/etc/myapp/config.json', 'utf8');
+
+// Drop read access to the config directory after initialization
+process.permission.drop('fs.read', '/etc/myapp');
+
+// This will now throw ERR_ACCESS_DENIED
+fs.readFileSync('/etc/myapp/config.json');
 ```
 
 ## `process.pid`
@@ -3283,7 +3313,7 @@ const { platform } = require('node:process');
 console.log(`This platform is ${platform}`);
 ```
 
-The value `'android'` may also be returned if the Node.js is built on the
+The value `'android'` may also be returned if Node.js is built on the
 Android operating system. However, Android support in Node.js
 [is experimental][Android building].
 
@@ -3864,8 +3894,6 @@ if (process.getegid && process.setegid) {
 ```
 
 ```cjs
-const process = require('node:process');
-
 if (process.getegid && process.setegid) {
   console.log(`Current gid: ${process.getegid()}`);
   try {
@@ -3909,8 +3937,6 @@ if (process.geteuid && process.seteuid) {
 ```
 
 ```cjs
-const process = require('node:process');
-
 if (process.geteuid && process.seteuid) {
   console.log(`Current uid: ${process.geteuid()}`);
   try {
@@ -3954,8 +3980,6 @@ if (process.getgid && process.setgid) {
 ```
 
 ```cjs
-const process = require('node:process');
-
 if (process.getgid && process.setgid) {
   console.log(`Current gid: ${process.getgid()}`);
   try {
@@ -3999,8 +4023,6 @@ if (process.getgroups && process.setgroups) {
 ```
 
 ```cjs
-const process = require('node:process');
-
 if (process.getgroups && process.setgroups) {
   try {
     process.setgroups([501]);
@@ -4043,8 +4065,6 @@ if (process.getuid && process.setuid) {
 ```
 
 ```cjs
-const process = require('node:process');
-
 if (process.getuid && process.setuid) {
   console.log(`Current uid: ${process.getuid()}`);
   try {
@@ -4617,6 +4637,7 @@ cases:
 [`'message'`]: child_process.md#event-message
 [`'uncaughtException'`]: #event-uncaughtexception
 [`--no-deprecation`]: cli.md#--no-deprecation
+[`--permission-audit`]: cli.md#--permission-audit
 [`--permission`]: cli.md#--permission
 [`--unhandled-rejections`]: cli.md#--unhandled-rejectionsmode
 [`Buffer`]: buffer.md
@@ -4647,6 +4668,7 @@ cases:
 [`process.hrtime()`]: #processhrtimetime
 [`process.hrtime.bigint()`]: #processhrtimebigint
 [`process.kill()`]: #processkillpid-signal
+[`process.permission.has()`]: #processpermissionhasscope-reference
 [`process.setUncaughtExceptionCaptureCallback()`]: #processsetuncaughtexceptioncapturecallbackfn
 [`promise.catch()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/catch
 [`queueMicrotask()`]: globals.md#queuemicrotaskcallback

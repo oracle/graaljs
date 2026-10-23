@@ -16,6 +16,9 @@
 #include "node_snapshotable.h"
 #include "node_v8_platform-inl.h"
 #include "node_worker.h"
+#if HAVE_OPENSSL
+#include "ncrypto.h"
+#endif
 #include "req_wrap-inl.h"
 #include "stream_base.h"
 #include "tracing/agent.h"
@@ -70,12 +73,13 @@ using v8::SnapshotCreator;
 using v8::StackTrace;
 using v8::String;
 using v8::Symbol;
-using v8::TracingController;
 using v8::TryCatch;
 using v8::Uint32;
 using v8::Undefined;
 using v8::Value;
 using worker::Worker;
+
+constexpr size_t kManagedBufferCacheSize = 64 * 1024;
 
 int const ContextEmbedderTag::kNodeContextTag = 0x6e6f64;
 void* const ContextEmbedderTag::kNodeContextTagPtr = const_cast<void*>(
@@ -353,6 +357,12 @@ IsolateDataSerializeInfo IsolateData::Serialize(SnapshotCreator* creator) {
 #undef VS
 #undef VP
 
+#define V(Name, label, _, __)                                                  \
+  info.primitive_values.push_back(                                             \
+      creator->AddData(Name##_permission_string##_.Get(isolate)));
+  PERMISSIONS(V)
+#undef V
+
   info.primitive_values.reserve(info.primitive_values.size() +
                                 AsyncWrap::PROVIDERS_LENGTH);
   for (size_t i = 0; i < AsyncWrap::PROVIDERS_LENGTH; i++) {
@@ -411,6 +421,20 @@ void IsolateData::DeserializeProperties(const IsolateDataSerializeInfo* info) {
 #undef VY
 #undef VS
 #undef VP
+
+#define V(Name, label, _, __)                                                  \
+  do {                                                                         \
+    MaybeLocal<String> maybe_field =                                           \
+        isolate_->GetDataFromSnapshotOnce<String>(                             \
+            info->primitive_values[i++]);                                      \
+    Local<String> field;                                                       \
+    if (!maybe_field.ToLocal(&field)) {                                        \
+      fprintf(stderr, "Failed to deserialize " #Name "_permission_string\n");  \
+    }                                                                          \
+    Name##_permission_string##_.Set(isolate_, field);                          \
+  } while (0);
+  PERMISSIONS(V)
+#undef V
 
   for (size_t j = 0; j < AsyncWrap::PROVIDERS_LENGTH; j++) {
     MaybeLocal<String> maybe_field =
@@ -513,6 +537,17 @@ void IsolateData::CreateProperties() {
   PER_ISOLATE_STRING_PROPERTIES(V)
 #undef V
 
+#define V(Name, label, _, __)                                                  \
+  Name##_permission_string##_.Set(                                             \
+      isolate_,                                                                \
+      String::NewFromOneByte(isolate_,                                         \
+                             reinterpret_cast<const uint8_t*>(#Name),          \
+                             NewStringType::kInternalized,                     \
+                             sizeof(#Name) - 1)                                \
+          .ToLocalChecked());
+  PERMISSIONS(V)
+#undef V
+
   // Create all the provider strings that will be passed to JS. Place them in
   // an array so the array index matches the PROVIDER id offset. This way the
   // strings can be retrieved quickly.
@@ -554,10 +589,8 @@ IsolateData* IsolateData::CreateIsolateData(
     uv_loop_t* loop,
     MultiIsolatePlatform* platform,
     ArrayBufferAllocator* allocator,
-    const EmbedderSnapshotData* embedder_snapshot_data,
+    const SnapshotData* snapshot_data,
     std::shared_ptr<PerIsolateOptions> options) {
-  const SnapshotData* snapshot_data =
-      SnapshotData::FromEmbedderWrapper(embedder_snapshot_data);
   if (options == nullptr) {
     options = per_process::cli_options->per_isolate->Clone();
   }
@@ -621,6 +654,11 @@ void IsolateData::MemoryInfo(MemoryTracker* tracker) const {
   PER_ISOLATE_SYMBOL_PROPERTIES(V)
 
   PER_ISOLATE_STRING_PROPERTIES(V)
+#undef V
+
+#define V(Name, label, _, __)                                                  \
+  tracker->TrackField(#Name "_permission_string", Name##_permission_string());
+  PERMISSIONS(V)
 #undef V
 
   tracker->TrackField("async_wrap_providers", async_wrap_providers_);
@@ -731,10 +769,16 @@ void Environment::add_refs(int64_t diff) {
 }
 
 uv_buf_t Environment::allocate_managed_buffer(const size_t suggested_size) {
-  std::unique_ptr<BackingStore> bs = ArrayBuffer::NewBackingStore(
-      isolate(),
-      suggested_size,
-      BackingStoreInitializationMode::kUninitialized);
+  std::unique_ptr<BackingStore> bs;
+  if (suggested_size == kManagedBufferCacheSize &&
+      managed_buffer_cache_ != nullptr) {
+    bs = std::move(managed_buffer_cache_);
+  } else {
+    bs = ArrayBuffer::NewBackingStore(
+        isolate(),
+        suggested_size,
+        BackingStoreInitializationMode::kUninitialized);
+  }
   uv_buf_t buf = uv_buf_init(static_cast<char*>(bs->Data()), bs->ByteLength());
   released_allocated_buffers_.emplace(buf.base, std::move(bs));
   return buf;
@@ -750,6 +794,110 @@ std::unique_ptr<BackingStore> Environment::release_managed_buffer(
     released_allocated_buffers_.erase(it);
   }
   return bs;
+}
+
+void Environment::recycle_managed_buffer(std::unique_ptr<BackingStore> bs) {
+  if (bs != nullptr && bs->ByteLength() == kManagedBufferCacheSize)
+    managed_buffer_cache_ = std::move(bs);
+}
+
+uv_buf_t StreamReadSlab::Allocate(Isolate* isolate, size_t suggested) {
+  DCHECK_GT(suggested, 0);
+  // Reads always get the full `suggested` size: handing out a smaller
+  // remainder would shrink the read() buffer and fragment large reads into
+  // more system calls, which costs more than the slab tail it saves.
+  size_t remaining = current_.bs ? current_.size() - current_.offset : 0;
+  if (remaining < suggested) {
+    // Retire the current slab; it stays alive through `retired_` if reads
+    // are still pending on it, or through JS views over it otherwise.
+    if (current_.bs && current_.pending > 0)
+      retired_.push_back(std::move(current_));
+    current_ = Slab();
+    std::unique_ptr<BackingStore> bs = ArrayBuffer::NewBackingStore(
+        isolate,
+        std::max(kSlabSize, suggested),
+        BackingStoreInitializationMode::kUninitialized);
+    current_.bs = std::move(bs);
+  }
+  char* base = current_.data() + current_.offset;
+  current_.offset += suggested;
+  current_.last_base = base;
+  current_.last_end = current_.offset;
+  current_.pending++;
+  return uv_buf_init(base, suggested);
+}
+
+StreamReadSlab::Slab* StreamReadSlab::FindSlab(const char* base) {
+  if (current_.Contains(base)) return &current_;
+  for (Slab& slab : retired_)
+    if (slab.Contains(base)) return &slab;
+  return nullptr;
+}
+
+void StreamReadSlab::CompleteReservation(Slab* slab,
+                                         const uv_buf_t& buf,
+                                         size_t used) {
+  DCHECK_GT(slab->pending, 0);
+  slab->pending--;
+  if (buf.base == slab->last_base && slab->offset == slab->last_end) {
+    // This was the most recent reservation and nothing was reserved after
+    // it: rewind the unused remainder so it can be reserved again.
+    slab->offset = (buf.base - slab->data()) + used;
+    slab->last_end = slab->offset;
+  }
+  if (slab != &current_ && slab->pending == 0) {
+    for (auto it = retired_.begin(); it != retired_.end(); ++it) {
+      if (&*it == slab) {
+        retired_.erase(it);
+        break;
+      }
+    }
+  }
+}
+
+bool StreamReadSlab::Commit(Isolate* isolate,
+                            const uv_buf_t& buf,
+                            size_t nread,
+                            Local<ArrayBuffer>* ab,
+                            size_t* offset) {
+  Slab* slab = FindSlab(buf.base);
+  if (slab == nullptr) return false;
+  DCHECK_LE(nread, buf.len);
+
+  // A partial read would leave the rest of its reservation as waste once
+  // the slab retires - memory that counts towards V8's external memory and
+  // drives up GC frequency. If most of the reservation would be wasted,
+  // give the read a right-sized copy instead (as if it had never been read
+  // into the slab) and return its reservation in full. Reads that (mostly)
+  // fill their reservation get a zero-copy view into the slab.
+  if (nread < buf.len - buf.len / 4 && buf.base == slab->last_base &&
+      slab->offset == slab->last_end) {
+    std::unique_ptr<BackingStore> bs = ArrayBuffer::NewBackingStore(
+        isolate, nread, BackingStoreInitializationMode::kUninitialized);
+    memcpy(bs->Data(), buf.base, nread);
+    *ab = ArrayBuffer::New(isolate, std::move(bs));
+    *offset = 0;
+    CompleteReservation(slab, buf, 0);
+    return true;
+  }
+
+  *offset = buf.base - slab->data();
+  if (slab->ab.IsEmpty()) {
+    *ab = ArrayBuffer::New(isolate, slab->bs);
+    slab->ab.Reset(isolate, *ab);
+  } else {
+    *ab = slab->ab.Get(isolate);
+  }
+  CompleteReservation(slab, buf, nread);
+  return true;
+}
+
+bool StreamReadSlab::Release(const uv_buf_t& buf) {
+  if (buf.base == nullptr) return true;
+  Slab* slab = FindSlab(buf.base);
+  if (slab == nullptr) return false;
+  CompleteReservation(slab, buf, 0);
+  return true;
 }
 
 std::string Environment::GetExecPath(const std::vector<std::string>& argv) {
@@ -814,6 +962,14 @@ Environment::Environment(IsolateData* isolate_data,
                      ? AllocateEnvironmentThreadId().id
                      : thread_id.id),
       thread_name_(thread_name) {
+#if HAVE_OPENSSL && NCRYPTO_USE_OPENSSL3_PROVIDER
+  provider_digest_cache = std::make_unique<ncrypto::DigestCache>();
+  provider_cipher_cache = std::make_unique<ncrypto::CipherCache>();
+#if OPENSSL_WITH_EVP_MAC
+  provider_mac_cache = std::make_unique<ncrypto::MacCache>();
+#endif
+#endif
+
   if (!is_main_thread()) {
     // If this is a Worker thread, we can always safely use the parent's
     // Isolate's code cache because of the shared read-only heap.
@@ -878,10 +1034,9 @@ Environment::Environment(IsolateData* isolate_data,
   inspector_agent_ = std::make_unique<inspector::Agent>(this);
 #endif
 
-  if (tracing::AgentWriterHandle* writer = GetTracingAgentWriter()) {
+  if (tracing::Agent* agent = tracing::Agent::GetInstance()) {
     trace_state_observer_ = std::make_unique<TrackingTraceStateObserver>(this);
-    if (TracingController* tracing_controller = writer->GetTracingController())
-      tracing_controller->AddTraceStateObserver(trace_state_observer_.get());
+    agent->AddTraceStateObserver(trace_state_observer_.get());
   }
 
   destroy_async_id_list_.reserve(512);
@@ -902,8 +1057,11 @@ Environment::Environment(IsolateData* isolate_data,
                                       tracing::CastTracedValue(traced_value));
   }
 
-  if (options_->permission) {
+  if (options_->permission || options_->permission_audit) {
     permission()->EnablePermissions();
+    if (options_->permission_audit) {
+      permission()->EnableWarningOnly();
+    }
     // The process shouldn't be able to neither
     // spawn/worker nor use addons or enable inspector
     // unless explicitly allowed by the user
@@ -918,6 +1076,10 @@ Environment::Environment(IsolateData* isolate_data,
     if (!options_->allow_child_process) {
       permission()->Apply(
           this, {"*"}, permission::PermissionScope::kChildProcess);
+    }
+    if (!options_->allow_openssl_store) {
+      permission()->Apply(
+          this, {"*"}, permission::PermissionScope::kOpenSSLStore);
     }
     if (!options_->allow_worker_threads) {
       permission()->Apply(
@@ -1038,10 +1200,8 @@ Environment::~Environment() {
   principal_realm_.reset();
 
   if (trace_state_observer_) {
-    tracing::AgentWriterHandle* writer = GetTracingAgentWriter();
-    CHECK_NOT_NULL(writer);
-    if (TracingController* tracing_controller = writer->GetTracingController())
-      tracing_controller->RemoveTraceStateObserver(trace_state_observer_.get());
+    if (tracing::Agent* agent = tracing::Agent::GetInstance())
+      agent->RemoveTraceStateObserver(trace_state_observer_.get());
   }
 
   TRACE_EVENT_NESTABLE_ASYNC_END0(
@@ -1053,6 +1213,15 @@ Environment::~Environment() {
   // Also, since the main thread usually stops just before the process exits,
   // this is far less relevant here.
   if (!is_main_thread()) {
+#if HAVE_OPENSSL
+    // Provider methods can contain callbacks into native addons. Release the
+    // environment-owned methods before unloading any addon DSOs.
+    provider_digest_cache.reset();
+    provider_cipher_cache.reset();
+#if OPENSSL_WITH_EVP_MAC
+    provider_mac_cache.reset();
+#endif
+#endif
     // Dereference all addons that were loaded into this environment.
     for (binding::DLib& addon : loaded_addons_) {
       addon.Close();
@@ -1476,7 +1645,9 @@ void Environment::RequestInterruptFromV8() {
       return;
     }
     env->interrupt_data_.store(nullptr);
+    env->is_processing_v8_interrupt_ = true;
     env->RunAndClearInterrupts();
+    env->is_processing_v8_interrupt_ = false;
   }, interrupt_data);
 }
 

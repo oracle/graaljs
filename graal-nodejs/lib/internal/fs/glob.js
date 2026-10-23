@@ -354,7 +354,10 @@ class Glob {
         // consistent comparison before instantiating matchers.
         const matchers = exclude
           .map((pattern) => resolve(this.#root, pattern))
-          .map((pattern) => createMatcher(pattern));
+          // Exclude matching is a pure string comparison with no filesystem
+          // lookups, so unlike include patterns, literal patterns must also
+          // match case-insensitively on case-insensitive platforms.
+          .map((pattern) => createMatcher(pattern, { nocaseMagicOnly: false }));
         this.#isExcluded = (value) =>
           matchers.some((matcher) => matcher.match(value));
         this.#results.setup(this.#root, this.#isExcluded);
@@ -576,9 +579,6 @@ class Glob {
       const nSymlinks = new SafeSet();
       for (const index of pattern.indexes) {
         // For each child, check potential patterns
-        if (this.#cache.seen(entryPath, pattern, index) || this.#cache.seen(entryPath, pattern, index + 1)) {
-          return;
-        }
         const current = pattern.at(index);
         const nextIndex = index + 1;
         const next = pattern.at(nextIndex);
@@ -619,9 +619,9 @@ class Glob {
             subPatterns.add(index + 2);
           }
           if ((nextMatches || pattern.at(0) === '.') &&
-           (entryIsDirectory || entry.isSymbolicLink()) && !fromSymlink) {
+           entryIsDirectory && !fromSymlink) {
             // If pattern after ** matches, or pattern starts with "."
-            // and entry is a directory or symlink, add to potential patterns
+            // and entry is a directory, add to potential patterns
             subPatterns.add(nextIndex);
           }
 
@@ -793,9 +793,6 @@ class Glob {
       const nSymlinks = new SafeSet();
       for (const index of pattern.indexes) {
         // For each child, check potential patterns
-        if (this.#cache.seen(entryPath, pattern, index) || this.#cache.seen(entryPath, pattern, index + 1)) {
-          return;
-        }
         const current = pattern.at(index);
         const nextIndex = index + 1;
         const next = pattern.at(nextIndex);
@@ -840,9 +837,9 @@ class Glob {
             subPatterns.add(index + 2);
           }
           if ((nextMatches || pattern.at(0) === '.') &&
-           (entryIsDirectory || entry.isSymbolicLink()) && !fromSymlink) {
+           entryIsDirectory && !fromSymlink) {
             // If pattern after ** matches, or pattern starts with "."
-            // and entry is a directory or symlink, add to potential patterns
+            // and entry is a directory, add to potential patterns
             subPatterns.add(nextIndex);
           }
 
@@ -922,6 +919,9 @@ class Glob {
   }
 }
 
+const kGlobPatternCacheLimit = 250;
+const patternFnCache = new SafeMap();
+
 /**
  * Check if a path matches a glob pattern
  * @param {string} path the path to check
@@ -932,20 +932,29 @@ class Glob {
 function matchGlobPattern(path, pattern, windows = isWindows) {
   validateString(path, 'path');
   validateString(pattern, 'pattern');
-  return lazyMinimatch().minimatch(path, pattern, {
-    kEmptyObject,
-    nocase: isMacOS || isWindows,
-    windowsPathsNoEscape: true,
-    nonegate: true,
-    nocomment: true,
-    optimizationLevel: 2,
-    platform: windows ? 'win32' : 'posix',
-    nocaseMagicOnly: true,
-  });
+
+  const cacheKey = `${windows ? 'win32' : 'posix'}:${pattern}`;
+  let matcher;
+  if (patternFnCache.has(cacheKey)) {
+    matcher = patternFnCache.get(cacheKey);
+  } else {
+    matcher = createMatcher(pattern, {
+      kEmptyObject,
+      platform: windows ? 'win32' : 'posix',
+    });
+    patternFnCache.set(cacheKey, matcher);
+
+    if (patternFnCache.size >= kGlobPatternCacheLimit) {
+      patternFnCache.delete(patternFnCache.keys().next().value);
+    }
+  }
+
+  return matcher.match(path);
 }
 
 module.exports = {
   __proto__: null,
   Glob,
+  createMatcher,
   matchGlobPattern,
 };

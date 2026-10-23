@@ -104,6 +104,7 @@ const kDisableRenegotiation = Symbol('disable-renegotiation');
 const kErrorEmitted = Symbol('error-emitted');
 const kHandshakeTimeout = Symbol('handshake-timeout');
 const kRes = Symbol('res');
+const kSecureContext = Symbol('secureContext');
 const kSNICallback = Symbol('snicallback');
 const kALPNCallback = Symbol('alpncallback');
 const kEnableTrace = Symbol('enableTrace');
@@ -263,20 +264,27 @@ function loadSession(hello) {
       return owner.destroy(new ERR_SOCKET_CLOSED());
 
     owner._handle.loadSession(session);
-    // Session is loaded. End the parser to allow handshaking to continue.
-    owner._handle.endParser();
+    // Session is loaded. Let the handshake continue.
+    owner._handle.clientHelloDone();
   }
 
   if (hello.sessionId.length <= 0 ||
       hello.tlsTicket ||
       (owner.server &&
-      !owner.server.emit('resumeSession', hello.sessionId, onSession))) {
+      !(() => {
+        try {
+          return owner.server.emit('resumeSession', hello.sessionId, onSession);
+        } catch (err) {
+          onSession(err);
+          return true;
+        }
+      })())) {
     // Sessions without identifiers can't be resumed.
     // Sessions with tickets can be resumed directly from the ticket, no server
     // session storage is necessary.
     // Without a call to a resumeSession listener, a session will never be
-    // loaded, so end the parser to allow handshaking to continue.
-    owner._handle.endParser();
+    // loaded, so let the handshake continue.
+    owner._handle.clientHelloDone();
   }
 }
 
@@ -399,10 +407,14 @@ function requestOCSP(socket, info) {
   };
 
   debug('server oncertcb emit OCSPRequest');
-  socket.server.emit('OCSPRequest',
-                     ctx.getCertificate(),
-                     ctx.getIssuer(),
-                     onOCSP);
+  try {
+    socket.server.emit('OCSPRequest',
+                       ctx.getCertificate(),
+                       ctx.getIssuer(),
+                       onOCSP);
+  } catch (err) {
+    socket.destroy(err);
+  }
 }
 
 function requestOCSPDone(socket) {
@@ -455,7 +467,14 @@ function onnewsession(sessionId, session) {
   };
 
   owner._newSessionPending = true;
-  if (!owner.server.emit('newSession', sessionId, session, done))
+
+  let hasEmitted = false;
+  try {
+    hasEmitted = owner.server.emit('newSession', sessionId, session, done);
+  } catch (err) {
+    owner.server.emit('error', err);
+  }
+  if (!hasEmitted)
     done();
 }
 
@@ -633,6 +652,7 @@ function TLSSocket(socket, opts) {
   this.authorized = false;
   this.authorizationError = null;
   this[kRes] = null;
+  this[kSecureContext] = null;
   this[kIsVerified] = false;
   this[kPendingSession] = null;
 
@@ -713,7 +733,7 @@ exports.TLSSocket = TLSSocket;
 const proxiedMethods = [
   'ref', 'unref', 'open', 'bind', 'listen', 'connect', 'bind6',
   'connect6', 'getsockname', 'getpeername', 'setNoDelay', 'setKeepAlive',
-  'setSimultaneousAccepts', 'setBlocking',
+  'setSimultaneousAccepts', 'setBlocking', 'hasPendingRead',
 
   // PipeWrap
   'setPendingInstances',
@@ -731,6 +751,18 @@ for (const proxiedMethod of proxiedMethods) {
     makeMethodProxy(proxiedMethod);
 }
 
+// A single-use context is owned by the socket that created it, so its SSL_CTX
+// can be released as soon as the socket is gone instead of waiting for the JS
+// wrapper to be garbage collected. It is shared by every handle the socket
+// goes through, so it must outlive any individual TLSWrap.
+function closeSingleUseContext(secureContext) {
+  if (secureContext !== null && secureContext.singleUse &&
+      secureContext.context !== null) {
+    secureContext.context.close();
+    secureContext.context = null;
+  }
+}
+
 tls_wrap.TLSWrap.prototype.close = function close(cb) {
   let ssl;
   if (this[owner_symbol]) {
@@ -743,10 +775,6 @@ tls_wrap.TLSWrap.prototype.close = function close(cb) {
   const done = () => {
     if (ssl) {
       ssl.destroySSL();
-      if (ssl._secureContext.singleUse) {
-        ssl._secureContext.context.close();
-        ssl._secureContext.context = null;
-      }
     }
     if (cb)
       cb();
@@ -804,6 +832,7 @@ TLSSocket.prototype._wrapHandle = function(wrap, handle, wrapHasActiveWriteFromP
   res._parent = handle;  // C++ "wrap" object: TCPWrap, JSStream, ...
   res._parentWrap = wrap;  // JS object: net.Socket, JSStreamSocket, ...
   res._secureContext = context;
+  this[kSecureContext] = context;
   res.reading = handle.reading;
   this[kRes] = res;
   defineHandleReading(this, handle);
@@ -869,13 +898,16 @@ function destroySSL(self) {
 }
 
 TLSSocket.prototype._destroySSL = function _destroySSL() {
-  if (!this.ssl) return;
-  this.ssl.destroySSL();
-  if (this.ssl._secureContext.singleUse) {
-    this.ssl._secureContext.context.close();
-    this.ssl._secureContext.context = null;
+  if (this.ssl) {
+    this.ssl.destroySSL();
+    this.ssl = null;
   }
-  this.ssl = null;
+  // Release the context here rather than when a handle closes: a socket that
+  // swaps handles, as autoSelectFamily retries do, shares one context across
+  // the successive TLSWraps and still needs it after the old handle is gone.
+  // TLSWrap.close() may already have cleared `ssl` on the way here.
+  closeSingleUseContext(this[kSecureContext]);
+  this[kSecureContext] = null;
   this[kPendingSession] = null;
   this[kIsVerified] = false;
 };
@@ -953,7 +985,6 @@ TLSSocket.prototype._init = function(socket, wrap) {
     if (this.server) {
       if (this.server.listenerCount('resumeSession') > 0 ||
           this.server.listenerCount('newSession') > 0) {
-        // Also starts the client hello parser as a side effect.
         ssl.enableSessionCallbacks();
       }
       if (this.server.listenerCount('OCSPRequest') > 0)
@@ -1306,6 +1337,13 @@ function onServerSocketSecure() {
 
       if (this._rejectUnauthorized)
         this.destroy();
+    } else if (!this._handle.hasPeerCertificate()) {
+      // Ncrypto reports X509_V_OK for TLS 1.3 resumption without a peer
+      // certificate, as it uses PSKs. Require one to authorize the socket.
+      this.authorizationError = 'UNABLE_TO_GET_ISSUER_CERT';
+
+      if (this._rejectUnauthorized)
+        this.destroy();
     } else {
       this.authorized = true;
     }
@@ -1603,6 +1641,7 @@ Server.prototype.setSecureContext = function(options) {
 
   this.privateKeyIdentifier = options.privateKeyIdentifier;
   this.privateKeyEngine = options.privateKeyEngine;
+  this.certificateCompression = options.certificateCompression;
 
   this._sharedCreds = tls.createSecureContext({
     pfx: this.pfx,
@@ -1626,6 +1665,7 @@ Server.prototype.setSecureContext = function(options) {
     sessionTimeout: this.sessionTimeout,
     privateKeyIdentifier: this.privateKeyIdentifier,
     privateKeyEngine: this.privateKeyEngine,
+    certificateCompression: this.certificateCompression,
   });
 };
 

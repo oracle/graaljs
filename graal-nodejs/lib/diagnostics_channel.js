@@ -31,8 +31,9 @@ const {
 
 const { triggerUncaughtException } = internalBinding('errors');
 
+// The subscriber buffer is replaced when native channel storage grows, so it
+// must always be accessed through the binding instead of cached.
 const dc_binding = internalBinding('diagnostics_channel');
-const { subscribers: subscriberCounts } = dc_binding;
 
 const { WeakReference } = require('internal/util');
 
@@ -72,11 +73,19 @@ function markActive(channel) {
   ObjectSetPrototypeOf(channel, ActiveChannel.prototype);
   channel._subscribers = [];
   channel._stores = new SafeMap();
+
+  // Notify native modules that this channel just got its first subscriber.
+  if (channel._index !== undefined)
+    dc_binding.notifyChannelActive(channel._index);
 }
 
 function maybeMarkInactive(channel) {
   // When there are no more active subscribers or bound, restore to fast prototype.
   if (!channel._subscribers.length && !channel._stores.size) {
+    // Notify native modules that this channel just lost its last subscriber.
+    if (channel._index !== undefined)
+      dc_binding.notifyChannelInactive(channel._index);
+
     // eslint-disable-next-line no-use-before-define
     ObjectSetPrototypeOf(channel, Channel.prototype);
     channel._subscribers = undefined;
@@ -111,7 +120,7 @@ class ActiveChannel {
     this._subscribers = ArrayPrototypeSlice(this._subscribers);
     ArrayPrototypePush(this._subscribers, subscription);
     channels.incRef(this.name);
-    if (this._index !== undefined) subscriberCounts[this._index]++;
+    if (this._index !== undefined) dc_binding.subscribers[this._index]++;
   }
 
   unsubscribe(subscription) {
@@ -124,7 +133,7 @@ class ActiveChannel {
     ArrayPrototypePushApply(this._subscribers, after);
 
     channels.decRef(this.name);
-    if (this._index !== undefined) subscriberCounts[this._index]--;
+    if (this._index !== undefined) dc_binding.subscribers[this._index]--;
     maybeMarkInactive(this);
 
     return true;
@@ -134,7 +143,7 @@ class ActiveChannel {
     const replacing = this._stores.has(store);
     if (!replacing) {
       channels.incRef(this.name);
-      if (this._index !== undefined) subscriberCounts[this._index]++;
+      if (this._index !== undefined) dc_binding.subscribers[this._index]++;
     }
     this._stores.set(store, transform);
   }
@@ -147,7 +156,7 @@ class ActiveChannel {
     this._stores.delete(store);
 
     channels.decRef(this.name);
-    if (this._index !== undefined) subscriberCounts[this._index]--;
+    if (this._index !== undefined) dc_binding.subscribers[this._index]--;
     maybeMarkInactive(this);
 
     return true;
@@ -192,9 +201,7 @@ class Channel {
     this._subscribers = undefined;
     this._stores = undefined;
     this.name = name;
-    if (typeof name === 'string') {
-      this._index = dc_binding.getOrCreateChannelIndex(name);
-    }
+    this._index = undefined;
 
     channels.set(name, this);
   }
@@ -206,6 +213,7 @@ class Channel {
   }
 
   subscribe(subscription) {
+    validateFunction(subscription, 'subscription');
     markActive(this);
     this.subscribe(subscription);
   }
@@ -446,7 +454,15 @@ function tracingChannel(nameOrChannels) {
   return new TracingChannel(nameOrChannels);
 }
 
-dc_binding.linkNativeChannel((name) => channel(name));
+// Keep in sync with setupDiagnosticsChannel() in pre_execution.js.
+dc_binding.linkNativeChannel((name, index) => {
+  const linkedChannel = channel(name);
+  linkedChannel._index = index;
+  dc_binding.subscribers[index] =
+    (linkedChannel._subscribers?.length || 0) +
+    (linkedChannel._stores?.size || 0);
+  return linkedChannel;
+});
 
 module.exports = {
   channel,

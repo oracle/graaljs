@@ -1666,6 +1666,12 @@ Type: End-of-Life
 The `tls.createSecurePair()` API was deprecated in documentation in Node.js
 0.11.3. Users should use `tls.Socket` instead.
 
+An automated migration is available ([source](https://github.com/nodejs/userland-migrations/tree/main/recipes/tls-create-secure-pair-to-tls-socket)):
+
+```bash
+npx codemod @nodejs/tls-create-secure-pair-to-tls-socket
+```
+
 ### DEP0065: `repl.REPL_MODE_MAGIC` and `NODE_REPL_MODE=magic`
 
 <!-- YAML
@@ -2256,6 +2262,12 @@ Type: End-of-Life
 `timers.enroll()` has been removed. Please use the publicly documented
 [`setTimeout()`][] or [`setInterval()`][] instead.
 
+An automated migration is available ([source](https://github.com/nodejs/userland-migrations/tree/main/recipes/timers-deprecations)).
+
+```bash
+npx codemod @nodejs/timers-deprecations
+```
+
 ### DEP0096: `timers.unenroll()`
 
 <!-- YAML
@@ -2272,6 +2284,12 @@ Type: End-of-Life
 
 `timers.unenroll()` has been removed. Please use the publicly documented
 [`clearTimeout()`][] or [`clearInterval()`][] instead.
+
+An automated migration is available ([source](https://github.com/nodejs/userland-migrations/tree/main/recipes/timers-deprecations)).
+
+```bash
+npx codemod @nodejs/timers-deprecations
+```
 
 ### DEP0097: `MakeCallback` with `domain` property
 
@@ -2462,6 +2480,12 @@ It is recommended to derive a key using
 [`crypto.pbkdf2()`][] or [`crypto.scrypt()`][] with random salts and to use
 [`crypto.createCipheriv()`][] and [`crypto.createDecipheriv()`][] to obtain the
 [`Cipheriv`][] and [`Decipheriv`][] objects respectively.
+
+An automated migration is available ([source](https://github.com/nodejs/userland-migrations/tree/main/recipes/crypto-createcipheriv-migration)):
+
+```bash
+npx codemod @nodejs/crypto-createcipheriv-migration
+```
 
 ### DEP0107: `tls.convertNPNProtocols()`
 
@@ -2842,6 +2866,12 @@ Please use the publicly documented [`timeout.refresh()`][] instead.
 If re-referencing the timeout is necessary, [`timeout.ref()`][] can be used
 with no performance impact since Node.js 10.
 
+An automated migration is available ([source](https://github.com/nodejs/userland-migrations/tree/main/recipes/timers-deprecations)).
+
+```bash
+npx codemod @nodejs/timers-deprecations
+```
+
 ### DEP0127: `timers._unrefActive()`
 
 <!-- YAML
@@ -2860,6 +2890,12 @@ The previously undocumented and "private" `timers._unrefActive()` has been remov
 Please use the publicly documented [`timeout.refresh()`][] instead.
 If unreferencing the timeout is necessary, [`timeout.unref()`][] can be used
 with no performance impact since Node.js 10.
+
+An automated migration is available ([source](https://github.com/nodejs/userland-migrations/tree/main/recipes/timers-deprecations)).
+
+```bash
+npx codemod @nodejs/timers-deprecations
+```
 
 ### DEP0128: modules with an invalid `main` entry and an `index.js` file
 
@@ -3509,6 +3545,12 @@ Type: End-of-Life
 
 This error code was removed due to adding more confusion to
 the errors used for value type validation.
+
+An automated migration is available ([source](https://github.com/nodejs/userland-migrations/tree/main/recipes/err-invalid-callback)):
+
+```bash
+npx codemod @nodejs/err-invalid-callback
+```
 
 ### DEP0160: `process.on('multipleResolves', handler)`
 
@@ -4192,6 +4234,12 @@ Type: End-of-Life
 
 The support for priority signaling has been removed following its deprecation in the [RFC 9113][].
 
+An automated migration is available ([source](https://github.com/nodejs/userland-migrations/tree/main/recipes/http2-priority-signaling)):
+
+```bash
+npx codemod@latest @nodejs/http2-priority-signaling
+```
+
 ### DEP0195: Instantiating `node:http` classes without `new`
 
 <!-- YAML
@@ -4435,7 +4483,7 @@ The `module.register()` API provides off-thread async hooks for customizing ES m
 the `module.registerHooks()` API provides similar hooks that are synchronous, in-thread, and
 work for all types of modules.
 Supporting async hooks has proven to be complex, involving worker threads orchestration, and there are issues
-that have proven unresolveable. See [caveats of asynchronous customization hooks][]. Please migrate to
+that have proven unresolvable. See [caveats of asynchronous customization hooks][]. Please migrate to
 `module.registerHooks()` as soon as possible as `module.register()` will be
 removed in a future version of Node.js.
 
@@ -4454,6 +4502,104 @@ Calling `hmac.digest()` more than once returns an empty buffer instead of
 throwing an error. This behavior is inconsistent with `hash.digest()` and
 may lead to subtle bugs. Calling `hmac.digest()` on a finalized `Hmac` instance
 will throw an error in a future version.
+
+<!-- md-lint skip-deprecation DEP0207 -->
+
+### DEP0208: `Server.prototype._listen2`
+
+<!-- YAML
+changes:
+  - version: v24.22.0
+    pr-url: https://github.com/nodejs/node/pull/64794
+    description: Documentation-only.
+-->
+
+Type: Documentation-only
+
+`net.Server.prototype._listen2` is an undocumented alias for an internal
+function that sets up the listening handle. It is kept only so that code
+replacing it keeps being called by [`server.listen()`][], and it will be
+removed in a future version of Node.js. Use [`server.listen()`][] instead of
+calling or overriding `_listen2`.
+
+### DEP0209: Using `AbortSignal` to dispose of resources
+
+<!-- YAML
+changes:
+  - version: v24.22.0
+    pr-url: https://github.com/nodejs/node/pull/64342
+    description: Documentation-only deprecation.
+-->
+
+Type: Documentation-only
+
+Using `AbortSignal` to destroy long-lived resources is deprecated. Prefer
+`using` for resource cleanup.
+
+`AbortSignal` is still a good fit for canceling actions, propagating
+cancellation from the outside, and timeouts.
+
+```js
+// Deprecated
+async function example() {
+  const ac = new AbortController();
+  const server = http.createServer(handler);
+  server.listen({ port: 3000, signal: ac.signal });
+
+  await doWork();
+  ac.abort();
+}
+```
+
+```js
+// Use this instead
+async function example() {
+  await using server = http.createServer(handler);
+  server.listen(3000);
+
+  await doWork();
+}
+```
+
+```js
+// Deprecated
+async function example() {
+  const ac = new AbortController();
+  const stream = addAbortSignal(ac.signal, fs.createReadStream(file));
+
+  await consume(stream);
+  ac.abort();
+}
+```
+
+```js
+// Use this instead
+async function example() {
+  await using stream = fs.createReadStream(file);
+
+  await consume(stream);
+}
+```
+
+```js
+// Deprecated
+async function example() {
+  const ac = new AbortController();
+  const child = spawn(command, args, { signal: ac.signal });
+
+  await doWork();
+  ac.abort();
+}
+```
+
+```js
+// Use this instead
+async function example() {
+  using child = spawn(command, args);
+
+  await doWork();
+}
+```
 
 [DEP0142]: #dep0142-repl_builtinlibs
 [NIST SP 800-38D]: https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf
@@ -4586,6 +4732,7 @@ will throw an error in a future version.
 [`response.writableEnded`]: http.md#responsewritableended
 [`response.writableFinished`]: http.md#responsewritablefinished
 [`script.createCachedData()`]: vm.md#scriptcreatecacheddata
+[`server.listen()`]: net.md#serverlisten
 [`setInterval()`]: timers.md#setintervalcallback-delay-args
 [`setTimeout()`]: timers.md#settimeoutcallback-delay-args
 [`socket.bufferSize`]: net.md#socketbuffersize

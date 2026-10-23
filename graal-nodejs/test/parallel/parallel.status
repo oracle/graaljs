@@ -52,6 +52,7 @@ test-buffer-tostring-4gb: FAIL
 # Tests the content of Node.js original help (--help option).
 # We print a different help message.
 test-cli-node-print-help: FAIL
+test-cli-node-print-help-style: FAIL
 
 # Suspicious test - executes a memory intensive section and then
 # looks for a memory leak by checking whether rss was increased
@@ -80,14 +81,26 @@ test-fs-promises: FAIL
 # V8 option --enable-sharedarraybuffer-per-context is not supported
 test-internal-util-construct-sab: FAIL
 
+# V8 option --experimental-wasm-rab-integration is not supported
+test-internal-webidl-buffer-source: FAIL
+
+# V8 option --minor-ms is not supported
+test-performance-gc-minor-ms: FAIL
+test-v8-collect-gc-profile-minor-ms: FAIL
+
 # Flag --max-old-space-size-percentage is not supported
 test-max-old-space-size-percentage: FAIL
 
 # uses V8 internal methods (%HaveSameMap, %CollectGarbage, %DebugPrint, %PrepareFunctionForOptimization)
+test-blocklist-fast-api: FAIL
+test-buffer-isutf8-isascii-fast: FAIL
 test-buffer-swap-fast: FAIL
 test-http-same-map: FAIL
 test-os-fast: FAIL
+test-perf-hooks-histogram-analysis: FAIL
 test-perf-hooks-histogram-fast-calls: FAIL
+test-perf-hooks-monitor-event-loop-delay-fast-calls: FAIL
+test-perf-hooks-sliding-window-histogram-fast-calls: FAIL
 test-process-hrtime: FAIL
 test-process-hrtime-bigint: FAIL
 test-timers-fast-calls: FAIL
@@ -116,7 +129,11 @@ test-module-strip-types: FAIL
 test-node-output-sourcemaps: FAIL
 test-source-map-cjs-require-cache: FAIL
 test-util-getcallsites: FAIL
+test-util-getcallsites-sourcemap: FAIL
 test-vm-source-map-url: FAIL
+
+# WebAssembly JS Promise Integration (JSPI) is not supported
+test-wasm: FAIL
 
 # checks v8-specific asm-related warning
 test-node-output-v8-warning: FAIL
@@ -180,6 +197,8 @@ test-vm-module-after-evaluate: FAIL
 test-vm-script-after-evaluate: FAIL
 
 # run-time user-land snapshots are not supported
+test-crypto-provider-cache-snapshot: FAIL
+test-crypto-random-cache-snapshot: FAIL
 test-snapshot-api: FAIL
 test-snapshot-argv1: FAIL
 test-snapshot-basic: FAIL
@@ -245,7 +264,6 @@ test-trace-exit-stack-limit: FAIL
 # Unclassified
 test-async-hooks-http-parser-destroy: SKIP
 test-crypto-op-during-process-exit: SKIP
-test-crypto-sign-verify: FAIL
 test-fs-promises-file-handle-close: FAIL
 test-gc-http-client-connaborted: SKIP
 test-gc-net-timeout: SKIP
@@ -344,19 +362,24 @@ test-snapshot-incompatible: SKIP
 # https://github.com/nodejs/node/issues/53579
 test-snapshot-reproducible: SKIP
 
+# There's a bug in CDP where `replMode: true` causes the Inspector
+# to collect its `Runtime.evaluate` promise before the evaluation
+# is complete. This test intentionally runs multiple REPL instances
+# in parallel, which significantly increases the likelihood of a
+# garbage collection occurring while an evaluation is still pending.
+# In normal usage, users typically don't create multiple REPLs
+# simultaneously, so this race is much much less likely to occur.
+# https://github.com/nodejs/node/issues/64595
+# https://issues.chromium.org/issues/536271637
+# https://ci.nodejs.org/job/node-stress-single-test/800 (38/1000)
+test-repl-user-error-handler: PASS, FLAKY
+
 [$system==win32]
 # https://github.com/nodejs/node/issues/59090
 test-inspector-network-fetch: PASS, FLAKY
-# https://github.com/nodejs/node/issues/54808
-test-async-context-frame: PASS, FLAKY
 # https://github.com/nodejs/node/issues/59636
-test-fs-cp-sync-error-on-exist: SKIP
 test-fs-cp-sync-symlink-points-to-dest-error: SKIP
 test-fs-cp-async-symlink-points-to-dest: SKIP
-test-fs-cp-sync-unicode-folder-names: SKIP
-
-# https://github.com/nodejs/node/issues/56751
-test-without-async-context-frame: PASS, FLAKY
 
 # Windows on ARM
 [$system==win32 && $arch==arm64]
@@ -469,7 +492,6 @@ test-http-pipeline-flood: SKIP
 test-inspector-network-fetch:  SKIP
 test-inspector-network-content-type: SKIP
 test-fetch:  SKIP
-test-without-async-context-frame: SKIP
 test-process-cpuUsage: PASS, FLAKY
 test-web-locks: SKIP
 test-http2-allow-http1-upgrade-ws: SKIP

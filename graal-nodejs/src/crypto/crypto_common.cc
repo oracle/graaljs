@@ -28,8 +28,8 @@
 namespace node {
 
 using ncrypto::ClearErrorOnReturn;
-using ncrypto::ECKeyPointer;
 using ncrypto::EVPKeyPointer;
+using ncrypto::KeyAlgorithm;
 using ncrypto::SSLPointer;
 using ncrypto::SSLSessionPointer;
 using ncrypto::StackOfX509;
@@ -61,7 +61,7 @@ MaybeLocal<Value> GetValidationErrorReason(Environment* env, int err) {
       (err == X509_V_ERR_UNABLE_TO_VERIFY_LEAF_SIGNATURE) ||
       (err == X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT) ||
       ((err == X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT) &&
-       !per_process::cli_options->use_system_ca);
+       !env->options()->use_system_ca);
 
   if (suggest_system_ca) {
     reason.append("; if the root CA is installed locally, "
@@ -215,30 +215,36 @@ MaybeLocal<Object> GetEphemeralKey(Environment* env, const SSLPointer& ssl) {
       Undefined(env->isolate()),  // name
       Undefined(env->isolate()),  // size
   };
-  EVPKeyPointer key = ssl.getPeerTempKey();
+
+  bool found = false;
   if (EVPKeyPointer key = ssl.getPeerTempKey()) {
-    int kid = key.id();
-    switch (kid) {
-      case EVP_PKEY_DH: {
-        values[0] = env->dh_string();
-        values[2] = Integer::New(env->isolate(), key.bits());
-        break;
+    const auto* algorithm = key.getAlgorithm();
+    if (algorithm == &KeyAlgorithm::DH) {
+      values[0] = env->dh_string();
+      values[2] = Integer::New(env->isolate(), key.bits());
+      found = true;
+    } else if (algorithm == &KeyAlgorithm::EC ||
+               algorithm == &KeyAlgorithm::X25519 ||
+               algorithm == &KeyAlgorithm::X448) {
+      const char* curve_name = nullptr;
+      if (algorithm == &KeyAlgorithm::EC) {
+        const int nid = ncrypto::Ec::GetCurveId(key);
+        if (nid != NID_undef) curve_name = OBJ_nid2sn(nid);
+      } else {
+        curve_name = algorithm->name();
       }
-      case EVP_PKEY_EC:
-      case EVP_PKEY_X25519:
-      case EVP_PKEY_X448: {
-        const char* curve_name;
-        if (kid == EVP_PKEY_EC) {
-          int nid = ECKeyPointer::GetGroupName(key);
-          curve_name = OBJ_nid2sn(nid);
-        } else {
-          curve_name = OBJ_nid2sn(kid);
-        }
+      if (curve_name != nullptr) {
         values[0] = env->ecdh_string();
         values[1] = OneByteString(env->isolate(), curve_name);
         values[2] = Integer::New(env->isolate(), key.bits());
-        break;
+        found = true;
       }
+    }
+  }
+  if (!found) {
+    if (auto name = ssl.getNegotiatedGroup()) {
+      values[0] = env->tls_group_string();
+      values[1] = OneByteString(env->isolate(), name.value());
     }
   }
 
@@ -282,7 +288,7 @@ MaybeLocal<Value> GetPeerCert(
 
   // NOTE: This is because of the odd OpenSSL behavior. On client `cert_chain`
   // contains the `peer_certificate`, but on server it doesn't.
-  X509Pointer cert(is_server ? SSL_get_peer_certificate(ssl.get()) : nullptr);
+  X509Pointer cert(is_server ? X509Pointer::PeerFrom(ssl) : X509Pointer());
   STACK_OF(X509)* ssl_certs = SSL_get_peer_cert_chain(ssl.get());
   if (!cert && (ssl_certs == nullptr || sk_X509_num(ssl_certs) == 0))
     return Undefined(env->isolate());

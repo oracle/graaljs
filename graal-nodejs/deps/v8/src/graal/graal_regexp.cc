@@ -69,6 +69,24 @@ v8::Local<v8::RegExp> GraalRegExp::New(v8::Local<v8::Context> context, v8::Local
     return v8::Local<v8::RegExp>::New(v8_isolate, v8_regexp);
 }
 
+v8::MaybeLocal<v8::Object> GraalRegExp::Exec(v8::Local<v8::Context> context, v8::Local<v8::String> subject) {
+    GraalIsolate* graal_isolate = Isolate();
+    if (!graal_isolate->CheckJSExecutionAllowed()) {
+        return v8::MaybeLocal<v8::Object>();
+    }
+    GraalContext* graal_context = reinterpret_cast<GraalContext*> (*context);
+    GraalString* graal_subject = reinterpret_cast<GraalString*> (*subject);
+    JNI_CALL(jobject, java_result, graal_isolate, GraalAccessMethod::regexp_exec, Object,
+            graal_context->GetJavaObject(), GetJavaObject(), graal_subject->GetJavaObject());
+    if (graal_isolate->GetJNIEnv()->ExceptionCheck()) {
+        return v8::MaybeLocal<v8::Object>();
+    }
+    GraalValue* graal_result = GraalValue::FromJavaObject(graal_isolate, java_result);
+    v8::Object* v8_result = reinterpret_cast<v8::Object*> (graal_result);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::Object>::New(v8_isolate, v8_result);
+}
+
 v8::Local<v8::String> GraalRegExp::GetSource() const {
     GraalIsolate* graal_isolate = Isolate();
     jobject java_regexp = GetJavaObject();

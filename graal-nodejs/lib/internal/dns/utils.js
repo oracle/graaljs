@@ -24,7 +24,9 @@ const {
   validateArray,
   validateInt32,
   validateOneOf,
+  validatePort,
   validateString,
+  validateStringWithoutNullBytes,
   validateUint32,
 } = require('internal/validators');
 let binding;
@@ -45,14 +47,18 @@ const {
 } = require('internal/v8/startup_snapshot');
 
 function validateTimeout(options) {
-  const { timeout = -1 } = { ...options };
+  let { timeout = -1 } = { ...options };
   validateInt32(timeout, 'options.timeout', -1);
+  // Coerce -0 to +0.
+  timeout += 0;
   return timeout;
 }
 
 function validateMaxTimeout(options) {
-  const { maxTimeout = 0 } = { ...options };
+  let { maxTimeout = 0 } = { ...options };
   validateUint32(maxTimeout, 'options.maxTimeout');
+  // Coerce -0 to +0.
+  maxTimeout += 0;
   return maxTimeout;
 }
 
@@ -125,6 +131,7 @@ class ResolverBase {
         if (ipVersion !== 0) {
           const port = NumberParseInt(
             RegExpPrototypeSymbolReplace(addrSplitRE, serv, '$2')) || IANA_DNS_PORT;
+          validatePort(port);
           return ArrayPrototypePush(newSet, [ipVersion, match[1], port]);
         }
       }
@@ -134,13 +141,13 @@ class ResolverBase {
 
       if (addrSplitMatch) {
         const hostIP = addrSplitMatch[1];
-        const port = addrSplitMatch[2] || IANA_DNS_PORT;
+        const port = NumberParseInt(addrSplitMatch[2]) || IANA_DNS_PORT;
 
         ipVersion = isIP(hostIP);
 
         if (ipVersion !== 0) {
-          return ArrayPrototypePush(
-            newSet, [ipVersion, hostIP, NumberParseInt(port)]);
+          validatePort(port);
+          return ArrayPrototypePush(newSet, [ipVersion, hostIP, port]);
         }
       }
 
@@ -172,10 +179,10 @@ class ResolverBase {
 
 
   setLocalAddress(ipv4, ipv6) {
-    validateString(ipv4, 'ipv4');
+    validateStringWithoutNullBytes(ipv4, 'ipv4');
 
     if (ipv6 !== undefined) {
-      validateString(ipv6, 'ipv6');
+      validateStringWithoutNullBytes(ipv6, 'ipv6');
     }
 
     this._handle.setLocalAddress(ipv4, ipv6);

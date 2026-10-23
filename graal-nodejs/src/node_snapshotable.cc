@@ -394,6 +394,7 @@ size_t SnapshotSerializer::Write(const ImmediateInfo::SerializeInfo& data) {
 // [ 4/8 bytes ]  snapshot index of root
 // [ 4/8 bytes ]  snapshot index of milestones
 // [ 4/8 bytes ]  snapshot index of observers
+// [ 4/8 bytes ]  snapshot index of uv_metrics
 template <>
 performance::PerformanceState::SerializeInfo SnapshotDeserializer::Read() {
   Debug("Read<PerformanceState::SerializeInfo>()\n");
@@ -402,6 +403,7 @@ performance::PerformanceState::SerializeInfo SnapshotDeserializer::Read() {
   result.root = ReadArithmetic<AliasedBufferIndex>();
   result.milestones = ReadArithmetic<AliasedBufferIndex>();
   result.observers = ReadArithmetic<AliasedBufferIndex>();
+  result.uv_metrics = ReadArithmetic<AliasedBufferIndex>();
   if (is_debug) {
     std::string str = ToStr(result);
     Debug("Read<PerformanceState::SerializeInfo>() %s\n", str);
@@ -420,6 +422,7 @@ size_t SnapshotSerializer::Write(
   size_t written_total = WriteArithmetic<AliasedBufferIndex>(data.root);
   written_total += WriteArithmetic<AliasedBufferIndex>(data.milestones);
   written_total += WriteArithmetic<AliasedBufferIndex>(data.observers);
+  written_total += WriteArithmetic<AliasedBufferIndex>(data.uv_metrics);
 
   Debug("Write<PerformanceState::SerializeInfo>() wrote %d bytes\n",
         written_total);
@@ -630,10 +633,6 @@ const SnapshotData* SnapshotData::FromEmbedderWrapper(
   return data != nullptr ? data->impl_ : nullptr;
 }
 
-EmbedderSnapshotData::Pointer SnapshotData::AsEmbedderWrapper() const {
-  return EmbedderSnapshotData::Pointer{new EmbedderSnapshotData(this, false)};
-}
-
 bool SnapshotData::FromFile(SnapshotData* out, FILE* in) {
   return FromBlob(out, ReadFileSync(in));
 }
@@ -703,7 +702,8 @@ bool SnapshotData::Check() const {
 
 SnapshotData::~SnapshotData() {
   if (data_ownership == DataOwnership::kOwned &&
-      v8_snapshot_blob_data.data != nullptr) {
+      v8_snapshot_blob_data.data != nullptr &&
+      !IsFirstSnapshotBlob(v8_snapshot_blob_data.data)) {
     delete[] v8_snapshot_blob_data.data;
   }
 }
@@ -1570,17 +1570,17 @@ void CompileSerializeMain(const FunctionCallbackInfo<Value>& args) {
   CHECK(args[0]->IsString());
   Local<String> filename = args[0].As<String>();
   Local<String> source = args[1].As<String>();
+  Environment* env = Environment::GetCurrent(args);
   Isolate* isolate = args.GetIsolate();
   Local<Context> context = isolate->GetCurrentContext();
   // TODO(joyeecheung): do we need all of these? Maybe we would want a less
   // internal version of them.
-  LocalVector<String> parameters(
-      isolate,
-      {
-          FIXED_ONE_BYTE_STRING(isolate, "require"),
-          FIXED_ONE_BYTE_STRING(isolate, "__filename"),
-          FIXED_ONE_BYTE_STRING(isolate, "__dirname"),
-      });
+  LocalVector<String> parameters(isolate,
+                                 {
+                                     env->require_string(),
+                                     env->__filename_string(),
+                                     env->__dirname_string(),
+                                 });
 
   ScriptOrigin script_origin(filename, 0, 0, true);
   ScriptCompiler::Source script_source(source, script_origin);

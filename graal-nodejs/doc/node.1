@@ -42,7 +42,7 @@
 .
 .Nm node
 .Cm inspect
-.Op Fl e Ar string | Ar script.js | Fl | Ar <host>:<port>
+.Op Ar <program-entry-point> | Fl e Ar string | Ar <host>:<port>
 .Ar ...
 .
 .Nm node
@@ -87,6 +87,9 @@ Allow spawning process when using the permission model.
 .
 .It Fl -allow-inspector
 Allow inspector access when using the permission model.
+.
+.It Fl -allow-openssl-store
+Allow using OpenSSL STORE loaders when using the permission model.
 .
 .It Fl -allow-wasi
 Allow execution of WASI when using the permission model.
@@ -156,9 +159,15 @@ code from strings throw an exception instead. This does not affect the Node.js
 `vm` module.
 .
 .It Fl -enable-fips
-Enable FIPS-compliant crypto at startup.
-Requires Node.js to be built with
-.Sy ./configure --openssl-fips .
+Enable FIPS mode at startup. With OpenSSL 3, a configured provider named
+\fBfips\fR must be available and initialize successfully. With OpenSSL 1.1.1,
+Node.js must be built against a FIPS-capable OpenSSL.
+.
+.It Fl -enable-fips-indicator-events
+Publish OpenSSL FIPS indicator results to the
+\fB'crypto.fips.indicator'\fR diagnostics channel. This option requires OpenSSL
+3.4 or later. It does not enable FIPS mode or change whether an operation
+is permitted.
 .
 .It Fl -enable-source-maps
 Enable Source Map V3 support for stack traces.
@@ -169,14 +178,81 @@ Interpret the entry point as a URL.
 .It Fl -experimental-addon-modules
 Enable experimental addon module support.
 .
-.It Fl -experimental-config-file
-Specifies the configuration file to load.
+.It Fl -experimental-config-file , Fl -experimental-config-file Ns = Ns Ar config , Fl -experimental-default-config-file
+If present, Node.js will look for a configuration file at the specified path.
+If the path is not specified, Node.js will look for a \fBnode.config.json\fR file
+in the current working directory.
+To specify a custom path, use the \fB--experimental-config-file=\fR\fBpath\fR form.
+The space-separated \fB--experimental-config-file path\fR form is not supported.
+Node.js will read the configuration file and apply the settings. The
+configuration file should be a JSON file with the following structure. \fBvX.Y.Z\fR
+in the \fB$schema\fR must be replaced with the version of Node.js you are using.
+.Bd -literal
+{
+  "$schema": "https://nodejs.org/dist/vX.Y.Z/docs/node-config-schema.json",
+  "nodeOptions": {
+    "import": [
+      "amaro/strip"
+    ],
+    "watch-path": "src",
+    "watch-preserve-output": true
+  },
+  "testRunner": {
+    "test-isolation": "process"
+  },
+  "watch": {
+    "watch-preserve-output": true
+  }
+}
+.Ed
+The configuration file supports namespace-specific options:
+.Bl -bullet
+.It
+The \fBnodeOptions\fR field contains CLI flags that are allowed in \fBNODE_OPTIONS\fR.
+.It
+Namespace fields like \fBtestRunner\fR contain configuration specific to that subsystem.
+.El
+No-op flags are not supported.
+Not all V8 flags are currently supported.
+It is possible to use the official JSON schema
+to validate the configuration file, which may vary depending on the Node.js version.
+Each key in the configuration file corresponds to a flag that can be passed
+as a command-line argument. The value of the key is the value that would be
+passed to the flag.
+For example, the configuration file above is equivalent to
+the following command-line arguments:
+.Bd -literal
+node --import amaro/strip --watch-path=src --watch-preserve-output --test-isolation=process
+.Ed
+The priority in configuration is as follows:
+.Bl -bullet
+.It
+NODE_OPTIONS and command-line options
+.It
+Dotenv NODE_OPTIONS
+.It
+Configuration file
+.El
+Values in the configuration file will not override the values in the environment
+variables, command-line options, or the \fBNODE_OPTIONS\fR env file parsed by the
+\fB--env-file\fR flag.
+Keys cannot be duplicated within the same or different namespaces.
+The configuration parser will throw an error if the configuration file contains
+unknown keys or keys that cannot be used in a namespace.
+Node.js will not sanitize or perform validation on the user-provided configuration,
+so \fBNEVER\fR use untrusted configuration files.
 .
 .It Fl -experimental-default-config-file
-Enable support for automatically loading node.config.json.
+This flag is an alias for \fB--experimental-config-file\fR without an argument.
+If present, Node.js will look for a
+\fBnode.config.json\fR file in the current working directory and load it as a
+configuration file.
 .
 .It Fl -experimental-import-meta-resolve
 Enable experimental ES modules support for import.meta.resolve().
+.
+.It Fl -experimental-import-text
+Enable experimental support for importing modules with \fBwith { type: 'text' }\fR.
 .
 .It Fl -experimental-loader Ns = Ns Ar module
 Specify the
@@ -185,6 +261,14 @@ to use as a custom module loader.
 .
 .It Fl -permission
 Enable the permission model.
+.
+.It Fl -experimental-package-map Ns = Ns Ar path
+Enable experimental package map resolution using the specified configuration file.
+.
+.It Fl -experimental-stream-iter
+Enable the experimental
+.Sy node:stream/iter
+module.
 .
 .It Fl -experimental-shadow-realm
 Use this flag to enable ShadowRealm support.
@@ -219,6 +303,10 @@ Disable support for loading ECMAScript modules with require().
 .It Fl -no-strip-types
 Disable type-stripping for TypeScript files.
 .
+.It Fl -experimental-test-tag-filter Ar tag
+Run only tests whose tag set contains \fItag\fR. May be specified multiple
+times; tests must contain every filter to run.
+.
 .It Fl -experimental-vm-modules
 Enable experimental ES module support in VM module.
 .
@@ -239,11 +327,23 @@ Enable experimental support for storage inspection.
 .It Fl -force-context-aware
 Disable loading native addons that are not context-aware.
 .
-.It Fl -force-fips
-Force FIPS-compliant crypto on startup
-(Cannot be disabled from script code).
-Same requirements as
-.Fl -enable-fips .
+.It Fl -force-fips Ns = Ns Ar [mode]
+Enable FIPS mode at startup and prevent it from being disabled from script
+code. The same OpenSSL requirements as \fB--enable-fips\fR apply.
+An optional mode can be specified using \fB--force-fips=mode\fR:
+.Bl -bullet
+.It
+\fBprovider\fR: Preserve the OpenSSL FIPS provider's configured handling of
+non-approved operations. This is the current default when the mode is
+omitted.
+.It
+\fBstrict\fR: Reject non-approved operations reported through the OpenSSL FIPS
+indicator callback. This mode requires OpenSSL 3.4 or later.
+.El
+The \fBstrict\fR mode only covers operations reported through the callback for
+OpenSSL's default library context. It does not cover native addons that use
+another \fBOSSL_LIB_CTX\fR or another copy of \fBlibcrypto\fR, nor operation-specific
+indicators that do not invoke the callback.
 .
 .It Fl -frozen-intrinsics
 Enable experimental frozen intrinsics support.
@@ -356,10 +456,6 @@ Note: This flag utilizes
 .Fl -max-old-space-size ,
 which may be unreliable on 32-bit platforms due to integer overflow issues.
 .
-.It Fl -napi-modules
-This option is a no-op.
-It is kept for compatibility.
-.
 .It Fl -no-deprecation
 Silence deprecation warnings.
 .
@@ -386,12 +482,42 @@ Enable extra debug checks for memory leaks in Node.js internals. This is
 usually only useful for developers debugging Node.js itself.
 .
 .It Fl -openssl-config Ns = Ns Ar file
-Load an OpenSSL configuration file on startup.
-Among other uses, this can be used to enable FIPS-compliant crypto if Node.js is built with
-.Sy ./configure --openssl-fips .
+Load an OpenSSL configuration file on startup. The file can activate an
+OpenSSL 3 FIPS provider or configure a FIPS-capable OpenSSL 1.1.1 build. See
+FIPS mode.
+This option takes precedence over the \fBOPENSSL_CONF\fR environment variable.
+.
+.It Fl -openssl-legacy-provider
+Enable OpenSSL 3.0 legacy provider. For more information please see
+OSSL_PROVIDER-legacy.
+.
+.It Fl -openssl-shared-config
+Enable OpenSSL default configuration section, \fBopenssl_conf\fR to be read from
+the OpenSSL configuration file. The default configuration file is named
+\fBopenssl.cnf\fR but this can be changed using the environment variable
+\fBOPENSSL_CONF\fR, or by using the command line option \fB--openssl-config\fR.
+The location of the default OpenSSL configuration file depends on how OpenSSL
+is being linked to Node.js. Sharing the OpenSSL configuration may have unwanted
+implications and it is recommended to use a configuration section specific to
+Node.js which is \fBnodejs_conf\fR and is default when this option is not used.
 .
 .It Fl -pending-deprecation
 Emit pending deprecation warnings.
+.
+.It Fl -permission-audit
+Enable audit mode for the permission model. When enabled, permission checks
+are performed but access is \fBnot\fR denied — no \fBERR_ACCESS_DENIED\fR error is
+thrown. Instead, each permission violation is published through the
+\fBnode:diagnostics_channel\fR module, and execution continues normally.
+This flag does not require \fB--permission\fR to be specified. The
+\fB--allow-*\fR flags are not needed in audit mode, since no
+access is denied.
+Audit mode is useful for discovering what permissions your application
+requires before deploying with \fB--permission\fR. See the
+Permission Model documentation for the list of diagnostics channel names
+and the message format.
+If both \fB--permission\fR and \fB--permission-audit\fR are specified,
+\fB--permission\fR takes precedence and the Permission Model runs in enforce mode.
 .
 .It Fl -preserve-symlinks
 Instructs the module loader to preserve symbolic links when resolving and caching modules other than the main module.
@@ -893,13 +1019,16 @@ When set, Node.js writes JavaScript code coverage information to
 .Ar dir .
 .
 .It Ev OPENSSL_CONF Ar file
-Load an OpenSSL configuration file on startup.
-Among other uses, this can be used to enable FIPS-compliant crypto if Node.js is built with
-.Sy ./configure --openssl-fips .
-.Pp
-If the
-.Fl -openssl-config
-command-line option is used, this environment variable is ignored.
+Load an OpenSSL configuration file on startup. The file can be used as part of
+a FIPS mode configuration.
+If the variable is set to an empty value, Node.js starts without loading any
+OpenSSL configuration file. This is a way past a default configuration file
+that exists but cannot be read, for example when \fB/etc/ssl\fR is not accessible
+to the user Node.js runs as, which is otherwise fatal at startup. No
+configuration is applied in that case, including any FIPS mode setup the
+file would have performed.
+If the \fB--openssl-config\fR command-line option is used, the environment
+variable is ignored, and an empty value has no effect.
 .
 .It Ev SSL_CERT_DIR Ar dir
 If

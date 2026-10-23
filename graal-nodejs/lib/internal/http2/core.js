@@ -358,8 +358,15 @@ function emit(self, ...args) {
 // the block of headers on.
 function onSessionHeaders(handle, id, cat, flags, headers, sensitiveHeaders) {
   const session = this[kOwner];
-  if (session.destroyed)
+  // Session may have been destroyed mid-receive (e.g. session.destroy() from a
+  // 'stream' handler drained via nextTick inside MakeCallback while nghttp2 is
+  // still walking the receive buffer). Tear down the C++ stream so subsequent
+  // DATA frames do not call CallJSOnreadMethod with a missing onread.
+  if (session.destroyed) {
+    handle.rstStream(NGHTTP2_REFUSED_STREAM);
+    handle.destroy();
     return;
+  }
 
   const type = session[kType];
   session[kUpdateTimer]();
@@ -470,7 +477,11 @@ function onSessionHeaders(handle, id, cat, flags, headers, sensitiveHeaders) {
     }
   }
   if (endOfStream) {
-    stream.push(null);
+    const reqAsync = stream[kRequestAsyncResource];
+    if (reqAsync)
+      reqAsync.runInAsyncScope(() => stream.push(null));
+    else
+      stream.push(null);
   }
 }
 
@@ -591,7 +602,7 @@ function onPing(payload) {
 // point, close them. If there is an open fd for file send, close that also.
 // At this point the underlying node::http2:Http2Stream handle is no
 // longer usable so destroy it also.
-function onStreamClose(code) {
+function onStreamClose(code, peerReset) {
   const stream = this[kOwner];
   if (!stream || stream.destroyed)
     return false;
@@ -610,8 +621,9 @@ function onStreamClose(code) {
     // If errored or ended, we can destroy immediately.
     stream.destroy();
   } else {
-    // Wait for end to destroy.
-    stream.on('end', stream[kMaybeDestroy]);
+    // Preserve buffered reads after a clean reset, but do not wait for
+    // pending writes: the peer reset may prevent them from finishing.
+    stream.on('end', peerReset ? stream.destroy : stream[kMaybeDestroy]);
     // Push a null so the stream can end whenever the client consumes
     // it completely.
     stream.push(null);
@@ -931,8 +943,8 @@ const proxySocketHandler = {
       case 'setTimeout':
       case 'ref':
       case 'unref':
-        return session[prop].bind(session);
       case 'destroy':
+        return session[prop].bind(session);
       case 'emit':
       case 'end':
       case 'pause':
@@ -965,9 +977,9 @@ const proxySocketHandler = {
       case 'setTimeout':
       case 'ref':
       case 'unref':
+      case 'destroy':
         session[prop] = value;
         return true;
-      case 'destroy':
       case 'emit':
       case 'end':
       case 'pause':
@@ -1991,6 +2003,47 @@ function shutdownWritable(callback) {
     return afterShutdown.call(req, 0);
 }
 
+// Completes one of the two halves of a dispatched write (the write callback
+// itself and the end-of-stream check); the stream machinery callback runs
+// once both have finished. The state lives on stream[kState] because only a
+// single write may be in flight at any given time.
+function finishWrite(stream) {
+  const state = stream[kState];
+  if (--state.writePending !== 0)
+    return;
+  const cb = state.writeCb;
+  state.writeCb = null;
+  const err = aggregateTwoErrors(state.endErr, state.writeErr);
+  state.writeErr = null;
+  state.endErr = null;
+  // writeGeneric does not destroy on error and
+  // we cannot enable autoDestroy,
+  // so make sure to destroy on error.
+  if (err) {
+    stream.destroy(err);
+  }
+  cb(err);
+}
+
+// Runs on the tick after a write was dispatched: if the write turned out to
+// be the last chunk of an ending writable, shut the writable side down right
+// away so the final DATA frame can include the END_STREAM flag.
+function endCheckNT(stream) {
+  const state = stream[kState];
+  if (state.writeErr ||
+      !stream._writableState.ending ||
+      stream._writableState.buffered.length ||
+      (state.flags & STREAM_FLAGS_HAS_TRAILERS)) {
+    finishWrite(stream);
+    return;
+  }
+  debugStreamObj(stream, 'shutting down writable on last write');
+  shutdownWritable.call(stream, (err) => {
+    state.endErr = err;
+    finishWrite(stream);
+  });
+}
+
 function finishSendTrailers(stream, headersList) {
   // The stream might be destroyed and in that case
   // there is nothing to do.
@@ -2098,6 +2151,12 @@ class Http2Stream extends Duplex {
       writeQueueSize: 0,
       trailersReady: false,
       endAfterHeaders: false,
+      writeCb: null,
+      writeErr: null,
+      endErr: null,
+      writePending: 0,
+      shutdownWritableCalled: false,
+      fd: -1,
     };
 
     // Fields used by the compat API to avoid megamorphisms.
@@ -2285,45 +2344,34 @@ class Http2Stream extends Duplex {
     if (!this.headersSent)
       this[kProceed]();
 
-    let req;
+    // The stream machinery dispatches at most one _write()/_writev() at a
+    // time, so the coordination state between the write callback and the
+    // end-of-stream check below can live on the stream state instead of
+    // being captured by per-write closures.
+    const state = this[kState];
+    state.writeCb = cb;
+    state.writeErr = null;
+    state.endErr = null;
 
-    let waitingForWriteCallback = true;
-    let waitingForEndCheck = true;
-    let writeCallbackErr;
-    let endCheckCallbackErr;
-    const done = () => {
-      if (waitingForEndCheck || waitingForWriteCallback) return;
-      const err = aggregateTwoErrors(endCheckCallbackErr, writeCallbackErr);
-      // writeGeneric does not destroy on error and
-      // we cannot enable autoDestroy,
-      // so make sure to destroy on error.
-      if (err) {
-        this.destroy(err);
-      }
-      cb(err);
-    };
+    if (state.flags & STREAM_FLAGS_HAS_TRAILERS) {
+      // Trailers are pending, so the writable side cannot be shut down
+      // early anyway; there is no point in scheduling the end check.
+      state.writePending = 1;
+    } else {
+      state.writePending = 2;
+      // Shutdown write stream right after last chunk is sent
+      // so final DATA frame can include END_STREAM flag
+      process.nextTick(endCheckNT, this);
+    }
+
+    // This is invoked both as a method on the write req and as a plain
+    // call, so the stream has to be captured here.
     const writeCallback = (err) => {
-      waitingForWriteCallback = false;
-      writeCallbackErr = err;
-      done();
+      state.writeErr = err;
+      finishWrite(this);
     };
-    const endCheckCallback = (err) => {
-      waitingForEndCheck = false;
-      endCheckCallbackErr = err;
-      done();
-    };
-    // Shutdown write stream right after last chunk is sent
-    // so final DATA frame can include END_STREAM flag
-    process.nextTick(() => {
-      if (writeCallbackErr ||
-        !this._writableState.ending ||
-        this._writableState.buffered.length ||
-        (this[kState].flags & STREAM_FLAGS_HAS_TRAILERS))
-        return endCheckCallback();
-      debugStreamObj(this, 'shutting down writable on last write');
-      shutdownWritable.call(this, endCheckCallback);
-    });
 
+    let req;
     if (writev)
       req = writevGeneric(this, data, writeCallback);
     else
@@ -2519,6 +2567,15 @@ class Http2Stream extends Duplex {
         });
       }
     }
+
+    // A write in flight may never get its native completion callback once the
+    // stream tears down; settle it so the Writable can clean up.
+    if (state.writeCb !== null) {
+      const writeCb = state.writeCb;
+      state.writeCb = null;
+      state.writePending = 0;
+      writeCb(err);
+    }
     callback(err);
   }
   // The Http2Stream can be destroyed if it has closed and if the readable
@@ -2618,31 +2675,35 @@ function prepareResponseHeaders(stream, headersParam, options) {
 function prepareResponseHeadersObject(oldHeaders, options) {
   assertIsObject(oldHeaders, 'headers', ['Object', 'Array']);
   const headers = { __proto__: null };
+  let statusCode;
+  let hasDate = false;
 
   if (oldHeaders !== null && oldHeaders !== undefined) {
     // This loop is here for performance reason. Do not change.
+    // The :status and date fields are picked up while copying so they do
+    // not have to be looked up again on the null-prototype copy.
     for (const key in oldHeaders) {
       if (ObjectHasOwn(oldHeaders, key)) {
-        headers[key] = oldHeaders[key];
+        const value = oldHeaders[key];
+        headers[key] = value;
+        if (key === HTTP2_HEADER_STATUS)
+          statusCode = value;
+        else if (key === HTTP2_HEADER_DATE)
+          hasDate = value != null;
       }
     }
     headers[kSensitiveHeaders] = oldHeaders[kSensitiveHeaders];
   }
 
-  const statusCode =
-    headers[HTTP2_HEADER_STATUS] =
-      headers[HTTP2_HEADER_STATUS] | 0 || HTTP_STATUS_OK;
+  statusCode = headers[HTTP2_HEADER_STATUS] = statusCode | 0 || HTTP_STATUS_OK;
 
-  if (options.sendDate == null || options.sendDate) {
-    headers[HTTP2_HEADER_DATE] ??= utcDate();
+  if (!hasDate && (options.sendDate == null || options.sendDate)) {
+    headers[HTTP2_HEADER_DATE] = utcDate();
   }
 
   validatePreparedResponseHeaders(headers, statusCode);
 
-  return {
-    headers,
-    statusCode: headers[HTTP2_HEADER_STATUS],
-  };
+  return { headers, statusCode };
 }
 
 function prepareResponseHeadersArray(headers, options) {
@@ -3011,15 +3072,17 @@ class ServerHttp2Stream extends Http2Stream {
     const state = this[kState];
 
     assertIsObject(options, 'options');
-    options = { ...options };
+    // The options are only read, never mutated, so the user-provided object
+    // can be used directly instead of copying it.
+    options ??= kEmptyObject;
 
     debugStreamObj(this, 'initiating response');
     this[kUpdateTimer]();
 
-    options.endStream = !!options.endStream;
+    const endStream = !!options.endStream;
 
     let streamOptions = 0;
-    if (options.endStream)
+    if (endStream)
       streamOptions |= STREAM_OPTION_EMPTY_PAYLOAD;
 
     if (options.waitForTrailers) {
@@ -3037,12 +3100,11 @@ class ServerHttp2Stream extends Http2Stream {
 
     // Close the writable side if the endStream option is set or status
     // is one of known codes with no payload, or it's a head request
-    if (!!options.endStream ||
+    if (endStream ||
         statusCode === HTTP_STATUS_NO_CONTENT ||
         statusCode === HTTP_STATUS_RESET_CONTENT ||
         statusCode === HTTP_STATUS_NOT_MODIFIED ||
         this.headRequest === true) {
-      options.endStream = true;
       this.end();
     }
 
@@ -3246,6 +3308,7 @@ function handleHeaderContinue(headers) {
 }
 
 const setTimeoutValue = {
+  __proto__: null,
   configurable: true,
   enumerable: true,
   writable: true,

@@ -33,6 +33,18 @@ module.exports = ObjectFreeze({
 
     return permission.has(scope, reference);
   },
+  drop(scope, reference) {
+    validateString(scope, 'scope');
+    if (reference != null) {
+      if (isBuffer(reference)) {
+        validateBuffer(reference, 'reference');
+      } else {
+        validateString(reference, 'reference');
+      }
+    }
+
+    permission.drop(scope, reference);
+  },
   availableFlags() {
     return [
       '--allow-fs-read',
@@ -42,6 +54,7 @@ module.exports = ObjectFreeze({
       '--allow-inspector',
       '--allow-wasi',
       '--allow-worker',
+      '--allow-openssl-store',
     ];
   },
 });

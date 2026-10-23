@@ -1,7 +1,6 @@
 'use strict';
 
 const {
-  SafeSet,
   StringPrototypeToLowerCase,
   TypedArrayPrototypeGetBuffer,
 } = primordials;
@@ -13,23 +12,19 @@ const {
   kCryptoJobWebCrypto,
   kKeyFormatDER,
   kKeyFormatRawPublic,
+  kKeyTypePublic,
   kSignJobModeSign,
   kSignJobModeVerify,
   kWebCryptoKeyFormatPKCS8,
   kWebCryptoKeyFormatRaw,
   kWebCryptoKeyFormatSPKI,
-  NidKeyPairGenJob,
-  EVP_PKEY_ED25519,
-  EVP_PKEY_ED448,
-  EVP_PKEY_X25519,
-  EVP_PKEY_X448,
+  NamedKeyPairGenJob,
 } = internalBinding('crypto');
 
 const {
   getUsagesMask,
-  getUsagesUnion,
-  hasAnyNotIn,
   jobPromise,
+  toUsagesSet,
 } = require('internal/crypto/util');
 
 const {
@@ -39,105 +34,48 @@ const {
 const {
   getCryptoKeyHandle,
   getCryptoKeyType,
-  getKeyObjectHandle,
-  getKeyObjectType,
   InternalCryptoKey,
 } = require('internal/crypto/keys');
 
 const {
+  createKeyUsages,
+  getKeyPairUsages,
   importDerKey,
   importJwkKey,
   importRawKey,
   validateJwk,
+  validateKeyUsages,
+  validateUsagesNotEmpty,
+  verifyAcceptableKeyUse,
 } = require('internal/crypto/webcrypto_util');
 
-function verifyAcceptableCfrgKeyUse(name, isPublic, usages) {
-  let checkSet;
-  switch (name) {
-    case 'X25519':
-      // Fall through
-    case 'X448':
-      checkSet = isPublic ? [] : ['deriveKey', 'deriveBits'];
-      break;
-    case 'Ed25519':
-      // Fall through
-    case 'Ed448':
-      checkSet = isPublic ? ['verify'] : ['sign'];
-      break;
-    default:
-      throw lazyDOMException(
-        'The algorithm is not supported', 'NotSupportedError');
-  }
-  if (hasAnyNotIn(usages, checkSet)) {
-    throw lazyDOMException(
-      `Unsupported key usage for a ${name} key`,
-      'SyntaxError');
-  }
-}
+const kDeriveUsages = createKeyUsages([], ['deriveKey', 'deriveBits']);
 
-function cfrgGenerateKey(algorithm, extractable, keyUsages) {
+const kSignVerifyUsages = createKeyUsages(['verify'], ['sign']);
+
+const kUsages = {
+  '__proto__': null,
+  'X25519': kDeriveUsages,
+  'X448': kDeriveUsages,
+  'Ed25519': kSignVerifyUsages,
+  'Ed448': kSignVerifyUsages,
+};
+
+function cfrgGenerateKey(algorithm, extractable, usages) {
   const { name } = algorithm;
-
-  const usageSet = new SafeSet(keyUsages);
-  switch (name) {
-    case 'Ed25519':
-      // Fall through
-    case 'Ed448':
-      if (hasAnyNotIn(usageSet, ['sign', 'verify'])) {
-        throw lazyDOMException(
-          `Unsupported key usage for an ${name} key`,
-          'SyntaxError');
-      }
-      break;
-    case 'X25519':
-      // Fall through
-    case 'X448':
-      if (hasAnyNotIn(usageSet, ['deriveKey', 'deriveBits'])) {
-        throw lazyDOMException(
-          `Unsupported key usage for an ${name} key`,
-          'SyntaxError');
-      }
-      break;
-  }
-  const nid = {
-    '__proto__': null,
-    'Ed25519': EVP_PKEY_ED25519,
-    'Ed448': EVP_PKEY_ED448,
-    'X25519': EVP_PKEY_X25519,
-    'X448': EVP_PKEY_X448,
-  }[name];
-
-  let publicUsages;
-  let privateUsages;
-  switch (name) {
-    case 'Ed25519':
-      // Fall through
-    case 'Ed448':
-      publicUsages = getUsagesUnion(usageSet, 'verify');
-      privateUsages = getUsagesUnion(usageSet, 'sign');
-      break;
-    case 'X25519':
-      // Fall through
-    case 'X448':
-      publicUsages = new SafeSet();
-      privateUsages = getUsagesUnion(usageSet, 'deriveKey', 'deriveBits');
-      break;
-  }
+  const allowedUsages = kUsages[name];
+  const usagesSet = validateKeyUsages(usages, allowedUsages.keygen, name);
 
   const keyAlgorithm = { name };
+  const keyUsages = getKeyPairUsages(usagesSet, allowedUsages);
+  validateUsagesNotEmpty(keyUsages.private);
 
-  if (privateUsages.size === 0) {
-    throw lazyDOMException(
-      'Usages cannot be empty when creating a key.',
-      'SyntaxError');
-  }
-
-  return jobPromise(() => new NidKeyPairGenJob(
+  return jobPromise(() => new NamedKeyPairGenJob(
     kCryptoJobWebCrypto,
-    nid,
+    name,
     keyAlgorithm,
-    getUsagesMask(publicUsages),
-    getUsagesMask(privateUsages),
+    getUsagesMask(keyUsages.public),
+    getUsagesMask(keyUsages.private),
     extractable));
 }
 
@@ -172,29 +110,39 @@ function cfrgImportKey(
   keyData,
   algorithm,
   extractable,
-  keyUsages) {
+  usages) {
 
   const { name } = algorithm;
   let handle;
-  const usagesSet = new SafeSet(keyUsages);
+  const allowedUsages = kUsages[name];
+  const usagesSet = toUsagesSet(usages);
   switch (format) {
-    case 'KeyObject': {
-      verifyAcceptableCfrgKeyUse(
-        name, getKeyObjectType(keyData) === 'public', usagesSet);
-      handle = getKeyObjectHandle(keyData);
+    case 'KeyObjectHandle':
+      verifyAcceptableKeyUse(
+        name,
+        usagesSet,
+        keyData.getKeyType() === kKeyTypePublic ?
+          allowedUsages.public :
+          allowedUsages.private);
+      handle = keyData;
       break;
-    }
     case 'spki': {
-      verifyAcceptableCfrgKeyUse(name, true, usagesSet);
+      verifyAcceptableKeyUse(name, usagesSet, allowedUsages.public);
       handle = importDerKey(keyData, true);
       break;
     }
     case 'pkcs8': {
-      verifyAcceptableCfrgKeyUse(name, false, usagesSet);
+      verifyAcceptableKeyUse(name, usagesSet, allowedUsages.private);
       handle = importDerKey(keyData, false);
       break;
     }
     case 'jwk': {
+      const isPublic = keyData.d === undefined;
+      verifyAcceptableKeyUse(
+        name,
+        usagesSet,
+        isPublic ? allowedUsages.public : allowedUsages.private);
+
       const expectedUse = (name === 'X25519' || name === 'X448') ? 'enc' : 'sig';
       validateJwk(keyData, 'OKP', extractable, usagesSet, expectedUse);
 
@@ -208,8 +156,6 @@ function cfrgImportKey(
             'JWK "alg" does not match the requested algorithm', 'DataError');
       }
 
-      const isPublic = keyData.d === undefined;
-      verifyAcceptableCfrgKeyUse(name, isPublic, usagesSet);
       handle = importJwkKey(isPublic, keyData);
 
       if (!isPublic) {
@@ -220,8 +166,8 @@ function cfrgImportKey(
       break;
     }
     case 'raw': {
-      verifyAcceptableCfrgKeyUse(name, true, usagesSet);
-      handle = importRawKey(true, keyData, kKeyFormatRawPublic, name);
+      verifyAcceptableKeyUse(name, usagesSet, allowedUsages.public);
+      handle = importRawKey(true, keyData, kKeyFormatRawPublic, StringPrototypeToLowerCase(name));
       break;
     }
     default:

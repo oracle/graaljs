@@ -129,6 +129,16 @@ function getHexStyleCache() {
   return hexStyleCache;
 }
 
+function codesToStyle(codes) {
+  const openNum = codes[0];
+  return {
+    __proto__: null,
+    openSeq: kEscape + openNum + kEscapeEnd,
+    closeSeq: kEscape + codes[1] + kEscapeEnd,
+    keepClose: openNum === kDimCode || openNum === kBoldCode,
+  };
+}
+
 function getStyleCache() {
   if (styleCache === undefined) {
     styleCache = { __proto__: null };
@@ -136,14 +146,7 @@ function getStyleCache() {
     for (const key of ObjectGetOwnPropertyNames(colors)) {
       const codes = colors[key];
       if (codes) {
-        const openNum = codes[0];
-        const closeNum = codes[1];
-        styleCache[key] = {
-          __proto__: null,
-          openSeq: kEscape + openNum + kEscapeEnd,
-          closeSeq: kEscape + closeNum + kEscapeEnd,
-          keepClose: openNum === kDimCode || openNum === kBoldCode,
-        };
+        styleCache[key] = codesToStyle(codes);
       }
     }
   }
@@ -241,10 +244,10 @@ function rgbToAnsi24Bit(r, g, b) {
  */
 function styleText(format, text, options) {
   const validateStream = options?.validateStream ?? true;
-  const cache = getStyleCache();
 
   // Fast path: single format string with validateStream=false
   if (!validateStream && typeof format === 'string' && typeof text === 'string') {
+    const cache = getStyleCache();
     if (format === 'none') return text;
     const style = cache[format];
     if (style !== undefined) {
@@ -284,6 +287,7 @@ function styleText(format, text, options) {
   }
 
   const formatArray = ArrayIsArray(format) ? format : [format];
+  const colors = inspect.colors;
 
   let openCodes = '';
   let closeCodes = '';
@@ -293,30 +297,27 @@ function styleText(format, text, options) {
     if (key === 'none') continue;
 
     if (typeof key === 'string' && key[0] === '#') {
-      let hexStyle = getHexStyleCache().get(key);
-      if (hexStyle === undefined) {
-        if (RegExpPrototypeExec(hexColorRegExp, key) === null) {
-          throw new ERR_INVALID_ARG_VALUE('format', key,
-                                          'must be a valid hex color (#RGB or #RRGGBB)');
-        }
-        if (skipColorize) continue;
-        hexStyle = getHexStyle(key);
-      } else if (skipColorize) {
-        continue;
+      if (RegExpPrototypeExec(hexColorRegExp, key) === null) {
+        throw new ERR_INVALID_ARG_VALUE('format', key,
+                                        'must be a valid hex color (#RGB or #RRGGBB)');
       }
-      openCodes += hexStyle.openSeq;
-      closeCodes = hexStyle.closeSeq + closeCodes;
-      processedText = replaceCloseCode(processedText, hexStyle.closeSeq, hexStyle.openSeq, false);
+      if (skipColorize) continue;
+      const { 0: r, 1: g, 2: b } = hexToRgb(key);
+      const hexOpenSeq = kEscape + rgbToAnsi24Bit(r, g, b) + kEscapeEnd;
+      openCodes += hexOpenSeq;
+      closeCodes = kHexCloseSeq + closeCodes;
+      processedText = replaceCloseCode(processedText, kHexCloseSeq, hexOpenSeq, false);
       continue;
     }
 
-    const style = cache[key];
-    if (style === undefined) {
+    const codes = colors[key];
+    if (!codes) {
       validateOneOf(key, 'format', ObjectGetOwnPropertyNames(inspect.colors));
     }
-    openCodes += style.openSeq;
-    closeCodes = style.closeSeq + closeCodes;
-    processedText = replaceCloseCode(processedText, style.closeSeq, style.openSeq, style.keepClose);
+    const { openSeq, closeSeq, keepClose } = codesToStyle(codes);
+    openCodes += openSeq;
+    closeCodes = closeSeq + closeCodes;
+    processedText = replaceCloseCode(processedText, closeSeq, openSeq, keepClose);
   }
 
   if (skipColorize) return text;
@@ -513,8 +514,7 @@ function reconstructCallSite(callSite) {
   if (!entry?.originalSource) return;
   return {
     __proto__: null,
-    // If the name is not found, it is an empty string to match the behavior of `util.getCallSite()`
-    functionName: entry.name ?? '',
+    functionName: entry.name || callSite.functionName,
     scriptName: entry.originalSource,
     lineNumber: entry.originalLine + 1,
     column: entry.originalColumn + 1,
@@ -587,6 +587,13 @@ function deprecate(fn, msg, code, { modifyPrototype } = {}) {
   return internalDeprecate(fn, msg, code, undefined, modifyPrototype);
 }
 
+function markPromiseAsHandled(promise) {
+  if (!types.isPromise(promise)) {
+    throw new ERR_INVALID_ARG_TYPE('promise', 'Promise', promise);
+  }
+  binding.markPromiseAsHandled(promise);
+}
+
 // Keep the `exports =` so that various functions can still be monkeypatched
 module.exports = {
   _errnoException,
@@ -617,6 +624,7 @@ module.exports = {
     }
     return internalDeepEqual(a, b, skipPrototype);
   },
+  markPromiseAsHandled,
   promisify,
   stripVTControlCharacters,
   toUSVString(input) {
@@ -658,6 +666,21 @@ defineLazyProperties(
   'internal/util/diff',
   ['diff'],
 );
+
+ObjectDefineProperties(module.exports, {
+  debounce: {
+    __proto__: null,
+    configurable: true,
+    enumerable: true,
+    get() { return require('internal/util/debounce'); },
+  },
+  throttle: {
+    __proto__: null,
+    configurable: true,
+    enumerable: true,
+    get() { return require('internal/util/throttle'); },
+  },
+});
 
 defineLazyProperties(
   module.exports,

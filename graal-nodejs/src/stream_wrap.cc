@@ -33,9 +33,9 @@
 #include "udp_wrap.h"
 #include "util-inl.h"
 
-#include <cstring>  // memcpy()
+#include <cerrno>   // errno
 #include <climits>  // INT_MAX
-
+#include <cstring>  // memcpy()
 
 namespace node {
 
@@ -95,6 +95,20 @@ void LibuvStreamWrap::Initialize(Local<Object> target,
   Local<FunctionTemplate> ww =
       FunctionTemplate::New(isolate, IsConstructCallCallback);
   ww->InstanceTemplate()->SetInternalFieldCount(WriteWrap::kInternalFieldCount);
+  // Pre-create the fields that JS attaches to write requests, so that they
+  // are in-object properties and the object shape stays monomorphic.
+  ww->InstanceTemplate()->Set(env->oncomplete_string(), v8::Null(isolate));
+  ww->InstanceTemplate()->Set(FIXED_ONE_BYTE_STRING(isolate, "callback"),
+                              v8::Null(isolate));
+  ww->InstanceTemplate()->Set(env->handle_string(), v8::Null(isolate));
+  ww->InstanceTemplate()->Set(FIXED_ONE_BYTE_STRING(isolate, "async"),
+                              v8::False(isolate));
+  ww->InstanceTemplate()->Set(FIXED_ONE_BYTE_STRING(isolate, "bytes"),
+                              v8::Integer::New(isolate, 0));
+  ww->InstanceTemplate()->Set(env->buffer_string(), v8::Null(isolate));
+  // Slot for a completion that fires before JS attaches `oncomplete`; see
+  // ReportWritesToJSStreamListener::OnStreamAfterReqFinished().
+  ww->InstanceTemplate()->Set(env->write_status_string(), v8::Null(isolate));
   ww->Inherit(AsyncWrap::GetConstructorTemplate(env));
   SetConstructorFunction(context, target, "WriteWrap", ww);
   env->set_write_wrap_template(ww->InstanceTemplate());
@@ -103,6 +117,7 @@ void LibuvStreamWrap::Initialize(Local<Object> target,
   NODE_DEFINE_CONSTANT(target, kArrayBufferOffset);
   NODE_DEFINE_CONSTANT(target, kBytesWritten);
   NODE_DEFINE_CONSTANT(target, kLastWriteWasAsync);
+  NODE_DEFINE_CONSTANT(target, kLastWriteErr);
   target
       ->Set(context,
             FIXED_ONE_BYTE_STRING(isolate, "streamBaseState"),
@@ -115,6 +130,7 @@ void LibuvStreamWrap::RegisterExternalReferences(
   registry->Register(IsConstructCallCallback);
   registry->Register(GetWriteQueueSize);
   registry->Register(SetBlocking);
+  registry->Register(HasPendingRead);
   StreamBase::RegisterExternalReferences(registry);
 }
 
@@ -153,6 +169,7 @@ Local<FunctionTemplate> LibuvStreamWrap::GetConstructorTemplate(
         Local<FunctionTemplate>(),
         static_cast<PropertyAttribute>(ReadOnly | DontDelete));
     SetProtoMethod(isolate, tmpl, "setBlocking", SetBlocking);
+    SetProtoMethod(isolate, tmpl, "hasPendingRead", HasPendingRead);
     StreamBase::AddMethods(env, tmpl);
     env->set_libuv_stream_wrap_ctor_template(tmpl);
   }
@@ -318,6 +335,67 @@ void LibuvStreamWrap::SetBlocking(const FunctionCallbackInfo<Value>& args) {
 
   bool enable = args[0]->IsTrue();
   args.GetReturnValue().Set(uv_stream_set_blocking(wrap->stream(), enable));
+}
+
+// Returns true if a read on the underlying socket would complete right now,
+// i.e. the OS has data, EOF, or a socket error queued that libuv has not
+// delivered yet because the event loop has not polled for I/O since it
+// arrived. Nothing is consumed. Returns false when there is nothing pending
+// or when the handle type does not support the check.
+void LibuvStreamWrap::HasPendingRead(const FunctionCallbackInfo<Value>& args) {
+  LibuvStreamWrap* wrap;
+  ASSIGN_OR_RETURN_UNWRAP(&wrap, args.This());
+  args.GetReturnValue().Set(false);
+
+  if (!wrap->IsAlive() || wrap->IsClosing()) return;
+
+#ifdef _WIN32
+  // Only TCP sockets can be probed with recv() on Windows.
+  if (!wrap->is_tcp()) return;
+#else
+  if (!wrap->is_tcp() && !wrap->is_named_pipe()) return;
+#endif
+
+  uv_os_fd_t fd;
+  if (uv_fileno(reinterpret_cast<uv_handle_t*>(wrap->stream()), &fd) != 0)
+    return;
+
+  char c;
+#ifdef _WIN32
+  // libuv puts TCP sockets in non-blocking mode and reads with zero-byte
+  // overlapped reads, so unread data stays in the kernel buffer.
+  int r = recv(reinterpret_cast<SOCKET>(fd), &c, 1, MSG_PEEK);
+  if (r == SOCKET_ERROR) {
+    switch (WSAGetLastError()) {
+      case WSAEWOULDBLOCK:
+      case WSAENOTCONN:
+      case WSAENOTSOCK:
+        return;
+    }
+  }
+#else
+  int flags = MSG_PEEK;
+#ifdef MSG_DONTWAIT
+  flags |= MSG_DONTWAIT;
+#endif
+  ssize_t r;
+  do {
+    r = recv(fd, &c, 1, flags);
+  } while (r == -1 && errno == EINTR);
+  if (r == -1) {
+    switch (errno) {
+      case EAGAIN:
+#if EWOULDBLOCK != EAGAIN
+      case EWOULDBLOCK:
+#endif
+      case ENOTCONN:
+      case ENOTSOCK:
+        return;
+    }
+  }
+#endif
+
+  args.GetReturnValue().Set(true);
 }
 
 typedef SimpleShutdownWrap<ReqWrap<uv_shutdown_t>> LibuvShutdownWrap;

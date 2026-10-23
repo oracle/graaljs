@@ -149,7 +149,13 @@ ObjectDefineProperty(
 function oninit() {
   initNodeEventTarget(this);
   // Graal.js: initialize support for Java objects in messages
-  this.sharedMemMessaging = SharedMemMessagingInit();
+  ObjectDefineProperty(this, 'sharedMemMessaging', {
+    __proto__: null,
+    value: SharedMemMessagingInit(),
+    writable: true,
+    configurable: true,
+    enumerable: false,
+  });
   setupPortReferencing(this, this, 'message');
   this[kCurrentlyReceivingPorts] = undefined;
 }
@@ -200,7 +206,7 @@ ObjectDefineProperty(MessagePort.prototype, inspect.custom, {
   __proto__: null,
   enumerable: false,
   writable: false,
-  value: function inspect() {  // eslint-disable-line func-name-matching
+  value: function inspect() {
     let ref;
     try {
       // This may throw when `this` does not refer to a native object,

@@ -547,9 +547,26 @@ function getPermissionModelFlagsToCopy() {
   return permissionModelFlagsToCopy;
 }
 
+function hasPermissionFlagInEnv(nodeOptions) {
+  // Parse NODE_OPTIONS into individual tokens and check if any token
+  // is an actual --permission or --permission-audit flag. We use exact
+  // token matching rather than substring matching to avoid false positives
+  // when unrelated option values contain '--permission' (e.g.,
+  // --title=--permission).
+  if (!nodeOptions) return false;
+  const tokens = nodeOptions.split(/\s+/);
+  return tokens.some((token) =>
+    token === '--permission' ||
+    token.startsWith('--permission=') ||
+    token === '--permission-audit' ||
+    token.startsWith('--permission-audit='),
+  );
+}
+
 function copyPermissionModelFlagsToEnv(env, key, args) {
   // Do not override if permission was already passed to file
-  if (args.includes('--permission') || (env[key] && env[key].indexOf('--permission') !== -1)) {
+  if (args.includes('--permission') || args.includes('--permission-audit') ||
+      hasPermissionFlagInEnv(env[key])) {
     return;
   }
 
@@ -817,7 +834,8 @@ function spawn(file, args, options) {
       }
     }, options.timeout);
 
-    child.once('exit', () => {
+    // 'close' always fires after 'exit', or after 'error' on a spawn failure.
+    child.once('close', () => {
       if (timeoutId) {
         clearTimeout(timeoutId);
         timeoutId = null;
@@ -866,8 +884,8 @@ function spawn(file, args, options) {
  * @returns {{
  *   pid: number;
  *   output: Array;
- *   stdout: Buffer | string;
- *   stderr: Buffer | string;
+ *   stdout: Buffer | string | null;
+ *   stderr: Buffer | string | null;
  *   status: number | null;
  *   signal: string | null;
  *   error: Error;
@@ -955,7 +973,7 @@ function checkExecSyncError(ret, args, cmd) {
  *   windowsHide?: boolean;
  *   shell?: boolean | string;
  *   }} [options]
- * @returns {Buffer | string}
+ * @returns {Buffer | string | null}
  */
 function execFileSync(file, args, options) {
   ({ file, args, options } = normalizeExecFileArgs(file, args, options));
@@ -993,7 +1011,7 @@ function execFileSync(file, args, options) {
  *   encoding?: string;
  *   windowsHide?: boolean;
  *   }} [options]
- * @returns {Buffer | string}
+ * @returns {Buffer | string | null}
  */
 function execSync(command, options) {
   const opts = normalizeExecArgs(command, options, null);

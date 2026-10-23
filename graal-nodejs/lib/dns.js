@@ -84,6 +84,7 @@ const {
   validateNumber,
   validateOneOf,
   validatePort,
+  validateString,
   validateStringWithoutNullBytes,
 } = require('internal/validators');
 
@@ -158,7 +159,8 @@ function lookup(hostname, options, callback) {
     validateFunction(callback, 'callback');
 
     validateOneOf(options, 'family', validFamilies);
-    family = options;
+    // Coerce -0 to +0.
+    family = options + 0;
   } else if (options !== undefined && typeof options !== 'object') {
     validateFunction(arguments.length === 2 ? options : callback, 'callback');
     throw new ERR_INVALID_ARG_TYPE('options', ['integer', 'object'], options);
@@ -180,7 +182,8 @@ function lookup(hostname, options, callback) {
           break;
         default:
           validateOneOf(options.family, 'options.family', validFamilies);
-          family = options.family;
+          // Coerce -0 to +0.
+          family = options.family + 0;
           break;
       }
     }
@@ -273,6 +276,8 @@ function lookupService(address, port, callback) {
   if (arguments.length !== 3)
     throw new ERR_MISSING_ARGS('address', 'port', 'callback');
 
+  validateString(address, 'address');
+
   if (isIP(address) === 0)
     throw new ERR_INVALID_ARG_VALUE('address', address);
 
@@ -280,7 +285,8 @@ function lookupService(address, port, callback) {
 
   validateFunction(callback, 'callback');
 
-  port = +port;
+  // Coerce -0 to +0.
+  port = +port + 0;
 
   const req = new GetNameInfoReqWrap();
   req.callback = callback;

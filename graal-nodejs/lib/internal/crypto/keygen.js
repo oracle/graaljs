@@ -4,41 +4,21 @@ const {
   FunctionPrototypeCall,
   ObjectDefineProperty,
   SafeArrayIterator,
+  StringPrototypeToLowerCase,
 } = primordials;
 
 const {
   DhKeyPairGenJob,
   DsaKeyPairGenJob,
   EcKeyPairGenJob,
-  NidKeyPairGenJob,
+  NamedKeyPairGenJob,
+  getPqcKeyTypes,
   RsaKeyPairGenJob,
   SecretKeyGenJob,
   kCryptoJobAsync,
   kCryptoJobSync,
   kKeyVariantRSA_PSS,
   kKeyVariantRSA_SSA_PKCS1_v1_5,
-  EVP_PKEY_ED25519,
-  EVP_PKEY_ED448,
-  EVP_PKEY_ML_DSA_44,
-  EVP_PKEY_ML_DSA_65,
-  EVP_PKEY_ML_DSA_87,
-  EVP_PKEY_ML_KEM_1024,
-  EVP_PKEY_ML_KEM_512,
-  EVP_PKEY_ML_KEM_768,
-  EVP_PKEY_SLH_DSA_SHA2_128F,
-  EVP_PKEY_SLH_DSA_SHA2_128S,
-  EVP_PKEY_SLH_DSA_SHA2_192F,
-  EVP_PKEY_SLH_DSA_SHA2_192S,
-  EVP_PKEY_SLH_DSA_SHA2_256F,
-  EVP_PKEY_SLH_DSA_SHA2_256S,
-  EVP_PKEY_SLH_DSA_SHAKE_128F,
-  EVP_PKEY_SLH_DSA_SHAKE_128S,
-  EVP_PKEY_SLH_DSA_SHAKE_192F,
-  EVP_PKEY_SLH_DSA_SHAKE_192S,
-  EVP_PKEY_SLH_DSA_SHAKE_256F,
-  EVP_PKEY_SLH_DSA_SHAKE_256S,
-  EVP_PKEY_X25519,
-  EVP_PKEY_X448,
   OPENSSL_EC_NAMED_CURVE,
   OPENSSL_EC_EXPLICIT_CURVE,
 } = internalBinding('crypto');
@@ -180,53 +160,42 @@ function parseKeyEncoding(keyType, options = kEmptyObject) {
   ];
 }
 
-const nidOnlyKeyPairs = {
+const namedKeyPairs = {
   '__proto__': null,
-  'ed25519': EVP_PKEY_ED25519,
-  'ed448': EVP_PKEY_ED448,
-  'x25519': EVP_PKEY_X25519,
-  'x448': EVP_PKEY_X448,
-  'ml-dsa-44': EVP_PKEY_ML_DSA_44,
-  'ml-dsa-65': EVP_PKEY_ML_DSA_65,
-  'ml-dsa-87': EVP_PKEY_ML_DSA_87,
-  'ml-kem-512': EVP_PKEY_ML_KEM_512,
-  'ml-kem-768': EVP_PKEY_ML_KEM_768,
-  'ml-kem-1024': EVP_PKEY_ML_KEM_1024,
-  'slh-dsa-sha2-128f': EVP_PKEY_SLH_DSA_SHA2_128F,
-  'slh-dsa-sha2-128s': EVP_PKEY_SLH_DSA_SHA2_128S,
-  'slh-dsa-sha2-192f': EVP_PKEY_SLH_DSA_SHA2_192F,
-  'slh-dsa-sha2-192s': EVP_PKEY_SLH_DSA_SHA2_192S,
-  'slh-dsa-sha2-256f': EVP_PKEY_SLH_DSA_SHA2_256F,
-  'slh-dsa-sha2-256s': EVP_PKEY_SLH_DSA_SHA2_256S,
-  'slh-dsa-shake-128f': EVP_PKEY_SLH_DSA_SHAKE_128F,
-  'slh-dsa-shake-128s': EVP_PKEY_SLH_DSA_SHAKE_128S,
-  'slh-dsa-shake-192f': EVP_PKEY_SLH_DSA_SHAKE_192F,
-  'slh-dsa-shake-192s': EVP_PKEY_SLH_DSA_SHAKE_192S,
-  'slh-dsa-shake-256f': EVP_PKEY_SLH_DSA_SHAKE_256F,
-  'slh-dsa-shake-256s': EVP_PKEY_SLH_DSA_SHAKE_256S,
+  'ed25519': 'Ed25519',
+  'ed448': 'Ed448',
+  'x25519': 'X25519',
+  'x448': 'X448',
 };
+for (const name of new SafeArrayIterator(getPqcKeyTypes())) {
+  namedKeyPairs[StringPrototypeToLowerCase(name)] = name;
+}
 
 function createJob(mode, type, options) {
   validateString(type, 'type');
 
-  const encoding = new SafeArrayIterator(parseKeyEncoding(type, options));
-
   if (options !== undefined)
     validateObject(options, 'options');
+
+  const encoding = new SafeArrayIterator(parseKeyEncoding(type, options));
 
   switch (type) {
     case 'rsa':
     case 'rsa-pss':
     {
       validateObject(options, 'options');
-      const { modulusLength } = options;
+      let { modulusLength } = options;
       validateUint32(modulusLength, 'options.modulusLength');
+      // Coerce -0 to +0.
+      modulusLength += 0;
 
       let { publicExponent } = options;
       if (publicExponent == null) {
         publicExponent = 0x10001;
       } else {
         validateUint32(publicExponent, 'options.publicExponent');
+        // Coerce -0 to +0.
+        publicExponent += 0;
       }
 
       if (type === 'rsa') {
@@ -239,11 +208,15 @@ function createJob(mode, type, options) {
       }
 
       const {
-        hash, mgf1Hash, hashAlgorithm, mgf1HashAlgorithm, saltLength,
+        hash, mgf1Hash, hashAlgorithm, mgf1HashAlgorithm,
       } = options;
+      let { saltLength } = options;
 
-      if (saltLength !== undefined)
+      if (saltLength !== undefined) {
         validateInt32(saltLength, 'options.saltLength', 0);
+        // Coerce -0 to +0.
+        saltLength += 0;
+      }
       if (hashAlgorithm !== undefined)
         validateString(hashAlgorithm, 'options.hashAlgorithm');
       if (mgf1HashAlgorithm !== undefined)
@@ -284,14 +257,19 @@ function createJob(mode, type, options) {
     case 'dsa':
     {
       validateObject(options, 'options');
-      const { modulusLength } = options;
+      let { modulusLength } = options;
       validateUint32(modulusLength, 'options.modulusLength');
+      // Coerce -0 to +0.
+      modulusLength += 0;
 
       let { divisorLength } = options;
       if (divisorLength == null) {
         divisorLength = -1;
-      } else
+      } else {
         validateInt32(divisorLength, 'options.divisorLength', 0);
+        // Coerce -0 to +0.
+        divisorLength += 0;
+      }
 
       return new DsaKeyPairGenJob(
         mode,
@@ -321,7 +299,8 @@ function createJob(mode, type, options) {
     case 'dh':
     {
       validateObject(options, 'options');
-      const { group, primeLength, prime, generator } = options;
+      const { group, prime } = options;
+      let { primeLength, generator } = options;
       if (group != null) {
         if (prime != null)
           throw new ERR_INCOMPATIBLE_OPTION_PAIR('group', 'prime');
@@ -342,6 +321,8 @@ function createJob(mode, type, options) {
         validateBuffer(prime, 'options.prime');
       } else if (primeLength != null) {
         validateInt32(primeLength, 'options.primeLength', 0);
+        // Coerce -0 to +0.
+        primeLength += 0;
       } else {
         throw new ERR_MISSING_OPTION(
           'At least one of the group, prime, or primeLength options');
@@ -349,6 +330,8 @@ function createJob(mode, type, options) {
 
       if (generator != null) {
         validateInt32(generator, 'options.generator', 0);
+        // Coerce -0 to +0.
+        generator += 0;
       }
       return new DhKeyPairGenJob(
         mode,
@@ -357,10 +340,10 @@ function createJob(mode, type, options) {
         ...encoding);
     }
     default: {
-      if (nidOnlyKeyPairs[type] === undefined) {
+      if (namedKeyPairs[type] === undefined) {
         throw new ERR_INVALID_ARG_VALUE('type', type, 'must be a supported key type');
       }
-      return new NidKeyPairGenJob(mode, nidOnlyKeyPairs[type], ...encoding);
+      return new NamedKeyPairGenJob(mode, namedKeyPairs[type], ...encoding);
     }
   }
 }

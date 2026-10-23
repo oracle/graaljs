@@ -20,6 +20,7 @@ const {
   NumberPrototypeToString,
   StringFromCharCodeApply,
   StringPrototypePadStart,
+  TypedArrayPrototypeFill,
   TypedArrayPrototypeGetBuffer,
 } = primordials;
 
@@ -65,6 +66,14 @@ const {
 } = require('internal/util/types');
 
 const { FastBuffer } = require('internal/buffer');
+
+const {
+  namespace: {
+    isBuildingSnapshot,
+  },
+  addAfterUserSerializeCallback,
+  addBeforeUserDeserializeCallback,
+} = require('internal/v8/startup_snapshot');
 
 const kMaxInt32 = 2 ** 31 - 1;
 const kMaxPossibleLength = MathMin(kMaxLength, kMaxInt32);
@@ -168,7 +177,7 @@ function randomFill(buf, offset, size, callback) {
     size = buf.length;
   } else if (typeof size === 'function') {
     callback = size;
-    size = buf.length - offset;
+    size = (buf.length ?? buf.byteLength) - offset;
   } else {
     validateFunction(callback, 'callback');
   }
@@ -347,6 +356,27 @@ const kBatchSize = 128;
 let uuidData;
 let uuidNotBuffered;
 let uuidBatch = 0;
+
+if (isBuildingSnapshot()) {
+  const resetRandomCaches = () => {
+    TypedArrayPrototypeFill(randomCache, 0);
+    randomCacheOffset = randomCache.length;
+    if (uuidData !== undefined) {
+      TypedArrayPrototypeFill(uuidData, 0);
+      uuidData = undefined;
+    }
+    if (uuidNotBuffered !== undefined) {
+      TypedArrayPrototypeFill(uuidNotBuffered, 0);
+      uuidNotBuffered = undefined;
+    }
+    uuidBatch = 0;
+  };
+  // Clear cached random data after user serialization callbacks.
+  addAfterUserSerializeCallback(resetRandomCaches);
+  // Microtasks and exit handlers can refill the caches after serialization
+  // callbacks, so also reset them before any user deserialization callbacks.
+  addBeforeUserDeserializeCallback(resetRandomCaches);
+}
 
 let hexBytesCache;
 function getHexBytes() {
@@ -603,12 +633,14 @@ function checkPrime(candidate, options = kEmptyObject, callback) {
   }
   validateFunction(callback, 'callback');
   validateObject(options, 'options');
-  const {
+  let {
     checks = 0,
   } = options;
 
   // The checks option is unsigned but must fit into a signed C int for OpenSSL.
   validateInt32(checks, 'options.checks', 0);
+  // Coerce -0 to +0.
+  checks += 0;
 
   const job = new CheckPrimeJob(kCryptoJobAsync, candidate, checks);
   job.ondone = callback;
@@ -632,12 +664,14 @@ function checkPrimeSync(candidate, options = kEmptyObject) {
     );
   }
   validateObject(options, 'options');
-  const {
+  let {
     checks = 0,
   } = options;
 
   // The checks option is unsigned but must fit into a signed C int for OpenSSL.
   validateInt32(checks, 'options.checks', 0);
+  // Coerce -0 to +0.
+  checks += 0;
 
   const job = new CheckPrimeJob(kCryptoJobSync, candidate, checks);
   const { 0: err, 1: result } = job.run();

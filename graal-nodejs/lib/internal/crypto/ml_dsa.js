@@ -1,7 +1,6 @@
 'use strict';
 
 const {
-  SafeSet,
   StringPrototypeToLowerCase,
   TypedArrayPrototypeGetBuffer,
   TypedArrayPrototypeSet,
@@ -16,22 +15,20 @@ const {
   kKeyFormatDER,
   kKeyFormatRawPublic,
   kKeyFormatRawSeed,
+  kKeyTypePublic,
   kSignJobModeSign,
   kSignJobModeVerify,
   kWebCryptoKeyFormatRaw,
   kWebCryptoKeyFormatPKCS8,
   kWebCryptoKeyFormatSPKI,
-  NidKeyPairGenJob,
-  EVP_PKEY_ML_DSA_44,
-  EVP_PKEY_ML_DSA_65,
-  EVP_PKEY_ML_DSA_87,
+  NamedKeyPairGenJob,
 } = internalBinding('crypto');
 
 const {
   getUsagesMask,
-  getUsagesUnion,
-  hasAnyNotIn,
   jobPromise,
+  toUsagesSet,
+  getBufferSourceByteLength,
 } = require('internal/crypto/util');
 
 const {
@@ -42,61 +39,37 @@ const {
   getCryptoKeyAlgorithm,
   getCryptoKeyHandle,
   getCryptoKeyType,
-  getKeyObjectHandle,
-  getKeyObjectType,
   InternalCryptoKey,
 } = require('internal/crypto/keys');
 
 const {
+  createKeyUsages,
+  getKeyPairUsages,
   importDerKey,
   importJwkKey,
   importRawKey,
   validateJwk,
+  validateKeyUsages,
+  validateUsagesNotEmpty,
+  verifyAcceptableKeyUse,
 } = require('internal/crypto/webcrypto_util');
 
-function verifyAcceptableMlDsaKeyUse(name, isPublic, usages) {
-  const checkSet = isPublic ? ['verify'] : ['sign'];
-  if (hasAnyNotIn(usages, checkSet)) {
-    throw lazyDOMException(
-      `Unsupported key usage for a ${name} key`,
-      'SyntaxError');
-  }
-}
+const kUsages = createKeyUsages(['verify'], ['sign']);
 
-function mlDsaGenerateKey(algorithm, extractable, keyUsages) {
+function mlDsaGenerateKey(algorithm, extractable, usages) {
   const { name } = algorithm;
-
-  const usageSet = new SafeSet(keyUsages);
-  if (hasAnyNotIn(usageSet, ['sign', 'verify'])) {
-    throw lazyDOMException(
-      `Unsupported key usage for an ${name} key`,
-      'SyntaxError');
-  }
-
-  const nid = {
-    '__proto__': null,
-    'ML-DSA-44': EVP_PKEY_ML_DSA_44,
-    'ML-DSA-65': EVP_PKEY_ML_DSA_65,
-    'ML-DSA-87': EVP_PKEY_ML_DSA_87,
-  }[name];
-
-  const publicUsages = getUsagesUnion(usageSet, 'verify');
-  const privateUsages = getUsagesUnion(usageSet, 'sign');
+  const usagesSet = validateKeyUsages(usages, kUsages.keygen, name);
 
   const keyAlgorithm = { name };
+  const keyUsages = getKeyPairUsages(usagesSet, kUsages);
+  validateUsagesNotEmpty(keyUsages.private);
 
-  if (privateUsages.size === 0) {
-    throw lazyDOMException(
-      'Usages cannot be empty when creating a key.',
-      'SyntaxError');
-  }
-
-  return jobPromise(() => new NidKeyPairGenJob(
+  return jobPromise(() => new NamedKeyPairGenJob(
     kCryptoJobWebCrypto,
-    nid,
+    name,
     keyAlgorithm,
-    getUsagesMask(publicUsages),
-    getUsagesMask(privateUsages),
+    getUsagesMask(keyUsages.public),
+    getUsagesMask(keyUsages.private),
     extractable));
 }
 
@@ -144,25 +117,28 @@ function mlDsaImportKey(
   keyData,
   algorithm,
   extractable,
-  keyUsages) {
+  usages) {
 
   const { name } = algorithm;
   let handle;
-  const usagesSet = new SafeSet(keyUsages);
+  const usagesSet = toUsagesSet(usages);
   switch (format) {
-    case 'KeyObject': {
-      verifyAcceptableMlDsaKeyUse(
-        name, getKeyObjectType(keyData) === 'public', usagesSet);
-      handle = getKeyObjectHandle(keyData);
+    case 'KeyObjectHandle':
+      verifyAcceptableKeyUse(
+        name,
+        usagesSet,
+        keyData.getKeyType() === kKeyTypePublic ?
+          kUsages.public :
+          kUsages.private);
+      handle = keyData;
       break;
-    }
     case 'spki': {
-      verifyAcceptableMlDsaKeyUse(name, true, usagesSet);
+      verifyAcceptableKeyUse(name, usagesSet, kUsages.public);
       handle = importDerKey(keyData, true);
       break;
     }
     case 'pkcs8': {
-      verifyAcceptableMlDsaKeyUse(name, false, usagesSet);
+      verifyAcceptableKeyUse(name, usagesSet, kUsages.private);
 
       const privOnlyLengths = {
         '__proto__': null,
@@ -170,7 +146,7 @@ function mlDsaImportKey(
         'ML-DSA-65': 4060,
         'ML-DSA-87': 4924,
       };
-      if (keyData.byteLength === privOnlyLengths[name]) {
+      if (getBufferSourceByteLength(keyData) === privOnlyLengths[name]) {
         throw lazyDOMException(
           'Importing an ML-DSA PKCS#8 key without a seed is not supported',
           'NotSupportedError');
@@ -180,14 +156,18 @@ function mlDsaImportKey(
       break;
     }
     case 'jwk': {
+      const isPublic = keyData.priv === undefined;
+      verifyAcceptableKeyUse(
+        name,
+        usagesSet,
+        isPublic ? kUsages.public : kUsages.private);
+
       validateJwk(keyData, 'AKP', extractable, usagesSet, 'sig');
 
       if (keyData.alg !== name)
         throw lazyDOMException(
           'JWK "alg" Parameter and algorithm name mismatch', 'DataError');
 
-      const isPublic = keyData.priv === undefined;
-      verifyAcceptableMlDsaKeyUse(name, isPublic, usagesSet);
       handle = importJwkKey(isPublic, keyData);
 
       if (!isPublic) {
@@ -200,8 +180,13 @@ function mlDsaImportKey(
     case 'raw-public':
     case 'raw-seed': {
       const isPublic = format === 'raw-public';
-      verifyAcceptableMlDsaKeyUse(name, isPublic, usagesSet);
-      handle = importRawKey(isPublic, keyData, isPublic ? kKeyFormatRawPublic : kKeyFormatRawSeed, name);
+      verifyAcceptableKeyUse(
+        name,
+        usagesSet,
+        isPublic ? kUsages.public : kUsages.private);
+      handle = importRawKey(isPublic, keyData,
+                            isPublic ? kKeyFormatRawPublic : kKeyFormatRawSeed,
+                            StringPrototypeToLowerCase(name));
       break;
     }
     default:

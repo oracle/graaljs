@@ -138,6 +138,18 @@ function installFreeSocketDataGuard(socket) {
   }
 }
 
+// The data guard only runs when the event loop polls for I/O. Data that
+// reached the OS socket buffer after the last poll has not been seen by it
+// yet, so check for it directly before handing an idle socket to a request.
+function hasPendingRead(socket) {
+  // A socket that is still connecting has nothing to read yet, and a pending
+  // connect error must be reported to the request rather than swallowed here.
+  if (socket.connecting) return false;
+  const handle = socket._handle;
+  return typeof handle?.hasPendingRead === 'function' &&
+    handle.hasPendingRead() === true;
+}
+
 function removeFreeSocketDataGuard(socket) {
   if (socket[kFreeSocketDataGuard]) {
     socket.removeListener('connect', socket[kFreeSocketDataGuard]);
@@ -214,6 +226,12 @@ function Agent(options) {
 
     const requests = this.requests[name];
     if (requests?.length) {
+      if (hasPendingRead(socket)) {
+        // onClose() will create a new socket for the pending request.
+        debug('PENDING DATA on released socket - destroying');
+        socket.destroy();
+        return;
+      }
       const req = requests.shift();
       const reqAsyncRes = req[kRequestAsyncResource];
       if (reqAsyncRes) {
@@ -278,10 +296,17 @@ function maybeEnableKeylog(eventName) {
     this[kOnKeylog] = function onkeylog(keylog) {
       agent.emit('keylog', keylog, this);
     };
-    // Existing sockets will start listening on keylog now.
-    const sockets = ObjectValues(this.sockets);
-    for (let i = 0; i < sockets.length; i++) {
-      sockets[i].on('keylog', this[kOnKeylog]);
+    // Existing sockets will start listening on keylog now. Both maps hold
+    // arrays of sockets keyed by name, so each bucket has to be walked.
+    const sets = [this.freeSockets, this.sockets];
+    for (let s = 0; s < sets.length; s++) {
+      const buckets = ObjectValues(sets[s]);
+      for (let b = 0; b < buckets.length; b++) {
+        const sockets = buckets[b];
+        for (let n = 0; n < sockets.length; n++) {
+          sockets[n].on('keylog', this[kOnKeylog]);
+        }
+      }
     }
   }
 }
@@ -384,6 +409,13 @@ Agent.prototype.addRequest = function addRequest(req, options, port/* legacy */,
     socket = this.scheduling === 'fifo' ?
       freeSockets.shift() :
       freeSockets.pop();
+    while (socket && hasPendingRead(socket)) {
+      debug('PENDING DATA on FREE socket - destroying poisoned socket');
+      socket.destroy();
+      socket = this.scheduling === 'fifo' ?
+        freeSockets.shift() :
+        freeSockets.pop();
+    }
     if (!freeSockets.length)
       delete this.freeSockets[name];
   }
@@ -392,6 +424,16 @@ Agent.prototype.addRequest = function addRequest(req, options, port/* legacy */,
   const sockLen = freeLen + this.sockets[name].length;
 
   // Reusing a socket from the pool.
+  // If the caller specified a highWaterMark that differs from the pooled
+  // socket's writableHighWaterMark, sync the socket's HWM so that
+  // backpressure semantics match what the caller requested.
+  if (socket && options.highWaterMark != null &&
+      socket.writableHighWaterMark !== options.highWaterMark) {
+    debug('sync reused socket HWM (socket=%d, request=%d)',
+          socket.writableHighWaterMark, options.highWaterMark);
+    socket._writableState.highWaterMark = options.highWaterMark;
+  }
+
   if (socket) {
     asyncResetHandle(socket);
     this.reuseSocket(socket, req);

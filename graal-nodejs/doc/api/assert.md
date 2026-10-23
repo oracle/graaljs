@@ -294,7 +294,7 @@ const assert2 = new Assert({ skipPrototype: true });
 assert2.deepStrictEqual(foo, bar); // OK
 ```
 
-When destructured, methods lose access to the instance's `this` context and revert to default assertion behavior
+When destructured, methods lose access to the instance's `this` context and revert to the default assertion behavior
 (diff: 'simple', non-strict mode).
 To maintain custom options when using destructured methods, avoid
 destructuring and call methods directly on the instance.
@@ -353,7 +353,6 @@ process.on('exit', () => {
 
 ```cjs
 const assert = require('node:assert');
-const process = require('node:process');
 
 const tracker = new assert.CallTracker();
 
@@ -711,8 +710,8 @@ are also recursively evaluated by the following rules.
 ### Comparison details
 
 * Primitive values are compared with the [`==` operator][],
-  with the exception of {NaN}. It is treated as being identical in case
-  both sides are {NaN}.
+  except for {NaN}, which is treated as identical when both
+  sides are {NaN}.
 * [Type tags][Object.prototype.toString()] of objects should be the same.
 * Only [enumerable "own" properties][] are considered.
 * Object constructors are compared when available.
@@ -888,6 +887,7 @@ are recursively evaluated also by the following rules.
 * [`[[Prototype]]`][prototype-spec] of objects are compared using
   the [`===` operator][].
 * Only [enumerable "own" properties][] are considered.
+* Object constructors are compared when available.
 * {Error} names, messages, causes, and errors are always compared,
   even if these are not enumerable properties.
   `errors` is also compared.
@@ -1210,7 +1210,7 @@ error messages as expressive as possible.
 If specified, `error` can be a [`Class`][], {RegExp} or a validation
 function. See [`assert.throws()`][] for more details.
 
-Besides the async nature to await the completion behaves identically to
+Aside from asynchronously awaiting completion, it behaves identically to
 [`assert.doesNotThrow()`][].
 
 ```mjs

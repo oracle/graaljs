@@ -8,11 +8,13 @@ const assert = require('assert');
 const {
   generateKeyPair,
 } = require('crypto');
+const { hasFIPS, isBoringSSL } = require('../common/crypto');
+const rejectsXCurves = hasFIPS(3, 5);
 
 // Test async elliptic curve key generation with 'jwk' encoding.
 {
   for (const type of ['ed25519', 'ed448', 'x25519', 'x448']) {
-    if (process.features.openssl_is_boringssl && type.endsWith('448')) {
+    if (isBoringSSL && type.endsWith('448')) {
       common.printSkipMessage(`Skipping unsupported ${type} test case`);
       continue;
     }
@@ -23,7 +25,12 @@ const {
       privateKeyEncoding: {
         format: 'jwk'
       }
-    }, common.mustSucceed((publicKey, privateKey) => {
+    }, common.mustCall((err, publicKey, privateKey) => {
+      if (rejectsXCurves && type.startsWith('x')) {
+        assert.strictEqual(err?.message, 'error:0308010C:digital envelope routines::unsupported');
+        return;
+      }
+      assert.ifError(err);
       assert.strictEqual(typeof publicKey, 'object');
       assert.strictEqual(typeof privateKey, 'object');
       assert.strictEqual(publicKey.x, privateKey.x);

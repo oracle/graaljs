@@ -848,11 +848,13 @@ namespace v8 {
     }
 
     Maybe<bool> Object::Set(Local<Context> context, uint32_t index, Local<Value> value) {
-        return Just(reinterpret_cast<GraalObject*> (this)->Set(index, value));
+        bool success = reinterpret_cast<GraalObject*> (this)->Set(index, value);
+        return GetIsolate()->HasPendingException() ? Nothing<bool>() : Just(success);
     }
 
     Maybe<bool> Object::Set(Local<Context> context, Local<Value> key, Local<Value> value) {
-        return Just(reinterpret_cast<GraalObject*> (this)->Set(key, value));
+        bool success = reinterpret_cast<GraalObject*> (this)->Set(key, value);
+        return GetIsolate()->HasPendingException() ? Nothing<bool>() : Just(success);
     }
 
     Maybe<bool> Object::SetLazyDataProperty(
@@ -3063,8 +3065,7 @@ namespace v8 {
     }
 
     bool Value::SameValue(Local<Value> that) const {
-        TRACE
-        return false;
+        return reinterpret_cast<const GraalValue*> (this)->SameValue(that);
     }
 
     int Object::GetIdentityHash() {
@@ -3830,6 +3831,11 @@ namespace v8 {
         return std::unique_ptr<MeasureMemoryDelegate> (new DefaultMeasureMemoryDelegate(promise_resolver, mode));
     }
 
+    size_t V8::GetWasmMemoryReservationSizeInBytes(WasmMemoryType type, size_t byte_capacity) {
+        TRACE
+        return 0;
+    }
+
     bool V8::EnableWebAssemblyTrapHandler(bool use_v8_signal_handler) {
         TRACE
         return false;
@@ -4362,8 +4368,7 @@ namespace v8 {
     }
 
     MaybeLocal<Object> RegExp::Exec(Local<Context> context, Local<String> subject) {
-        TRACE
-        return Local<Object>();
+        return reinterpret_cast<GraalRegExp*> (this)->Exec(context, subject);
     }
 
     Maybe<bool> Object::SetNativeDataProperty(
@@ -4388,6 +4393,10 @@ namespace v8 {
 
     void Promise::MarkAsHandled() {
         reinterpret_cast<GraalPromise*> (this)->MarkAsHandled();
+    }
+
+    void Promise::MarkAsSilent() {
+        TRACE
     }
 
     MaybeLocal<Promise> Promise::Then(Local<Context> context, Local<Function> on_fulfilled, Local<Function> on_rejected) {

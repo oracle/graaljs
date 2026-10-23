@@ -5,6 +5,8 @@ const {
   MathPow,
   NumberParseInt,
   ObjectPrototypeHasOwnProperty,
+  StringPrototypeCharCodeAt,
+  StringPrototypeSplit,
   StringPrototypeStartsWith,
   StringPrototypeToLowerCase,
 } = primordials;
@@ -13,14 +15,24 @@ const {
   lazyDOMException,
   kEmptyObject,
 } = require('internal/util');
-const { CryptoKey } = require('internal/crypto/webcrypto');
+const {
+  isInt32,
+  isUint32,
+} = require('internal/validators');
 const {
   getCryptoKeyAlgorithm,
   getCryptoKeyType,
+  isCryptoKey,
 } = require('internal/crypto/keys');
 const {
+  bigIntArrayToUnsignedInt,
   validateMaxBufferLength,
+  getBufferSourceByteLength,
+  getBufferSourceBytes,
+  isFips,
   kNamedCurveAliases,
+  numBitsToBytes,
+  validateKmacKeyLength,
 } = require('internal/crypto/util');
 const {
   converters: webidl,
@@ -32,8 +44,11 @@ const {
   type,
 } = require('internal/webidl');
 
+const { getFipsCrypto } = internalBinding('crypto');
+const kRsaKeyGenMinimumModulusLength = getFipsCrypto() === 1 ? 2048 : 512;
+
 function validateByteLength(buf, name, target) {
-  if (buf.byteLength !== target) {
+  if (getBufferSourceByteLength(buf) !== target) {
     throw lazyDOMException(
       `${name} must contain exactly ${target} bytes`,
       'OperationError');
@@ -106,6 +121,25 @@ converters['sequence<KeyUsage>'] = createSequenceConverter(converters.KeyUsage);
 
 converters.HashAlgorithmIdentifier = converters.AlgorithmIdentifier;
 
+/**
+ * Builds conversion options for Web Crypto integer members that use Web IDL
+ * [EnforceRange]. Keep this helper instead of spreading opts in each member
+ * converter so the hot dictionary paths allocate stable-shape objects.
+ * @param {object} opts Parent conversion options.
+ * @returns {object}
+ */
+function enforceRangeOptions(opts) {
+  return {
+    prefix: opts.prefix,
+    context: opts.context,
+    code: opts.code,
+    enforceRange: true,
+    clamp: undefined,
+    allowShared: undefined,
+    allowResizable: undefined,
+  };
+}
+
 const dictAlgorithm = [
   {
     key: 'name',
@@ -121,8 +155,9 @@ converters.Algorithm = createDictionaryConverter(
 // converters.BigInteger = webidl.Uint8Array;
 converters.BigInteger = (V, opts = kEmptyObject) => {
   return webidl.Uint8Array(V, {
-    __proto__: null,
-    ...opts,
+    prefix: opts.prefix,
+    context: opts.context,
+    code: opts.code,
     allowResizable: true,
     allowShared: false,
   });
@@ -132,10 +167,12 @@ converters.BigInteger = (V, opts = kEmptyObject) => {
 // removing this altogether.
 converters.BufferSource = (V, opts = kEmptyObject) => {
   return webidl.BufferSource(V, {
-    __proto__: null,
-    ...opts,
+    prefix: opts.prefix,
+    context: opts.context,
+    code: opts.code,
     allowResizable: opts.allowResizable === undefined ?
       true : opts.allowResizable,
+    allowShared: opts.allowShared,
   });
 };
 
@@ -143,12 +180,34 @@ const dictRsaKeyGenParams = [
   {
     key: 'modulusLength',
     converter: (V, opts) =>
-      converters['unsigned long'](V, { ...opts, enforceRange: true }),
+      converters['unsigned long'](V, enforceRangeOptions(opts)),
+    validator: (modulusLength) => {
+      if (modulusLength < kRsaKeyGenMinimumModulusLength) {
+        throw lazyDOMException(
+          `algorithm.modulusLength must be at least ${kRsaKeyGenMinimumModulusLength}`,
+          'OperationError');
+      }
+    },
     required: true,
   },
   {
     key: 'publicExponent',
     converter: converters.BigInteger,
+    validator: (publicExponent) => {
+      const converted = bigIntArrayToUnsignedInt(publicExponent);
+
+      if (converted < 3) {
+        throw lazyDOMException(
+          'algorithm.publicExponent must be at least 3',
+          'OperationError');
+      }
+
+      if (converted % 2 === 0) {
+        throw lazyDOMException(
+          'algorithm.publicExponent must be odd',
+          'OperationError');
+      }
+    },
     required: true,
   },
 ];
@@ -221,7 +280,7 @@ converters.AesKeyGenParams = createDictionaryConverter(
       {
         key: 'length',
         converter: (V, opts) =>
-          converters['unsigned short'](V, { ...opts, enforceRange: true }),
+          converters['unsigned short'](V, enforceRangeOptions(opts)),
         validator: AESLengthValidator,
         required: true,
       },
@@ -230,11 +289,52 @@ converters.AesKeyGenParams = createDictionaryConverter(
 
 function validateZeroLength(parameterName) {
   return (V, dict) => {
-    if (V.byteLength) {
+    if (getBufferSourceByteLength(V)) {
       throw lazyDOMException(
         `Non zero-length ${parameterName} is not supported.`, 'NotSupportedError');
     }
   };
+}
+
+function validateCShakeOutputLength(V) {
+  if (!isUint32(numBitsToBytes(V) * 8)) {
+    throw lazyDOMException(
+      'Invalid CShakeParams outputLength',
+      'OperationError');
+  }
+}
+
+const kCShakeFunctionNames = ['KMAC', 'TupleHash', 'ParallelHash'];
+
+function validateCShakeFunctionName(V) {
+  const length = getBufferSourceByteLength(V);
+  if (length === 0) return;
+
+  if (!isFips) {
+    const bytes = getBufferSourceBytes(V);
+    for (let i = 0; i < kCShakeFunctionNames.length; i++) {
+      const functionName = kCShakeFunctionNames[i];
+      if (length !== functionName.length) continue;
+
+      let j = 0;
+      for (; j < length; j++) {
+        if (bytes[j] !== StringPrototypeCharCodeAt(functionName, j)) break;
+      }
+      if (j === length) return;
+    }
+  }
+
+  throw lazyDOMException(
+    'Unsupported CShakeParams functionName',
+    'NotSupportedError');
+}
+
+function validateCShakeCustomization(V) {
+  if (isFips && getBufferSourceByteLength(V) !== 0)
+    throw lazyDOMException(
+      'Unsupported CShakeParams customization',
+      'NotSupportedError');
+  validateMaxBufferLength(V, 'CShakeParams.customization', 512);
 }
 
 converters.RsaPssParams = createDictionaryConverter(
@@ -244,7 +344,7 @@ converters.RsaPssParams = createDictionaryConverter(
       {
         key: 'saltLength',
         converter: (V, opts) =>
-          converters['unsigned long'](V, { ...opts, enforceRange: true }),
+          converters['unsigned long'](V, enforceRangeOptions(opts)),
         required: true,
       },
     ],
@@ -274,7 +374,19 @@ converters.EcdsaParams = createDictionaryConverter(
     ],
   ]);
 
-for (const { 0: name, 1: zeroError } of [['HmacKeyGenParams', 'OperationError'], ['HmacImportParams', 'DataError']]) {
+function validateHmacKeyLength(parameterName, zeroError) {
+  return (V) => {
+    if (V === 0)
+      throw lazyDOMException(`${parameterName} cannot be 0`, zeroError);
+  };
+}
+
+const kHmacDictionaries = [
+  ['HmacKeyGenParams', 'OperationError'],
+  ['HmacImportParams', 'DataError'],
+];
+for (let i = 0; i < kHmacDictionaries.length; i++) {
+  const { 0: name, 1: zeroError } = kHmacDictionaries[i];
   converters[name] = createDictionaryConverter(
     name, [
       dictAlgorithm,
@@ -288,8 +400,8 @@ for (const { 0: name, 1: zeroError } of [['HmacKeyGenParams', 'OperationError'],
         {
           key: 'length',
           converter: (V, opts) =>
-            converters['unsigned long'](V, { ...opts, enforceRange: true }),
-          validator: validateMacKeyLength(`${name}.length`, zeroError),
+            converters['unsigned long'](V, enforceRangeOptions(opts)),
+          validator: validateHmacKeyLength(`${name}.length`, zeroError),
         },
       ],
     ]);
@@ -370,24 +482,19 @@ converters.CShakeParams = createDictionaryConverter(
       {
         key: 'outputLength',
         converter: (V, opts) =>
-          converters['unsigned long'](V, { ...opts, enforceRange: true }),
-        validator: (V, opts) => {
-          // The Web Crypto spec allows for SHAKE output length that are not multiples of
-          // 8. We don't.
-          if (V % 8)
-            throw lazyDOMException('Unsupported CShakeParams outputLength', 'NotSupportedError');
-        },
+          converters['unsigned long'](V, enforceRangeOptions(opts)),
+        validator: validateCShakeOutputLength,
         required: true,
       },
       {
         key: 'functionName',
         converter: converters.BufferSource,
-        validator: validateZeroLength('CShakeParams.functionName'),
+        validator: validateCShakeFunctionName,
       },
       {
         key: 'customization',
         converter: converters.BufferSource,
-        validator: validateZeroLength('CShakeParams.customization'),
+        validator: validateCShakeCustomization,
       },
     ],
   ]);
@@ -404,10 +511,15 @@ converters.Pbkdf2Params = createDictionaryConverter(
       {
         key: 'iterations',
         converter: (V, opts) =>
-          converters['unsigned long'](V, { ...opts, enforceRange: true }),
+          converters['unsigned long'](V, enforceRangeOptions(opts)),
         validator: (V, dict) => {
           if (V === 0)
             throw lazyDOMException('iterations cannot be zero', 'OperationError');
+          if (!isInt32(V)) {
+            throw lazyDOMException(
+              'iterations exceeds the implementation limit',
+              'NotSupportedError');
+          }
         },
         required: true,
       },
@@ -427,7 +539,7 @@ converters.AesDerivedKeyParams = createDictionaryConverter(
       {
         key: 'length',
         converter: (V, opts) =>
-          converters['unsigned short'](V, { ...opts, enforceRange: true }),
+          converters['unsigned short'](V, enforceRangeOptions(opts)),
         validator: AESLengthValidator,
         required: true,
       },
@@ -463,7 +575,7 @@ converters.AeadParams = createDictionaryConverter(
               validateMaxBufferLength(V, 'algorithm.iv');
               break;
             case 'aes-ocb':
-              if (V.byteLength > 15) {
+              if (getBufferSourceByteLength(V) > 15) {
                 throw lazyDOMException(
                   'AES-OCB algorithm.iv must be no more than 15 bytes',
                   'OperationError');
@@ -481,7 +593,7 @@ converters.AeadParams = createDictionaryConverter(
       {
         key: 'tagLength',
         converter: (V, opts) =>
-          converters.octet(V, { ...opts, enforceRange: true }),
+          converters.octet(V, enforceRangeOptions(opts)),
         validator: (V, dict) => {
           switch (StringPrototypeToLowerCase(dict.name)) {
             case 'chacha20-poly1305':
@@ -524,7 +636,7 @@ converters.AesCtrParams = createDictionaryConverter(
       {
         key: 'length',
         converter: (V, opts) =>
-          converters.octet(V, { ...opts, enforceRange: true }),
+          converters.octet(V, enforceRangeOptions(opts)),
         validator: (V, dict) => {
           if (V === 0 || V > 128)
             throw lazyDOMException(
@@ -537,7 +649,7 @@ converters.AesCtrParams = createDictionaryConverter(
   ]);
 
 converters.CryptoKey = createInterfaceConverter(
-  'CryptoKey', CryptoKey.prototype);
+  'CryptoKey', isCryptoKey);
 
 converters.EcdhKeyDeriveParams = createDictionaryConverter(
   'EcdhKeyDeriveParams', [
@@ -569,19 +681,27 @@ converters.ContextParams = createDictionaryConverter(
         key: 'context',
         converter: converters.BufferSource,
         validator(V, dict) {
+          const validateLength = (V) =>
+            validateMaxBufferLength(V, 'ContextParams.context', 255);
+
           if (process.features.openssl_is_boringssl) {
-            this.validator = undefined;
+            this.validator = validateLength;
           } else {
-            let { 0: major, 1: minor } = process.versions.openssl.split('.');
+            let { 0: major, 1: minor } =
+              StringPrototypeSplit(process.versions.openssl, '.');
             major = NumberParseInt(major, 10);
             minor = NumberParseInt(minor, 10);
             if (major > 3 || (major === 3 && minor >= 2)) {
-              this.validator = undefined;
+              this.validator = validateLength;
             } else {
-              this.validator = validateZeroLength('ContextParams.context');
-              this.validator(V, dict);
+              const validateEmpty = validateZeroLength('ContextParams.context');
+              this.validator = (V, dict) => {
+                validateLength(V);
+                validateEmpty(V, dict);
+              };
             }
           }
+          this.validator(V, dict);
         },
       },
     ],
@@ -595,7 +715,7 @@ converters.Argon2Params = createDictionaryConverter(
         key: 'nonce',
         converter: converters.BufferSource,
         validator: (V) => {
-          if (V.byteLength < 8) {
+          if (getBufferSourceByteLength(V) < 8) {
             throw lazyDOMException('nonce must be at least 8 bytes', 'OperationError');
           }
         },
@@ -604,7 +724,7 @@ converters.Argon2Params = createDictionaryConverter(
       {
         key: 'parallelism',
         converter: (V, opts) =>
-          converters['unsigned long'](V, { ...opts, enforceRange: true }),
+          converters['unsigned long'](V, enforceRangeOptions(opts)),
         validator: (V, dict) => {
           if (V === 0 || V > MathPow(2, 24) - 1) {
             throw lazyDOMException(
@@ -617,7 +737,7 @@ converters.Argon2Params = createDictionaryConverter(
       {
         key: 'memory',
         converter: (V, opts) =>
-          converters['unsigned long'](V, { ...opts, enforceRange: true }),
+          converters['unsigned long'](V, enforceRangeOptions(opts)),
         validator: (V, dict) => {
           if (V < 8 * dict.parallelism) {
             throw lazyDOMException(
@@ -630,7 +750,7 @@ converters.Argon2Params = createDictionaryConverter(
       {
         key: 'passes',
         converter: (V, opts) =>
-          converters['unsigned long'](V, { ...opts, enforceRange: true }),
+          converters['unsigned long'](V, enforceRangeOptions(opts)),
         validator: (V) => {
           if (V === 0) {
             throw lazyDOMException('passes must be > 0', 'OperationError');
@@ -641,7 +761,7 @@ converters.Argon2Params = createDictionaryConverter(
       {
         key: 'version',
         converter: (V, opts) =>
-          converters.octet(V, { ...opts, enforceRange: true }),
+          converters.octet(V, enforceRangeOptions(opts)),
         validator: (V, dict) => {
           if (V !== 0x13) {
             throw lazyDOMException(
@@ -661,18 +781,9 @@ converters.Argon2Params = createDictionaryConverter(
     ],
   ]);
 
-function validateMacKeyLength(parameterName, zeroError) {
-  return (V) => {
-    if (V === 0)
-      throw lazyDOMException(`${parameterName} cannot be 0`, zeroError);
-
-    // The Web Crypto spec allows for key lengths that are not multiples of 8. We don't.
-    if (V % 8)
-      throw lazyDOMException(`Unsupported ${parameterName}`, 'NotSupportedError');
-  };
-}
-
-for (const { 0: name, 1: zeroError } of [['KmacKeyGenParams', 'OperationError'], ['KmacImportParams', 'DataError']]) {
+const kKmacDictionaries = ['KmacKeyGenParams', 'KmacImportParams'];
+for (let i = 0; i < kKmacDictionaries.length; i++) {
+  const name = kKmacDictionaries[i];
   converters[name] = createDictionaryConverter(
     name, [
       dictAlgorithm,
@@ -680,8 +791,8 @@ for (const { 0: name, 1: zeroError } of [['KmacKeyGenParams', 'OperationError'],
         {
           key: 'length',
           converter: (V, opts) =>
-            converters['unsigned long'](V, { ...opts, enforceRange: true }),
-          validator: validateMacKeyLength(`${name}.length`, zeroError),
+            converters['unsigned long'](V, enforceRangeOptions(opts)),
+          validator: validateKmacKeyLength,
         },
       ],
     ]);
@@ -694,11 +805,12 @@ converters.KmacParams = createDictionaryConverter(
       {
         key: 'outputLength',
         converter: (V, opts) =>
-          converters['unsigned long'](V, { ...opts, enforceRange: true }),
-        validator: (V, opts) => {
-          // The Web Crypto spec allows for KMAC output length that are not multiples of 8. We don't.
-          if (V % 8)
-            throw lazyDOMException('Unsupported KmacParams outputLength', 'NotSupportedError');
+          converters['unsigned long'](V, enforceRangeOptions(opts)),
+        validator: (V) => {
+          if ((V === 0 || V % 8) && isFips)
+            throw lazyDOMException(
+              'Invalid KmacParams outputLength',
+              'NotSupportedError');
         },
         required: true,
       },
@@ -716,7 +828,7 @@ converters.KangarooTwelveParams = createDictionaryConverter(
       {
         key: 'outputLength',
         converter: (V, opts) =>
-          converters['unsigned long'](V, { ...opts, enforceRange: true }),
+          converters['unsigned long'](V, enforceRangeOptions(opts)),
         validator: (V, opts) => {
           if (V === 0 || V % 8)
             throw lazyDOMException('Invalid KangarooTwelveParams outputLength', 'OperationError');
@@ -726,6 +838,7 @@ converters.KangarooTwelveParams = createDictionaryConverter(
       {
         key: 'customization',
         converter: converters.BufferSource,
+        validator: (V, opts) => validateMaxBufferLength(V, 'KangarooTwelveParams.customization', 512),
       },
     ],
   ]);
@@ -737,7 +850,7 @@ converters.TurboShakeParams = createDictionaryConverter(
       {
         key: 'outputLength',
         converter: (V, opts) =>
-          converters['unsigned long'](V, { ...opts, enforceRange: true }),
+          converters['unsigned long'](V, enforceRangeOptions(opts)),
         validator: (V, opts) => {
           if (V === 0 || V % 8)
             throw lazyDOMException('Invalid TurboShakeParams outputLength', 'OperationError');
@@ -747,7 +860,7 @@ converters.TurboShakeParams = createDictionaryConverter(
       {
         key: 'domainSeparation',
         converter: (V, opts) =>
-          converters.octet(V, { ...opts, enforceRange: true }),
+          converters.octet(V, enforceRangeOptions(opts)),
         validator: (V) => {
           if (V < 0x01 || V > 0x7F) {
             throw lazyDOMException(

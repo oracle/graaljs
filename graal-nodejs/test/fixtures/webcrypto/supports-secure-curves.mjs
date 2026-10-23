@@ -1,10 +1,10 @@
-import { hasOpenSSL } from '../../common/crypto.js'
+import { hasOpenSSL, isBoringSSL } from '../../common/crypto.js'
 
 const supportsContext = hasOpenSSL(3, 2);
 
 const { subtle } = globalThis.crypto;
 
-const boringSSL = process.features.openssl_is_boringssl;
+const boringSSL = isBoringSSL;
 
 const X25519 = await subtle.generateKey('X25519', false, ['deriveBits', 'deriveKey']);
 let X448;
@@ -19,6 +19,8 @@ export const vectors = {
     [!boringSSL, 'Ed448'],
     [!boringSSL, { name: 'Ed448', context: Buffer.alloc(0) }],
     [!boringSSL && supportsContext, { name: 'Ed448', context: Buffer.alloc(32) }],
+    [!boringSSL && supportsContext, { name: 'Ed448', context: Buffer.alloc(255) }],
+    [false, { name: 'Ed448', context: Buffer.alloc(256) }],
   ],
   'generateKey': [
     [!boringSSL, 'X448'],
@@ -28,15 +30,23 @@ export const vectors = {
     [!boringSSL,
      { name: 'X448', public: X448?.publicKey },
      { name: 'AES-CBC', length: 128 }],
-    [!boringSSL,
+    [false,
      { name: 'X448', public: X448?.publicKey },
      { name: 'HMAC', hash: 'SHA-256' }],
+    [!boringSSL,
+     { name: 'X448', public: X448?.publicKey },
+     { name: 'HMAC', hash: 'SHA-256', length: 448 }],
+    [false,
+     { name: 'X448', public: X448?.publicKey },
+     { name: 'HMAC', hash: 'SHA-256', length: 449 }],
     [!boringSSL,
      { name: 'X448', public: X448?.publicKey },
      'HKDF'],
   ],
   'deriveBits': [
     [!boringSSL, { name: 'X448', public: X448?.publicKey }],
+    [!boringSSL, { name: 'X448', public: X448?.publicKey }, 448],
+    [false, { name: 'X448', public: X448?.publicKey }, 449],
     [false, { name: 'X448', public: X25519.publicKey }],
     [false, { name: 'X448', public: X448?.privateKey }],
     [false, 'X448'],

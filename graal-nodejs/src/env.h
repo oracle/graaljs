@@ -53,10 +53,6 @@
 #include "v8-profiler.h"
 #include "v8.h"
 
-#if HAVE_OPENSSL
-#include <openssl/evp.h>
-#endif
-
 #include <array>
 #include <atomic>
 #include <cstdint>
@@ -70,6 +66,12 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
+namespace ncrypto {
+class CipherCache;
+class DigestCache;
+class MacCache;
+}  // namespace ncrypto
 
 namespace node {
 
@@ -140,7 +142,7 @@ class NODE_EXTERN_PRIVATE IsolateData : public MemoryRetainer {
       uv_loop_t* event_loop,
       MultiIsolatePlatform* platform = nullptr,
       ArrayBufferAllocator* node_allocator = nullptr,
-      const EmbedderSnapshotData* embedder_snapshot_data = nullptr,
+      const SnapshotData* snapshot_data = nullptr,
       std::shared_ptr<PerIsolateOptions> options = nullptr);
   ~IsolateData();
 
@@ -188,6 +190,11 @@ class NODE_EXTERN_PRIVATE IsolateData : public MemoryRetainer {
 #undef VS
 #undef VP
 
+#define V(Name, label, _, __)                                                  \
+  inline v8::Local<v8::String> Name##_permission_string() const;
+  PERMISSIONS(V)
+#undef V
+
 #define VM(PropertyName) V(PropertyName##_binding_template, v8::ObjectTemplate)
 #define V(PropertyName, TypeName)                                              \
   inline v8::Local<TypeName> PropertyName() const;                             \
@@ -233,6 +240,12 @@ class NODE_EXTERN_PRIVATE IsolateData : public MemoryRetainer {
 #undef VS
 #undef VY
 #undef VP
+
+#define V(Name, label, _, __)                                                  \
+  v8::Eternal<v8::String> Name##_permission_string##_;
+  PERMISSIONS(V)
+#undef V
+
   // Keep a list of all Persistent strings used for AsyncWrap Provider types.
   std::array<v8::Eternal<v8::String>, AsyncWrap::PROVIDERS_LENGTH>
       async_wrap_providers_;
@@ -264,6 +277,63 @@ struct ContextInfo {
 };
 
 class EnabledDebugList;
+
+// A bump allocator for stream read buffers. Reads reserve a chunk of the
+// current slab and, once completed, are handed to JS as a view (ArrayBuffer +
+// offset) over the slab, so that no per-read allocation or copy is needed.
+// Unused reservation space is rewound when a read returns fewer bytes than
+// were reserved. Slabs with reads still pending when a new slab is started
+// (possible when multiple reads are in flight, e.g. on Windows) are kept
+// alive in `retired_` until those reads complete.
+class StreamReadSlab {
+ public:
+  // Sized to match the read buffer size that libuv suggests for stream
+  // reads: a slab typically serves a single large read (still avoiding the
+  // copy that right-sizing the buffer would need), or many small ones.
+  // Larger slabs amortize allocations further, but stay alive (pinned by
+  // chunk views) long enough to be promoted to V8's old generation, where
+  // their external memory is only reclaimed by major GCs.
+  static constexpr size_t kSlabSize = 64 * 1024;
+
+  // Reserve `suggested` bytes. Starts a new slab if the current one does
+  // not have enough space left.
+  uv_buf_t Allocate(v8::Isolate* isolate, size_t suggested);
+  // Commit a completed read of `nread` bytes into the buffer previously
+  // returned by Allocate(), rewinding the unused remainder of the
+  // reservation if possible. Returns the slab's ArrayBuffer and the offset
+  // of `buf.base` within it. Returns false if the buffer was not allocated
+  // from this slab (e.g. reads rerouted from another stream listener).
+  bool Commit(v8::Isolate* isolate,
+              const uv_buf_t& buf,
+              size_t nread,
+              v8::Local<v8::ArrayBuffer>* ab,
+              size_t* offset);
+  // Return an unused reservation (failed or empty read). Returns false if
+  // the buffer was not allocated from this slab.
+  bool Release(const uv_buf_t& buf);
+
+ private:
+  struct Slab {
+    std::shared_ptr<v8::BackingStore> bs;
+    v8::Global<v8::ArrayBuffer> ab;
+    size_t offset = 0;          // Bump pointer.
+    size_t pending = 0;         // Reservations not yet committed/released.
+    char* last_base = nullptr;  // Most recent reservation...
+    size_t last_end = 0;        // ...and the bump pointer after it.
+
+    char* data() const { return static_cast<char*>(bs->Data()); }
+    size_t size() const { return bs->ByteLength(); }
+    bool Contains(const char* p) const {
+      return bs && p >= data() && p < data() + size();
+    }
+  };
+
+  Slab* FindSlab(const char* base);
+  void CompleteReservation(Slab* slab, const uv_buf_t& buf, size_t used);
+
+  Slab current_;
+  std::vector<Slab> retired_;
+};
 
 namespace per_process {
 extern std::shared_ptr<KVStore> system_environment;
@@ -576,7 +646,6 @@ struct SnapshotData {
   static bool FromBlob(SnapshotData* out, std::string_view in);
   static const SnapshotData* FromEmbedderWrapper(
       const EmbedderSnapshotData* data);
-  EmbedderSnapshotData::Pointer AsEmbedderWrapper() const;
 
   ~SnapshotData();
 };
@@ -780,6 +849,12 @@ class Environment final : public MemoryRetainer {
   inline bool can_call_into_js() const;
   inline void set_can_call_into_js(bool can_call_into_js);
 
+  // True while RequestInterrupt() callbacks are being invoked from the
+  // v8::Isolate::RequestInterrupt() handler, i.e. potentially at an
+  // arbitrary point during JS execution. Calling into JS must be avoided
+  // in that case.
+  inline bool is_processing_v8_interrupt() const;
+
   // Increase or decrease a counter that manages whether this Environment
   // keeps the event loop alive on its own or not. The counter starts out at 0,
   // meaning it does not, and any positive value will make it keep the event
@@ -869,6 +944,11 @@ class Environment final : public MemoryRetainer {
 #undef VS
 #undef VY
 #undef VP
+
+#define V(Name, label, _, __)                                                  \
+  inline v8::Local<v8::String> Name##_permission_string() const;
+  PERMISSIONS(V)
+#undef V
 
 #define V(PropertyName, TypeName)                                             \
   inline v8::Local<TypeName> PropertyName() const;                            \
@@ -1035,6 +1115,12 @@ class Environment final : public MemoryRetainer {
 
   uv_buf_t allocate_managed_buffer(const size_t suggested_size);
   std::unique_ptr<v8::BackingStore> release_managed_buffer(const uv_buf_t& buf);
+  // Only buffers that were not exposed externally may be recycled.
+  void recycle_managed_buffer(std::unique_ptr<v8::BackingStore> bs);
+
+  StreamReadSlab& stream_read_slab() {
+    return stream_read_slab_;
+  }
 
   void AddUnmanagedFd(int fd);
   void RemoveUnmanagedFd(int fd);
@@ -1063,13 +1149,14 @@ class Environment final : public MemoryRetainer {
   };
 
 #if HAVE_OPENSSL
-#if OPENSSL_VERSION_MAJOR >= 3
-  // We declare another alias here to avoid having to include crypto_util.h
-  using EVPMDPointer = DeleteFnPtr<EVP_MD, EVP_MD_free>;
-  std::vector<EVPMDPointer> evp_md_cache;
-#endif  // OPENSSL_VERSION_MAJOR >= 3
-  std::unordered_map<std::string, size_t> alias_to_md_id_map;
+  uint64_t hash_cache_generation = 0;
+  std::unique_ptr<ncrypto::DigestCache> provider_digest_cache;
+  std::unique_ptr<ncrypto::CipherCache> provider_cipher_cache;
   std::vector<std::string> supported_hash_algorithms;
+  uint64_t mac_cache_generation = 0;
+  std::unique_ptr<ncrypto::MacCache> provider_mac_cache;
+  std::vector<std::string> supported_mac_algorithms;
+  bool supported_mac_algorithms_initialized = false;
 #endif  // HAVE_OPENSSL
 
   v8::Global<v8::Module> temporary_required_module_facade_original;
@@ -1231,6 +1318,7 @@ class Environment final : public MemoryRetainer {
   bool task_queues_async_initialized_ = false;
 
   std::atomic<Environment**> interrupt_data_ {nullptr};
+  bool is_processing_v8_interrupt_ = false;
   void RequestInterruptFromV8();
   static void CheckImmediate(uv_check_t* handle);
 
@@ -1251,6 +1339,10 @@ class Environment final : public MemoryRetainer {
   // track of the BackingStore for a given pointer.
   std::unordered_map<char*, std::unique_ptr<v8::BackingStore>>
       released_allocated_buffers_;
+  std::unique_ptr<v8::BackingStore> managed_buffer_cache_;
+
+  // Used by EmitToJSStreamListener to allocate stream read buffers.
+  StreamReadSlab stream_read_slab_;
 
   v8::CpuProfiler* cpu_profiler_ = nullptr;
   std::vector<v8::ProfilerId> pending_profiles_;

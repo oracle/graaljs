@@ -16,6 +16,7 @@ const {
   StringPrototypeIncludes,
   StringPrototypeLocaleCompare,
   StringPrototypeStartsWith,
+  StringPrototypeTrim,
 } = primordials;
 const {
   copyFileSync,
@@ -32,11 +33,12 @@ const { fileURLToPath, URL } = require('internal/url');
 const { kMappings, SourceMap } = require('internal/source_map/source_map');
 const {
   codes: {
+    ERR_OPERATION_FAILED,
     ERR_SOURCE_MAP_CORRUPT,
     ERR_SOURCE_MAP_MISSING_SOURCE,
   },
 } = require('internal/errors');
-const { matchGlobPattern } = require('internal/fs/glob');
+const { createMatcher } = require('internal/fs/glob');
 const { constants: { kMockSearchParam } } = require('internal/test_runner/mock/loader');
 
 const kCoverageFileRegex = /^coverage-(\d+)-(\d{13})-(\d+)\.json$/;
@@ -44,6 +46,31 @@ const kIgnoreRegex = /\/\* node:coverage ignore next (?<count>\d+ )?\*\//;
 const kLineEndingRegex = /\r?\n$/u;
 const kLineSplitRegex = /(?<=\r?\n)/u;
 const kStatusRegex = /\/\* node:coverage (?<status>enable|disable) \*\//;
+// Match dotfiles (e.g. `test/.foo.js`) when applying coverage globs so the
+// default exclude patterns cover them.
+const kMatchGlobPatternOptions = { __proto__: null, dot: true };
+const kTypeOnlyImportRegex = /^\s*import\s+type\b/u;
+const kTypeScriptSourceRegex = /\.(?:cts|mts|ts)$/u;
+
+let stripTypeScriptTypesForCoverage;
+
+function getStripTypeScriptTypesForCoverage() {
+  if (!process.config.variables.node_use_amaro) {
+    return;
+  }
+
+  stripTypeScriptTypesForCoverage ??=
+    require('internal/modules/typescript').stripTypeScriptTypesForCoverage;
+  return stripTypeScriptTypesForCoverage;
+}
+
+function createCoverageMatcher(pattern) {
+  return {
+    __proto__: null,
+    relative: createMatcher(pattern, kMatchGlobPatternOptions),
+    absolute: createMatcher(pattern),
+  };
+}
 
 class CoverageLine {
   constructor(line, startOffset, src, length = src?.length) {
@@ -69,6 +96,10 @@ class TestCoverage {
   }
 
   #sourceLines = new SafeMap();
+  #typeScriptLines = new SafeSet();
+  #skipCache = new SafeMap();
+  #excludeMatchers = null;
+  #includeMatchers = null;
 
   getLines(fileUrl, source) {
     // Split the file source into lines. Make sure the lines maintain their
@@ -131,6 +162,57 @@ class TestCoverage {
     });
     this.#sourceLines.set(fileUrl, lines);
     return lines;
+  }
+
+  markTypeScriptOnlyLines(fileUrl, source) {
+    if (this.#typeScriptLines.has(fileUrl)) {
+      return;
+    }
+    this.#typeScriptLines.add(fileUrl);
+
+    if (RegExpPrototypeExec(kTypeScriptSourceRegex, fileUrl) === null) {
+      return;
+    }
+
+    const lines = this.getLines(fileUrl, source);
+    if (!lines) {
+      return;
+    }
+
+    let strippedLines;
+    const stripSource = getStripTypeScriptTypesForCoverage();
+
+    if (stripSource) {
+      source ??= readFileSync(fileURLToPath(fileUrl), 'utf8');
+
+      try {
+        strippedLines = RegExpPrototypeSymbolSplit(
+          kLineSplitRegex,
+          stripSource(source),
+        );
+      } catch {
+        strippedLines = undefined;
+      }
+    }
+
+    for (let i = 0; i < lines.length; ++i) {
+      const originalLine = lines[i].src;
+
+      if (StringPrototypeTrim(originalLine).length === 0) {
+        continue;
+      }
+
+      if (strippedLines?.[i] !== undefined) {
+        if (StringPrototypeTrim(strippedLines[i]).length === 0) {
+          lines[i].ignore = true;
+        }
+        continue;
+      }
+
+      if (RegExpPrototypeExec(kTypeOnlyImportRegex, originalLine) !== null) {
+        lines[i].ignore = true;
+      }
+    }
   }
 
   summary() {
@@ -332,7 +414,7 @@ class TestCoverage {
         }
 
         const coverageFile = join(this.coverageDirectory, entry.name);
-        const coverage = JSONParse(readFileSync(coverageFile, 'utf8'));
+        const coverage = readCoverageFile(coverageFile);
         this.mergeCoverage(result, this.mapCoverageWithSourceMap(coverage));
       }
 
@@ -368,10 +450,12 @@ class TestCoverage {
         offset += length + 1;
         return coverageLine;
       });
-      if (data.sourcesContent != null) {
-        for (let j = 0; j < data.sources.length; ++j) {
-          this.getLines(data.sources[j], data.sourcesContent[j]);
+      for (let j = 0; j < data.sources.length; ++j) {
+        const source = data.sourcesContent?.[j];
+        if (source != null) {
+          this.getLines(data.sources[j], source);
         }
+        this.markTypeScriptOnlyLines(data.sources[j], source);
       }
       const sourceMap = new SourceMap(data, { __proto__: null, lineLengths });
 
@@ -465,6 +549,14 @@ class TestCoverage {
   }
 
   shouldSkipFileCoverage(url) {
+    const cached = this.#skipCache.get(url);
+    if (cached !== undefined) return cached;
+    const result = this.#computeShouldSkipFileCoverage(url);
+    this.#skipCache.set(url, result);
+    return result;
+  }
+
+  #computeShouldSkipFileCoverage(url) {
     // This check filters out core modules, which start with 'node:' in
     // coverage reports, as well as any invalid coverages which have been
     // observed on Windows.
@@ -472,28 +564,32 @@ class TestCoverage {
 
     const absolutePath = fileURLToPath(url);
     const relativePath = relative(this.options.cwd, absolutePath);
-    const {
-      coverageExcludeGlobs: excludeGlobs,
-      coverageIncludeGlobs: includeGlobs,
-    } = this.options;
+    // The exclude/include globs are fixed for the lifetime of this
+    // TestCoverage instance, so compile each glob to a matcher once and reuse
+    // it for every file. Building a fresh Minimatch per call (the previous
+    // behavior) dominated the coverage report time, scaling with
+    // files * globs. Each glob compiles to a matcher pair: `relative` enables
+    // dot:true so globs match dotfiles within the project, while `absolute`
+    // keeps the default behavior to avoid misinterpreting dot segments in the
+    // absolute filesystem path (e.g. tmp dirs like `test/.tmp.0`).
+    this.#excludeMatchers ??= ArrayPrototypeMap(
+      this.options.coverageExcludeGlobs ?? [], createCoverageMatcher);
+    this.#includeMatchers ??= ArrayPrototypeMap(
+      this.options.coverageIncludeGlobs ?? [], createCoverageMatcher);
 
     // This check filters out files that match the exclude globs.
-    if (excludeGlobs?.length > 0) {
-      for (let i = 0; i < excludeGlobs.length; ++i) {
-        if (
-          matchGlobPattern(relativePath, excludeGlobs[i]) ||
-          matchGlobPattern(absolutePath, excludeGlobs[i])
-        ) return true;
-      }
+    for (let i = 0; i < this.#excludeMatchers.length; ++i) {
+      const matcher = this.#excludeMatchers[i];
+      if (matcher.relative.match(relativePath) ||
+          matcher.absolute.match(absolutePath)) return true;
     }
 
     // This check filters out files that do not match the include globs.
-    if (includeGlobs?.length > 0) {
-      for (let i = 0; i < includeGlobs.length; ++i) {
-        if (
-          matchGlobPattern(relativePath, includeGlobs[i]) ||
-          matchGlobPattern(absolutePath, includeGlobs[i])
-        ) return false;
+    if (this.#includeMatchers.length > 0) {
+      for (let i = 0; i < this.#includeMatchers.length; ++i) {
+        const matcher = this.#includeMatchers[i];
+        if (matcher.relative.match(relativePath) ||
+            matcher.absolute.match(absolutePath)) return false;
       }
       return true;
     }
@@ -505,6 +601,24 @@ class TestCoverage {
 
     // This check filters out the node_modules/ directory, unless it is explicitly included.
     return StringPrototypeIncludes(url, '/node_modules/');
+  }
+}
+
+function readCoverageFile(coverageFile) {
+  const rawCoverage = readFileSync(coverageFile, 'utf8');
+
+  if (rawCoverage.length === 0) {
+    throw new ERR_OPERATION_FAILED(`coverage file is empty: ${coverageFile}`);
+  }
+
+  try {
+    return JSONParse(rawCoverage);
+  } catch (err) {
+    const error = new ERR_OPERATION_FAILED(
+      `failed to parse coverage file ${coverageFile}: ${err.message}`,
+    );
+    error.cause = err;
+    throw error;
   }
 }
 

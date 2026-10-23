@@ -339,6 +339,12 @@ EXPORT_TO_JS(StrictEquals) {
     args.GetReturnValue().Set(args[0]->StrictEquals(args[1]));
 }
 
+// Value::SameValue
+
+EXPORT_TO_JS(SameValue) {
+    args.GetReturnValue().Set(args[0]->SameValue(args[1]));
+}
+
 // Value::TypeOf
 
 EXPORT_TO_JS(TypeOf) {

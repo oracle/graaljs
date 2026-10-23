@@ -36,7 +36,6 @@
 /* library-private global vars with source visibility restricted to this file */
 
 static unsigned int ares_initialized;
-static int          ares_init_flags;
 
 /* library-private global vars with visibility across the whole library */
 
@@ -105,6 +104,27 @@ void *ares_realloc_zero(void *ptr, size_t orig_size, size_t new_size)
   return p;
 }
 
+void *ares_malloc_zero_array(size_t num, size_t size)
+{
+  size_t total;
+  if (ares_size_t_mul_overflow(num, size, &total)) {
+    return NULL;
+  }
+  return ares_malloc_zero(total);
+}
+
+void *ares_realloc_zero_array(void *ptr, size_t orig_num, size_t new_num,
+                              size_t size)
+{
+  size_t orig_total;
+  size_t new_total;
+  if (ares_size_t_mul_overflow(orig_num, size, &orig_total) ||
+      ares_size_t_mul_overflow(new_num, size, &new_total)) {
+    return NULL;
+  }
+  return ares_realloc_zero(ptr, orig_total, new_total);
+}
+
 int ares_library_init(int flags)
 {
   if (ares_initialized) {
@@ -114,8 +134,7 @@ int ares_library_init(int flags)
   ares_initialized++;
 
   /* NOTE: ARES_LIB_INIT_WIN32 flag no longer used */
-
-  ares_init_flags = flags;
+  (void)flags;
 
   return ARES_SUCCESS;
 }
@@ -152,10 +171,9 @@ void ares_library_cleanup(void)
   ares_library_cleanup_android();
 #endif
 
-  ares_init_flags = ARES_LIB_INIT_NONE;
-  __ares_malloc   = default_malloc;
-  __ares_realloc  = default_realloc;
-  __ares_free     = default_free;
+  __ares_malloc  = default_malloc;
+  __ares_realloc = default_realloc;
+  __ares_free    = default_free;
 }
 
 int ares_library_initialized(void)

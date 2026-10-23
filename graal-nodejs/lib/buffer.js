@@ -113,6 +113,8 @@ const {
   inspect: utilInspect,
 } = require('internal/util/inspect');
 
+const assert = require('internal/assert');
+
 const {
   codes: {
     ERR_BUFFER_OUT_OF_BOUNDS,
@@ -715,8 +717,8 @@ const encodingOps = {
     byteLength: byteLengthUtf8,
     write: utf8Write,
     slice: utf8Slice,
-    indexOf: (buf, val, byteOffset, dir) =>
-      indexOfString(buf, val, byteOffset, encodingsMap.utf8, dir),
+    indexOf: (buf, val, byteOffset, dir, end) =>
+      indexOfString(buf, val, byteOffset, encodingsMap.utf8, dir, end),
   },
   ucs2: {
     encoding: 'ucs2',
@@ -724,8 +726,8 @@ const encodingOps = {
     byteLength: (string) => string.length * 2,
     write: ucs2Write,
     slice: ucs2Slice,
-    indexOf: (buf, val, byteOffset, dir) =>
-      indexOfString(buf, val, byteOffset, encodingsMap.utf16le, dir),
+    indexOf: (buf, val, byteOffset, dir, end) =>
+      indexOfString(buf, val, byteOffset, encodingsMap.utf16le, dir, end),
   },
   utf16le: {
     encoding: 'utf16le',
@@ -733,8 +735,8 @@ const encodingOps = {
     byteLength: (string) => string.length * 2,
     write: ucs2Write,
     slice: ucs2Slice,
-    indexOf: (buf, val, byteOffset, dir) =>
-      indexOfString(buf, val, byteOffset, encodingsMap.utf16le, dir),
+    indexOf: (buf, val, byteOffset, dir, end) =>
+      indexOfString(buf, val, byteOffset, encodingsMap.utf16le, dir, end),
   },
   latin1: {
     encoding: 'latin1',
@@ -742,8 +744,8 @@ const encodingOps = {
     byteLength: (string) => string.length,
     write: latin1Write,
     slice: latin1Slice,
-    indexOf: (buf, val, byteOffset, dir) =>
-      indexOfString(buf, val, byteOffset, encodingsMap.latin1, dir),
+    indexOf: (buf, val, byteOffset, dir, end) =>
+      indexOfString(buf, val, byteOffset, encodingsMap.latin1, dir, end),
   },
   ascii: {
     encoding: 'ascii',
@@ -751,8 +753,13 @@ const encodingOps = {
     byteLength: (string) => string.length,
     write: asciiWrite,
     slice: asciiSlice,
-    indexOf: (buf, val, byteOffset, dir) =>
-      indexOfString(buf, val, byteOffset, encodingsMap.ascii, dir),
+    indexOf: (buf, val, byteOffset, dir, end) =>
+      indexOfBuffer(buf,
+                    fromStringFast(val, encodingOps.ascii),
+                    byteOffset,
+                    encodingsMap.ascii,
+                    dir,
+                    end),
   },
   base64: {
     encoding: 'base64',
@@ -760,12 +767,13 @@ const encodingOps = {
     byteLength: (string) => base64ByteLength(string, string.length),
     write: base64Write,
     slice: base64Slice,
-    indexOf: (buf, val, byteOffset, dir) =>
+    indexOf: (buf, val, byteOffset, dir, end) =>
       indexOfBuffer(buf,
                     fromStringFast(val, encodingOps.base64),
                     byteOffset,
                     encodingsMap.base64,
-                    dir),
+                    dir,
+                    end),
   },
   base64url: {
     encoding: 'base64url',
@@ -773,12 +781,13 @@ const encodingOps = {
     byteLength: (string) => base64ByteLength(string, string.length),
     write: base64urlWrite,
     slice: base64urlSlice,
-    indexOf: (buf, val, byteOffset, dir) =>
+    indexOf: (buf, val, byteOffset, dir, end) =>
       indexOfBuffer(buf,
                     fromStringFast(val, encodingOps.base64url),
                     byteOffset,
                     encodingsMap.base64url,
-                    dir),
+                    dir,
+                    end),
   },
   hex: {
     encoding: 'hex',
@@ -786,12 +795,13 @@ const encodingOps = {
     byteLength: (string) => string.length >>> 1,
     write: hexWrite,
     slice: hexSlice,
-    indexOf: (buf, val, byteOffset, dir) =>
+    indexOf: (buf, val, byteOffset, dir, end) =>
       indexOfBuffer(buf,
                     fromStringFast(val, encodingOps.hex),
                     byteOffset,
                     encodingsMap.hex,
-                    dir),
+                    dir,
+                    end),
   },
 };
 function getEncodingOps(encoding) {
@@ -1045,9 +1055,10 @@ Buffer.prototype.compare = function compare(target,
 // - buffer - a Buffer to search
 // - val - a string, Buffer, or number
 // - byteOffset - an index into `buffer`; will be clamped to an int32
+// - end - absolute exclusive end of the search range
 // - encoding - an optional encoding, relevant if val is a string
 // - dir - true for indexOf, false for lastIndexOf
-function bidirectionalIndexOf(buffer, val, byteOffset, encoding, dir) {
+function bidirectionalIndexOf(buffer, val, byteOffset, end, encoding, dir) {
   validateBuffer(buffer);
 
   if (typeof byteOffset === 'string') {
@@ -1067,7 +1078,7 @@ function bidirectionalIndexOf(buffer, val, byteOffset, encoding, dir) {
   dir = !!dir;  // Cast to bool.
 
   if (typeof val === 'number')
-    return indexOfNumber(buffer, val >>> 0, byteOffset, dir);
+    return indexOfNumber(buffer, val >>> 0, byteOffset, dir, end);
 
   let ops;
   if (encoding === undefined)
@@ -1078,13 +1089,13 @@ function bidirectionalIndexOf(buffer, val, byteOffset, encoding, dir) {
   if (typeof val === 'string') {
     if (ops === undefined)
       throw new ERR_UNKNOWN_ENCODING(encoding);
-    return ops.indexOf(buffer, val, byteOffset, dir);
+    return ops.indexOf(buffer, val, byteOffset, dir, end);
   }
 
   if (isUint8Array(val)) {
     const encodingVal =
       (ops === undefined ? encodingsMap.utf8 : ops.encodingVal);
-    return indexOfBuffer(buffer, val, byteOffset, encodingVal, dir);
+    return indexOfBuffer(buffer, val, byteOffset, encodingVal, dir, end);
   }
 
   throw new ERR_INVALID_ARG_TYPE(
@@ -1092,16 +1103,34 @@ function bidirectionalIndexOf(buffer, val, byteOffset, encoding, dir) {
   );
 }
 
-Buffer.prototype.indexOf = function indexOf(val, byteOffset, encoding) {
-  return bidirectionalIndexOf(this, val, byteOffset, encoding, true);
+Buffer.prototype.indexOf = function indexOf(val, offset, end, encoding) {
+  if (typeof end === 'string') {
+    encoding = end;
+    end = this.length;
+  } else if (end === undefined) {
+    end = this.length;
+  }
+  return bidirectionalIndexOf(this, val, offset, end, encoding, true);
 };
 
-Buffer.prototype.lastIndexOf = function lastIndexOf(val, byteOffset, encoding) {
-  return bidirectionalIndexOf(this, val, byteOffset, encoding, false);
+Buffer.prototype.lastIndexOf = function lastIndexOf(val, offset, end, encoding) {
+  if (typeof end === 'string') {
+    encoding = end;
+    end = this.length;
+  } else if (end === undefined) {
+    end = this.length;
+  }
+  return bidirectionalIndexOf(this, val, offset, end, encoding, false);
 };
 
-Buffer.prototype.includes = function includes(val, byteOffset, encoding) {
-  return bidirectionalIndexOf(this, val, byteOffset, encoding, true) !== -1;
+Buffer.prototype.includes = function includes(val, offset, end, encoding) {
+  if (typeof end === 'string') {
+    encoding = end;
+    end = this.length;
+  } else if (end === undefined) {
+    end = this.length;
+  }
+  return bidirectionalIndexOf(this, val, offset, end, encoding, true) !== -1;
 };
 
 // Usage:
@@ -1392,9 +1421,9 @@ function atob(input) {
       throw lazyDOMException(
         'The string to be decoded is not correctly encoded.',
         'InvalidCharacterError');
-    case -3: // Possible overflow
-      // TODO(@anonrig): Throw correct error in here.
-      throw lazyDOMException('The input causes overflow.', 'InvalidCharacterError');
+    case -3:
+      assert.fail('Unrecognized simdutf error');
+      break;
     default:
       return result;
   }

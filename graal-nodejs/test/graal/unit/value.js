@@ -1033,6 +1033,26 @@ describe('Value - other methods', function () {
             assert.strictEqual(module.Value_StrictEquals(o, o), true);
         });
     });
+    describe('SameValue', function () {
+        it('should agree with Object.is for primitives and object identities', function () {
+            const object = {};
+            const symbol = Symbol('same');
+            const values = [
+                undefined, null, false, true,
+                0, -0, 1, 42, NaN, Infinity, -Infinity,
+                '', '42', 'hello', ['hel', 'lo'].join(''),
+                0n, 42n, 123456789012345678901234567890n,
+                BigInt('123456789012345678901234567890'),
+                symbol, Symbol('same'), Symbol.for('same'),
+                object, {}, new Number(42),
+            ];
+            for (const left of values) {
+                for (const right of values) {
+                    assert.strictEqual(module.Value_SameValue(left, right), Object.is(left, right));
+                }
+            }
+        });
+    });
     describe('TypeOf', function () {
         it('should return "undefined" for undefined', function () {
             assert.strictEqual(module.Value_TypeOf(undefined), "undefined");

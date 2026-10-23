@@ -308,10 +308,11 @@ std::tuple<int, char**> FixupArgsForSEA(int argc, char** argv) {
                      cli_extension_args.size() + 2);
     new_argv.emplace_back(argv[0]);
 
+    exec_argv_storage.reserve(sea_resource.exec_argv.size() +
+                              cli_extension_args.size());
+
     // Insert exec argv from SEA config
     if (!sea_resource.exec_argv.empty()) {
-      exec_argv_storage.reserve(sea_resource.exec_argv.size() +
-                                cli_extension_args.size());
       for (const auto& arg : sea_resource.exec_argv) {
         exec_argv_storage.emplace_back(arg);
         new_argv.emplace_back(exec_argv_storage.back().data());
@@ -506,6 +507,14 @@ std::optional<SeaConfig> ParseSingleExecutableConfig(
         return std::nullopt;
       }
     }
+  }
+
+  if (!document.at_end()) {
+    FPrintF(stderr,
+            "Cannot parse JSON from %s: %s\n",
+            config_path,
+            simdjson::error_message(simdjson::TRAILING_CONTENT));
+    return std::nullopt;
   }
 
   if (static_cast<bool>(result.flags & SeaFlags::kUseSnapshot) &&
@@ -754,7 +763,7 @@ void GetAsset(const FunctionCallbackInfo<Value>& args) {
   if (sea_resource.assets.empty()) {
     return;
   }
-  auto it = sea_resource.assets.find(*key);
+  auto it = sea_resource.assets.find(std::string_view(*key, key.length()));
   if (it == sea_resource.assets.end()) {
     return;
   }

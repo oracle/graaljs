@@ -776,16 +776,7 @@ Follow <https://github.com/ccache/ccache/wiki/MS-Visual-Studio>, and you
 should notice that obj file will be bigger than the normal one.
 
 First, install ccache. Assuming the installation of ccache is in `c:\ccache`
-(where you can find `ccache.exe`), copy `c:\ccache\ccache.exe` to `c:\ccache\cl.exe`
-with this command.
-
-```powershell
-cp c:\ccache\ccache.exe c:\ccache\cl.exe
-```
-
-With newer version of Visual Studio, it may need the copy to be `clang-cl.exe`
-instead. If the output of `vcbuild.bat` suggests missing `clang-cl.exe`, copy
-it differently:
+(where you can find `ccache.exe`), setup aliases as the following commands:
 
 ```powershell
 cp c:\ccache\ccache.exe c:\ccache\clang-cl.exe
@@ -799,12 +790,6 @@ When building Node.js, provide a path to your ccache via the option:
 
 This will allow for near-instantaneous rebuilds when switching branches back
 and forth that were built with cache.
-
-To use it with ClangCL, run this instead:
-
-```powershell
-.\vcbuild.bat clang-cl ccache c:\ccache\
-```
 
 ### Android
 
@@ -934,11 +919,11 @@ as `deps/icu` (You'll have: `deps/icu/source/...`)
 ### Configure OpenSSL appname
 
 Node.js can use an OpenSSL configuration file by specifying the environment
-variable `OPENSSL_CONF`, or using the command line option `--openssl-conf`, and
-if none of those are specified will default to reading the default OpenSSL
-configuration file `openssl.cnf`. Node.js will only read a section that is by
-default named `nodejs_conf`, but this name can be overridden using the following
-configure option:
+variable `OPENSSL_CONF`, or using the command line option `--openssl-config`,
+which takes precedence. If neither is specified, Node.js defaults to reading the
+default OpenSSL configuration file `openssl.cnf`. Node.js will only read a
+section that is by default named `nodejs_conf`, but this name can be overridden
+using the following configure option:
 
 ```bash
 ./configure --openssl-conf-name=<some_conf_name>
@@ -949,6 +934,8 @@ configure option:
 Node.js supports FIPS when statically or dynamically linked with OpenSSL 3 via
 [OpenSSL's provider model](https://docs.openssl.org/3.0/man7/crypto/#OPENSSL-PROVIDERS).
 It is not necessary to rebuild Node.js to enable support for FIPS.
+
+When using OpenSSL 1.1.1, Node.js must be built against a FIPS-capable OpenSSL.
 
 See [FIPS mode](doc/api/crypto.md#fips-mode) for more information on how to
 enable FIPS support in Node.js.

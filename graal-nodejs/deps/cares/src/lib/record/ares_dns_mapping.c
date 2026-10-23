@@ -132,6 +132,21 @@ ares_bool_t ares_dns_rec_allow_name_comp(ares_dns_rec_type_t type)
   return ARES_FALSE;
 }
 
+ares_bool_t ares_dns_rec_allow_name_comp_read(ares_dns_rec_type_t type)
+{
+  /* RFC3597 section 4 recommends decompressing these older RR types on
+   * receipt, even though their RDATA names must not be compressed on write.
+   * The other listed types (RP, AFSDB, RT, PX, NXT) are not implemented. */
+  switch (type) {
+    case ARES_REC_TYPE_SIG:
+    case ARES_REC_TYPE_SRV:
+    case ARES_REC_TYPE_NAPTR:
+      return ARES_TRUE;
+    default:
+      return ares_dns_rec_allow_name_comp(type);
+  }
+}
+
 ares_bool_t ares_dns_class_isvalid(ares_dns_class_t    qclass,
                                    ares_dns_rec_type_t type,
                                    ares_bool_t         is_query)
@@ -147,7 +162,7 @@ ares_bool_t ares_dns_class_isvalid(ares_dns_class_t    qclass,
   switch (qclass) {
     case ARES_CLASS_IN:
     case ARES_CLASS_CHAOS:
-    case ARES_CLASS_HESOID:
+    case ARES_CLASS_HESIOD:
     case ARES_CLASS_NONE:
       return ARES_TRUE;
     case ARES_CLASS_ANY:
@@ -228,7 +243,7 @@ const char *ares_dns_rec_type_tostr(ares_dns_rec_type_t type)
     case ARES_REC_TYPE_CAA:
       return "CAA";
     case ARES_REC_TYPE_RAW_RR:
-      return "RAWRR";
+      return "RAW_RR";
   }
   return "UNKNOWN";
 }
@@ -240,7 +255,7 @@ const char *ares_dns_class_tostr(ares_dns_class_t qclass)
       return "IN";
     case ARES_CLASS_CHAOS:
       return "CH";
-    case ARES_CLASS_HESOID:
+    case ARES_CLASS_HESIOD:
       return "HS";
     case ARES_CLASS_ANY:
       return "ANY";
@@ -670,7 +685,7 @@ ares_bool_t ares_dns_class_fromstr(ares_dns_class_t *qclass, const char *str)
   } list[] = {
     { "IN",   ARES_CLASS_IN     },
     { "CH",   ARES_CLASS_CHAOS  },
-    { "HS",   ARES_CLASS_HESOID },
+    { "HS",   ARES_CLASS_HESIOD },
     { "NONE", ARES_CLASS_NONE   },
     { "ANY",  ARES_CLASS_ANY    },
     { NULL,   0                 }

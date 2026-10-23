@@ -1,5 +1,10 @@
 // Flags: --expose-gc
-import { isWindows, skipIfSQLiteMissing } from '../common/index.mjs';
+import {
+  isWindows,
+  skipIfSQLiteMissing,
+  spawnPromisified,
+} from '../common/index.mjs';
+import fixtures from '../common/fixtures.js';
 import tmpdir from '../common/tmpdir.js';
 import { join } from 'node:path';
 import { describe, test } from 'node:test';
@@ -123,6 +128,15 @@ describe('backup()', () => {
       code: 'ERR_INVALID_ARG_TYPE',
       message: 'The "options.rate" argument must be an integer.'
     });
+
+    for (const rate of [0, -1]) {
+      t.assert.throws(() => {
+        backup(database, 'hello.db', { rate });
+      }, {
+        code: 'ERR_OUT_OF_RANGE',
+        message: 'The "options.rate" argument must be a positive integer.'
+      });
+    }
 
     t.assert.throws(() => {
       backup(database, 'hello.db', {
@@ -255,6 +269,16 @@ test('throws if URL is not file: scheme', (t) => {
   });
 });
 
+test('throws if the URL-like path has an unparsable href', (t) => {
+  const database = new DatabaseSync(':memory:');
+
+  t.after(() => { database.close(); });
+
+  t.assert.throws(() => {
+    backup(database, { href: 'not a url' });
+  }, { code: 'ERR_INVALID_URL' });
+});
+
 test('database backup fails when dest file is not writable', { skip: isRoot }, async (t) => {
   const readonlyDestDb = nextDb();
   writeFileSync(readonlyDestDb, '', { mode: 0o444 });
@@ -354,4 +378,14 @@ test('source database is kept alive while a backup is in flight', async (t) => {
   t.after(() => { backupDb.close(); });
   const rows = backupDb.prepare('SELECT COUNT(*) AS n FROM data').get();
   t.assert.strictEqual(rows.n, 500);
+});
+
+test('backup promise settles when the backup is the last active request', async (t) => {
+  const { code, signal, stderr } = await spawnPromisified(process.execPath, [
+    fixtures.path('sqlite', 'backup-last-request.mjs'),
+    nextDb(),
+  ]);
+
+  t.assert.strictEqual(signal, null);
+  t.assert.strictEqual(code, 0, stderr);
 });

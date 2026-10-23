@@ -192,8 +192,6 @@ class WorkerThreadData {
       return;
     }
 
-    SetIsolateUpForNode(isolate);
-
     // Be sure it's called before Environment::InitializeDiagnostics()
     // so that this callback stays when the callback of
     // --heapsnapshot-near-heap-limit gets is popped.
@@ -207,13 +205,13 @@ class WorkerThreadData {
       isolate->SetStackLimit(w->stack_base_);
 
       HandleScope handle_scope(isolate);
-      isolate_data_.reset(IsolateData::CreateIsolateData(
-          isolate,
-          &loop_,
-          w_->platform_,
-          allocator.get(),
-          w->snapshot_data()->AsEmbedderWrapper().get(),
-          std::move(w_->per_isolate_opts_)));
+      isolate_data_.reset(
+          IsolateData::CreateIsolateData(isolate,
+                                         &loop_,
+                                         w_->platform_,
+                                         allocator.get(),
+                                         w->snapshot_data(),
+                                         std::move(w_->per_isolate_opts_)));
       CHECK(isolate_data_);
       CHECK(!isolate_data_->is_building_snapshot());
       isolate_data_->set_worker_context(w_);
@@ -316,11 +314,6 @@ void Worker::Run() {
 
     DeleteFnPtr<Environment, FreeEnvironment> env_;
     auto cleanup_env = OnScopeLeave([&]() {
-      // TODO(addaleax): This call is harmless but should not be necessary.
-      // Figure out why V8 is raising a DCHECK() here without it
-      // (in test/parallel/test-async-hooks-worker-asyncfn-terminate-4.js).
-      isolate_->CancelTerminateExecution();
-
       if (!env_) return;
       env_->set_can_call_into_js(false);
 
