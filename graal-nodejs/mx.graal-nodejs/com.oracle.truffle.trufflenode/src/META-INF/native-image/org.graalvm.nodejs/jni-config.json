@@ -210,6 +210,7 @@
       { "name": "proxyGetHandler" },
       { "name": "proxyGetTarget" },
       { "name": "proxyIsFunction" },
+      { "name": "regexpExec" },
       { "name": "regexpGetFlags" },
       { "name": "regexpGetSource" },
       { "name": "regexpNew" },

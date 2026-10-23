@@ -179,6 +179,7 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsHashCodeNode;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
 import com.oracle.truffle.js.builtins.json.JSONBuiltins;
@@ -3885,6 +3886,19 @@ public final class GraalJSAccess {
     public static Object regexpCreate(JSContext context, JSRealm realm, Object pattern, int v8Flags) {
         Object compiledRegexp = RegexCompilerInterface.compile((TruffleString) pattern, regexpFlagsToString(v8Flags), context, realm);
         return JSRegExp.create(context, realm, compiledRegexp);
+    }
+
+    public Object regexpExec(Object context, Object regexp, Object subject) {
+        JSRealm jsRealm = (JSRealm) context;
+        Object exec = JSObject.get((JSRegExpObject) regexp, Strings.EXEC);
+        if (!JSRuntime.isCallable(exec)) {
+            exec = jsRealm.lookupFunction(RegExpPrototypeBuiltins.BUILTINS, Strings.EXEC);
+        }
+        Object result = JSRuntime.call(exec, regexp, new Object[]{subject});
+        if (result != Null.instance && !JSRuntime.isObject(result)) {
+            throw Errors.createTypeError("object or null expected");
+        }
+        return result;
     }
 
     @TruffleBoundary

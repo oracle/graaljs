@@ -49,6 +49,7 @@ public:
     inline static GraalRegExp* Allocate(GraalIsolate* isolate, jobject java_regexp);
     inline static GraalRegExp* Allocate(GraalIsolate* isolate, jobject java_regexp, void* placement);
     bool IsRegExp() const;
+    v8::MaybeLocal<v8::Object> Exec(v8::Local<v8::Context> context, v8::Local<v8::String> subject);
     v8::Local<v8::String> GetSource() const;
     v8::RegExp::Flags GetFlags() const;
     static v8::Local<v8::RegExp> New(v8::Local<v8::Context> context, v8::Local<v8::String> pattern, v8::RegExp::Flags flags);

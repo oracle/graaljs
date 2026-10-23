@@ -4368,8 +4368,7 @@ namespace v8 {
     }
 
     MaybeLocal<Object> RegExp::Exec(Local<Context> context, Local<String> subject) {
-        TRACE
-        return Local<Object>();
+        return reinterpret_cast<GraalRegExp*> (this)->Exec(context, subject);
     }
 
     Maybe<bool> Object::SetNativeDataProperty(

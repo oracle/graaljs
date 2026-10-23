@@ -1008,6 +1008,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::boolean_object_new, "booleanObjectNew", "(Ljava/lang/Object;Z)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::boolean_object_value_of, "booleanObjectValueOf", "(Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::regexp_new, "regexpNew", "(Ljava/lang/Object;Ljava/lang/Object;I)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::regexp_exec, "regexpExec", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::regexp_get_source, "regexpGetSource", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::regexp_get_flags, "regexpGetFlags", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::string_empty, "stringEmpty", "()Ljava/lang/Object;")

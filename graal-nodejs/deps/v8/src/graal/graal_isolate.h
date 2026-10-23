@@ -314,6 +314,7 @@ enum GraalAccessMethod {
     boolean_object_new,
     boolean_object_value_of,
     regexp_new,
+    regexp_exec,
     regexp_get_source,
     regexp_get_flags,
     string_empty,
