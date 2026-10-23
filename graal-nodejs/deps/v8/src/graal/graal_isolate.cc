@@ -821,6 +821,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::value_is_wasm_memory_object, "valueIsWasmMemoryObject", "(Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::value_equals, "valueEquals", "(Ljava/lang/Object;Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::value_strict_equals, "valueStrictEquals", "(Ljava/lang/Object;Ljava/lang/Object;)Z")
+    ACCESS_METHOD(GraalAccessMethod::value_same_value, "valueSameValue", "(Ljava/lang/Object;Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::value_instance_of, "valueInstanceOf", "(Ljava/lang/Object;Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::value_type_of, "valueTypeOf", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::value_to_detail_string, "valueToDetailString", "(Ljava/lang/Object;)Ljava/lang/Object;")

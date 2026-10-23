@@ -845,6 +845,10 @@ public final class GraalJSAccess {
         return JSRuntime.identical(left, right);
     }
 
+    public boolean valueSameValue(Object left, Object right) {
+        return JSRuntime.isSameValue(left, right);
+    }
+
     public boolean valueInstanceOf(Object left, Object right) {
         if (left instanceof JSDynamicObject) {
             JSDynamicObject function = (JSDynamicObject) right;

@@ -512,6 +512,13 @@ bool GraalValue::StrictEquals(v8::Local<v8::Value> that) const {
     return result;
 }
 
+bool GraalValue::SameValue(v8::Local<v8::Value> that) const {
+    GraalValue* graal_that = reinterpret_cast<GraalValue*> (*that);
+    jobject java_that = graal_that->GetJavaObject();
+    JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::value_same_value, Boolean, GetJavaObject(), java_that);
+    return result;
+}
+
 bool GraalValue::InstanceOf(v8::Local<v8::Object> object) {
     GraalObject* graal_object = reinterpret_cast<GraalObject*> (*object);
     jobject java_object = graal_object->GetJavaObject();

@@ -3065,8 +3065,7 @@ namespace v8 {
     }
 
     bool Value::SameValue(Local<Value> that) const {
-        TRACE
-        return false;
+        return reinterpret_cast<const GraalValue*> (this)->SameValue(that);
     }
 
     int Object::GetIdentityHash() {

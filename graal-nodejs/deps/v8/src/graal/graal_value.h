@@ -189,6 +189,7 @@ public:
     v8::Local<v8::Uint32> ToArrayIndex() const;
     v8::Maybe<bool> Equals(v8::Local<v8::Value> that) const;
     bool StrictEquals(v8::Local<v8::Value> that) const;
+    bool SameValue(v8::Local<v8::Value> that) const;
     bool InstanceOf(v8::Local<v8::Object> object);
     v8::Local<v8::String> TypeOf(v8::Isolate* isolate);
     v8::MaybeLocal<v8::String> ToDetailString(v8::Local<v8::Context> context) const;

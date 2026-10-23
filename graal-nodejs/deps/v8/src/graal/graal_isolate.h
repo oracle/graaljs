@@ -127,6 +127,7 @@ enum GraalAccessMethod {
     value_is_wasm_memory_object,
     value_equals,
     value_strict_equals,
+    value_same_value,
     value_instance_of,
     value_type_of,
     value_to_detail_string,

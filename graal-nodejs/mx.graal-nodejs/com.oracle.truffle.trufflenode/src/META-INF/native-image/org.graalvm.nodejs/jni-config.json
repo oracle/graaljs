@@ -314,6 +314,7 @@
       { "name": "valueIsWasmMemoryObject" },
       { "name": "valueIsWeakMap" },
       { "name": "valueIsWeakSet" },
+      { "name": "valueSameValue" },
       { "name": "valueSerializerNew" },
       { "name": "valueSerializerRelease" },
       { "name": "valueSerializerSize" },
