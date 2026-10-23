@@ -932,7 +932,10 @@ jobject GraalReadHostObject(JNIEnv* env, jclass nativeAccess, jlong delegate) {
     v8::Isolate* isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
     v8::HandleScope scope(isolate);
     v8::ValueDeserializer::Delegate* d = reinterpret_cast<v8::ValueDeserializer::Delegate*> (delegate);
-    v8::Local<v8::Object> object = d->ReadHostObject(isolate).ToLocalChecked();
+    v8::Local<v8::Object> object;
+    if (!d->ReadHostObject(isolate).ToLocal(&object)) {
+        return NULL;
+    }
     GraalValue* graal_value = reinterpret_cast<GraalValue*> (*object);
     return env->NewLocalRef(graal_value->GetJavaObject());
 }
