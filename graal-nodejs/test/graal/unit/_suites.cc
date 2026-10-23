@@ -62,6 +62,7 @@
 #include "object_new.cc"
 #include "object_template.cc"
 #include "persistent.cc"
+#include "regexp.cc"
 #include "script.cc"
 #include "set.cc"
 #include "stacktrace.cc"
