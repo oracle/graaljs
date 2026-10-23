@@ -73,7 +73,13 @@ debug(`[${threadId}] is setting up worker child environment`);
 const port = getEnvMessagePort();
 // Graal.js: explicitly initialize support for Java objects in messages,
 // since env message port does not call oninit()
-port.sharedMemMessaging = SharedMemMessagingInit();
+ObjectDefineProperty(port, 'sharedMemMessaging', {
+  __proto__: null,
+  value: SharedMemMessagingInit(),
+  writable: true,
+  configurable: true,
+  enumerable: false,
+});
 
 // If the main thread is spawned with env NODE_CHANNEL_FD, it's probably
 // spawned by our child_process module. In the work threads, mark the
