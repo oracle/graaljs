@@ -4945,7 +4945,7 @@ struct url_components {
 /* end file include/ada/url_components.h */
 
 #if defined(__linux__)
-# define MAYBE_CONSTEXPR
+# define MAYBE_CONSTEXPR inline
 #else
 # define MAYBE_CONSTEXPR constexpr
 #endif
@@ -7762,7 +7762,7 @@ struct url_aggregator : url_base {
    * Returns the byte length of the serialized URL without allocating a string.
    * @return Size of the href in bytes.
    */
-  [[nodiscard]] constexpr size_t get_href_size() const noexcept;
+  [[nodiscard]] MAYBE_CONSTEXPR size_t get_href_size() const noexcept;
 
   /**
    * Returns the URL's username component.
@@ -8993,7 +8993,7 @@ constexpr bool url_aggregator::has_port() const noexcept {
   return buffer;
 }
 
-[[nodiscard]] constexpr size_t url_aggregator::get_href_size() const noexcept {
+[[nodiscard]] MAYBE_CONSTEXPR size_t url_aggregator::get_href_size() const noexcept {
   return buffer.size();
 }
 
