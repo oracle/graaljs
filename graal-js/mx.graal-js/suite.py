@@ -881,6 +881,7 @@ suite = {
       ],
       "distDependencies" : [
         "sdk:POLYGLOT",
+        "truffle:TRUFFLE_RUNTIME",
         "GRAALJS"
       ],
       "testDistribution": True,
