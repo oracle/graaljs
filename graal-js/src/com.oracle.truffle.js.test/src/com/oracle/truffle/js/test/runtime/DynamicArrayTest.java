@@ -69,6 +69,7 @@ import com.oracle.truffle.js.runtime.array.dyn.HolesIntArray;
 import com.oracle.truffle.js.runtime.array.dyn.ZeroBasedIntArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
+import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.test.JSTest;
 
@@ -641,6 +642,37 @@ public class DynamicArrayTest extends JSTest {
                 }
             }
         }
+    }
+
+    /**
+     * Shape integrity flags must account for strategy-backed elements and remain set when those
+     * elements become ordinary properties.
+     */
+    @Test
+    public void testArrayShapeIntegrityFlags() {
+        JSArrayObject arrayObject = (JSArrayObject) testHelper.runNoPolyglot("""
+                        globalThis.array = [1, 2];
+                        Object.defineProperties(array, {
+                            length: {writable: false},
+                            tag: {value: 1, configurable: true}
+                        });
+                        Object.preventExtensions(array);
+                        array;
+                        """);
+        int integrityFlags = JSShape.SEALED_FLAG | JSShape.FROZEN_FLAG;
+        assertEquals(0, arrayObject.getShape().getFlags() & integrityFlags);
+
+        testHelper.runNoPolyglot("Object.seal(array)");
+        assertEquals(JSShape.SEALED_FLAG, arrayObject.getShape().getFlags() & integrityFlags);
+        assertEquals(false, testHelper.runNoPolyglot("Reflect.defineProperty(array, '0', {enumerable: false})"));
+        assertEquals(JSShape.SEALED_FLAG, arrayObject.getShape().getFlags() & integrityFlags);
+        assertEquals(false, testHelper.runNoPolyglot("Object.isFrozen(array)"));
+
+        testHelper.runNoPolyglot("Object.freeze(array)");
+        assertEquals(integrityFlags, arrayObject.getShape().getFlags() & integrityFlags);
+        assertEquals(false, testHelper.runNoPolyglot("Reflect.defineProperty(array, '1', {enumerable: false})"));
+        assertEquals(integrityFlags, arrayObject.getShape().getFlags() & integrityFlags);
+        assertEquals(true, testHelper.runNoPolyglot("Object.isFrozen(array)"));
     }
 
     /**
