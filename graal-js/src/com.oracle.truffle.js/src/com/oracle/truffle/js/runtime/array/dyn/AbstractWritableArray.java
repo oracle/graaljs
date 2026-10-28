@@ -751,13 +751,13 @@ public abstract class AbstractWritableArray extends DynamicArray {
         long indexOffset = getIndexOffset(object);
         int arrayOffset = getArrayOffset(object);
 
-        int startIntl = (int) (start - indexOffset);
-        int endIntl = (int) (end - indexOffset);
+        long startIntl = start - indexOffset;
+        long endIntl = end - indexOffset;
 
-        int usedStartIntl = Math.max(arrayOffset, startIntl);
-        int usedEndIntl = Math.min(arrayOffset + usedLength, endIntl);
+        int usedStartIntl = (int) Math.min(arrayOffset + usedLength, Math.max(arrayOffset, startIntl));
+        int usedEndIntl = (int) Math.min(arrayOffset + usedLength, Math.max(arrayOffset, endIntl));
 
-        int usedDelta = Math.max(0, usedEndIntl - usedStartIntl);
+        int usedDelta = usedEndIntl - usedStartIntl;
         int newUsedLength = usedLength - usedDelta;
         if (usedDelta > 0) {
             arraySetUsedLength(object, newUsedLength);
@@ -774,30 +774,30 @@ public abstract class AbstractWritableArray extends DynamicArray {
 
         int arrayOffsetNew = arrayOffset;
         if (startIntl < 0) {
-            int indexOffsetDelta = endIntl - startIntl;
+            long indexOffsetDelta = endIntl - startIntl;
             long indexOffsetNew = Math.max(0, indexOffset - indexOffsetDelta);
 
             if (endIntl > 0) {
-                int length = usedLength + arrayOffset - endIntl;
+                long length = usedLength + arrayOffset - endIntl;
                 if (length > 0) {
-                    moveRangePrepared(object, endIntl, 0, length);
+                    moveRangePrepared(object, (int) endIntl, 0, (int) length);
                 }
                 indexOffsetNew = start;
                 // The remaining elements moved towards zero, including any unused prefix.
-                arrayOffsetNew = Math.max(0, arrayOffset - endIntl);
+                arrayOffsetNew = (int) Math.max(0, arrayOffset - endIntl);
                 setArrayOffset(object, arrayOffsetNew);
             }
 
             setIndexOffset(object, indexOffsetNew);
         } else {
             if (startIntl < arrayOffset) {
-                arrayOffsetNew = Math.max(startIntl, arrayOffset - (endIntl - startIntl));
+                arrayOffsetNew = (int) Math.max(startIntl, arrayOffset - (endIntl - startIntl));
                 setArrayOffset(object, arrayOffsetNew);
             }
 
-            int length = usedLength + arrayOffset - endIntl;
+            long length = usedLength + arrayOffset - endIntl;
             if (length > 0) {
-                moveRangePrepared(object, endIntl, startIntl, length);
+                moveRangePrepared(object, (int) endIntl, (int) startIntl, (int) length);
             }
         }
 
@@ -819,16 +819,11 @@ public abstract class AbstractWritableArray extends DynamicArray {
         long indexOffset = getIndexOffset(object);
         int arrayOffset = getArrayOffset(object);
 
-        int startIntl = (int) (start - indexOffset);
-        int endIntl = (int) (end - indexOffset);
-
-        if (endIntl > 0) {
-            int actualStartIntl = Math.max(arrayOffset, startIntl);
-            int actualEndIntl = Math.min(arrayOffset + usedLength, endIntl);
-            for (int i = actualStartIntl; i < actualEndIntl; i++) {
-                if (isHolePrepared(object, i)) {
-                    incrementHolesCount(object, -1);
-                }
+        int actualStartIntl = (int) Math.min(arrayOffset + usedLength, Math.max(arrayOffset, start - indexOffset));
+        int actualEndIntl = (int) Math.min(arrayOffset + usedLength, Math.max(arrayOffset, end - indexOffset));
+        for (int i = actualStartIntl; i < actualEndIntl; i++) {
+            if (isHolePrepared(object, i)) {
+                incrementHolesCount(object, -1);
             }
         }
 
