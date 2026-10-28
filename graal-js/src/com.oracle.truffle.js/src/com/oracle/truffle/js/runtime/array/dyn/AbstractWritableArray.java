@@ -669,6 +669,9 @@ public abstract class AbstractWritableArray extends DynamicArray {
     public abstract Object allocateArray(int length);
 
     ScriptArray addRangeImplContiguous(JSDynamicObject object, long offset, int size) {
+        if (length(object) + size > Integer.MAX_VALUE) {
+            return toSparse(object, offset, null).addRangeImpl(object, offset, size);
+        }
         long indexOffset = getIndexOffset(object);
         int arrayOffset = getArrayOffset(object);
         if (offset <= indexOffset + arrayOffset) {
@@ -727,6 +730,9 @@ public abstract class AbstractWritableArray extends DynamicArray {
     }
 
     ScriptArray addRangeImplZeroBased(JSDynamicObject object, long offset, int size) {
+        if (length(object) + size > Integer.MAX_VALUE) {
+            return toSparse(object, offset, null).addRangeImpl(object, offset, size);
+        }
         int iOffset = (int) offset;
         Object array = getArrayObject(object);
         int arrayLength = getArrayLength(array);
