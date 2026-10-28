@@ -47,6 +47,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.runtime.JSConfig;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.DynamicArray;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -123,25 +124,31 @@ public final class ConstantObjectArray extends AbstractConstantArray {
 
     @Override
     public long nextElementIndex(JSDynamicObject object, long index0) {
+        assert index0 >= -1;
         if (!holes) {
             return super.nextElementIndex(object, index0);
         }
-        int index = (int) index0;
-        do {
+        int length = lengthInt(object);
+        if (index0 >= length - 1L) {
+            return JSRuntime.MAX_SAFE_INTEGER_LONG;
+        }
+        int index = (int) (index0 + 1);
+        while (index < length && isEmpty(object, index)) {
             index++;
-        } while (index < super.lastElementIndex(object) && isEmpty(object, index));
-        return index;
+        }
+        return index < length ? index : JSRuntime.MAX_SAFE_INTEGER_LONG;
     }
 
     @Override
     public long previousElementIndex(JSDynamicObject object, long index0) {
+        assert index0 >= 0;
         if (!holes) {
             return super.previousElementIndex(object, index0);
         }
-        int index = (int) index0;
-        do {
+        int index = (int) Math.min(index0, lengthInt(object)) - 1;
+        while (index >= 0 && isEmpty(object, index)) {
             index--;
-        } while (index >= super.firstElementIndex(object) && isEmpty(object, index));
+        }
         return index;
     }
 

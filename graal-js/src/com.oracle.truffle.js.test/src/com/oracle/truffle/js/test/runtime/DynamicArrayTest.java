@@ -111,6 +111,35 @@ public class DynamicArrayTest extends JSTest {
         assertEquals(0, array.toArray(arrayObject).length);
     }
 
+    /**
+     * Element searches in constant holey arrays must stay in bounds and return the not-found sentinels.
+     */
+    @Test
+    public void testConstantHolesArraySearchBounds() {
+        for (Object[] values : new Object[][]{{null, OBJECT, null, OBJECT, null}, {null, null}, {}}) {
+            JSArrayObject arrayObject = JSArray.create(testHelper.getJSContext(), testHelper.getRealm(), ConstantObjectArray.createConstantHolesObjectArray(), values, values.length);
+            ScriptArray array = arrayObject.getArrayType();
+            for (long index : new long[]{-1, 0, 1, 2, 3, 4, 5, 10, Integer.MAX_VALUE, (long) Integer.MAX_VALUE + 1, JSRuntime.MAX_SAFE_INTEGER_LONG}) {
+                long expectedNext = JSRuntime.MAX_SAFE_INTEGER_LONG;
+                long expectedPrevious = -1;
+                for (int i = 0; i < values.length; i++) {
+                    if (values[i] != null) {
+                        if (i > index && expectedNext == JSRuntime.MAX_SAFE_INTEGER_LONG) {
+                            expectedNext = i;
+                        }
+                        if (i < index) {
+                            expectedPrevious = i;
+                        }
+                    }
+                }
+                assertEquals(expectedNext, array.nextElementIndex(arrayObject, index));
+                if (index >= 0) {
+                    assertEquals(expectedPrevious, array.previousElementIndex(arrayObject, index));
+                }
+            }
+        }
+    }
+
     @Test
     public void testInBoundsContiguousAccess() {
         JSArrayObject arrayObject = setArrayElement(createEmptyArray(4), 3, INT);
