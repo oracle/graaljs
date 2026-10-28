@@ -921,7 +921,7 @@ public class WriteElementNode extends JSTargetableNode {
             if (inBoundsFastIf.profile(this, intArray.isInBoundsFast(target, index) && !mightTransferToNonContiguous(intArray, target, index))) {
                 intArray.setInBoundsFast(target, iIndex, intValue);
                 return true;
-            } else if (inBoundsIf.profile(this, intArray.isInBounds(target, iIndex) && !mightTransferToNonContiguous(intArray, target, index))) {
+            } else if (inBoundsIf.profile(this, intArray.isInBounds(target, index) && !mightTransferToNonContiguous(intArray, target, index))) {
                 intArray.setInBounds(target, iIndex, intValue, this, setSupportedProfile);
                 return true;
             } else if (supportedNonZeroIf.profile(this, intArray.isSupported(target, index) && !mightTransferToNonContiguous(intArray, target, index))) {
@@ -1007,7 +1007,7 @@ public class WriteElementNode extends JSTargetableNode {
             if (inBoundsFastIf.profile(this, doubleArray.isInBoundsFast(target, index) && !mightTransferToNonContiguous(doubleArray, target, index))) {
                 doubleArray.setInBoundsFast(target, iIndex, doubleValue);
                 return true;
-            } else if (inBoundsIf.profile(this, doubleArray.isInBounds(target, iIndex) && !mightTransferToNonContiguous(doubleArray, target, index))) {
+            } else if (inBoundsIf.profile(this, doubleArray.isInBounds(target, index) && !mightTransferToNonContiguous(doubleArray, target, index))) {
                 doubleArray.setInBounds(target, iIndex, doubleValue, this, setSupportedProfile);
                 return true;
             } else if (supportedNonZeroIf.profile(this, doubleArray.isSupported(target, index) && !mightTransferToNonContiguous(doubleArray, target, index))) {
@@ -1059,7 +1059,7 @@ public class WriteElementNode extends JSTargetableNode {
             if (inBoundsFastIf.profile(this, objectArray.isInBoundsFast(target, index) && !mightTransferToNonContiguous(objectArray, target, index))) {
                 objectArray.setInBoundsFast(target, iIndex, value);
                 return true;
-            } else if (inBoundsIf.profile(this, objectArray.isInBounds(target, iIndex) && !mightTransferToNonContiguous(objectArray, target, index))) {
+            } else if (inBoundsIf.profile(this, objectArray.isInBounds(target, index) && !mightTransferToNonContiguous(objectArray, target, index))) {
                 objectArray.setInBounds(target, iIndex, value, this, setSupportedProfile);
                 return true;
             } else if (supportedNonZeroIf.profile(this, objectArray.isSupported(target, index) && !mightTransferToNonContiguous(objectArray, target, index))) {
@@ -1140,7 +1140,7 @@ public class WriteElementNode extends JSTargetableNode {
             if (inBoundsFastIf.profile(this, jsobjectArray.isInBoundsFast(target, index) && !mightTransferToNonContiguous(jsobjectArray, target, index))) {
                 jsobjectArray.setInBoundsFast(target, iIndex, jsobjectValue);
                 return true;
-            } else if (inBoundsIf.profile(this, jsobjectArray.isInBounds(target, iIndex) && !mightTransferToNonContiguous(jsobjectArray, target, index))) {
+            } else if (inBoundsIf.profile(this, jsobjectArray.isInBounds(target, index) && !mightTransferToNonContiguous(jsobjectArray, target, index))) {
                 jsobjectArray.setInBounds(target, iIndex, jsobjectValue, this, setSupportedProfile);
                 return true;
             } else if (supportedNonZeroIf.profile(this, jsobjectArray.isSupported(target, index) && !mightTransferToNonContiguous(jsobjectArray, target, index))) {
@@ -1236,7 +1236,7 @@ public class WriteElementNode extends JSTargetableNode {
                     holesIntArray.setInBoundsFastNonHole(target, iIndex, intValue);
                 }
                 return true;
-            } else if (containsHoles && inBoundsIf.profile(this, holesIntArray.isInBounds(target, iIndex) && !HolesIntArray.isHoleValue(intValue))) {
+            } else if (containsHoles && inBoundsIf.profile(this, holesIntArray.isInBounds(target, index) && !HolesIntArray.isHoleValue(intValue))) {
                 holesIntArray.setInBounds(target, iIndex, intValue, this, setSupportedProfile);
                 return true;
             } else if (containsHoles && supportedContainsHolesIf.profile(this, holesIntArray.isSupported(target, index) && !HolesIntArray.isHoleValue(intValue))) {
@@ -1331,7 +1331,7 @@ public class WriteElementNode extends JSTargetableNode {
                     holesDoubleArray.setInBoundsFastNonHole(target, iIndex, doubleValue);
                 }
                 return true;
-            } else if (containsHoles && inBoundsIf.profile(this, holesDoubleArray.isInBounds(target, iIndex) && !HolesDoubleArray.isHoleValue(doubleValue))) {
+            } else if (containsHoles && inBoundsIf.profile(this, holesDoubleArray.isInBounds(target, index) && !HolesDoubleArray.isHoleValue(doubleValue))) {
                 holesDoubleArray.setInBounds(target, iIndex, doubleValue, this, setSupportedProfile);
                 return true;
             } else if (containsHoles && supportedContainsHolesIf.profile(this, holesDoubleArray.isSupported(target, index) && !HolesDoubleArray.isHoleValue(doubleValue))) {
@@ -1416,7 +1416,7 @@ public class WriteElementNode extends JSTargetableNode {
                     jsobjectArray.setInBoundsFastNonHole(target, (int) index, value);
                 }
                 return true;
-            } else if (containsHoles && inBoundsIf.profile(this, jsobjectArray.isInBounds(target, (int) index))) {
+            } else if (containsHoles && inBoundsIf.profile(this, jsobjectArray.isInBounds(target, index))) {
                 assert !HolesJSObjectArray.isHoleValue(value);
                 jsobjectArray.setInBounds(target, (int) index, value, this, setSupportedProfile);
                 return true;
@@ -1467,7 +1467,7 @@ public class WriteElementNode extends JSTargetableNode {
                     objectArray.setInBoundsFastNonHole(target, (int) index, value);
                 }
                 return true;
-            } else if (inBoundsIf.profile(this, objectArray.isInBounds(target, (int) index))) {
+            } else if (inBoundsIf.profile(this, objectArray.isInBounds(target, index))) {
                 assert !HolesObjectArray.isHoleValue(value);
                 objectArray.setInBounds(target, (int) index, value, this, setSupportedProfile);
                 return true;

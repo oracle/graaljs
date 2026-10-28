@@ -120,8 +120,8 @@ public abstract class AbstractWritableArray extends DynamicArray {
 
     protected abstract int prepareInBoundsFast(JSDynamicObject object, long index);
 
-    public final boolean isInBounds(JSDynamicObject object, int index) {
-        return isSupported(object, index) && rangeCheck(object, index);
+    public final boolean isInBounds(JSDynamicObject object, long index) {
+        return isSupported(object, index) && rangeCheck(object, (int) index);
     }
 
     protected abstract int prepareInBounds(JSDynamicObject object, int index, Node node, SetSupportedProfileAccess profile);
