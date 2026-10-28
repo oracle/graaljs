@@ -5,20 +5,30 @@
  * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
  */
 
+/**
+ * splice insertion near the signed-int length limit must preserve elements across storage transitions
+ * and shifted backing-store offsets without overflowing logical or physical insertion indices.
+ */
+
 load("./assert.js");
 
 for (const values of [[11, 22], [1.5, 2.5], ["a", "b"], [{}, {}]]) {
-    for (const layout of ["zeroBased", "contiguous", "holes", "shifted"]) {
+    for (const layout of ["zeroBased", "contiguous", "holes", "shifted", "shiftedFull", "shiftedFullHoles"]) {
         for (const length of [0x7ffffffe, 0x7fffffff]) {
-            for (const offset of [0, 2, 8, length - 2]) {
+            for (const offset of [0, 2, 8, length - 2, length]) {
                 for (const items of [[values[1]], [values[1], "replacement"]]) {
                     const array = [];
                     if (layout === "zeroBased") {
                         array.push(values[0]);
-                    } else if (layout === "shifted") {
-                        array.push(values[0], values[1], values[0]);
+                    } else if (layout.startsWith("shifted")) {
+                        for (let i = 0; i < (layout === "shifted" ? 3 : 8); i++) {
+                            array.push(values[i % values.length]);
+                        }
                         array.shift();
                         array.shift();
+                        if (layout === "shiftedFullHoles") {
+                            delete array[1];
+                        }
                     } else {
                         array[2] = values[0];
                         array[layout === "holes" ? 4 : 3] = values[1];

@@ -681,13 +681,14 @@ public abstract class AbstractWritableArray extends DynamicArray {
             Object array = getArrayObject(object);
             int usedLength = getUsedLength(object);
             int arrayLength = getArrayLength(array);
+            long effectiveOffset = offset - indexOffset;
             if (arrayOffset + usedLength + size <= arrayLength) {
                 int lastIndex = (arrayOffset + usedLength);
-                int effectiveOffset = (int) (offset - indexOffset);
-                int copySize = (lastIndex - effectiveOffset);
+                long copySize = lastIndex - effectiveOffset;
                 if (copySize > 0) {
-                    System.arraycopy(array, effectiveOffset, array, (effectiveOffset + size), copySize);
-                    fillWithHoles(array, effectiveOffset, effectiveOffset + size);
+                    int insertionOffset = (int) effectiveOffset;
+                    System.arraycopy(array, insertionOffset, array, insertionOffset + size, (int) copySize);
+                    fillWithHoles(array, insertionOffset, insertionOffset + size);
                     if (isHolesType()) {
                         arraySetHoleCount(object, arrayGetHoleCount(object) + size);
                     }
@@ -695,26 +696,27 @@ public abstract class AbstractWritableArray extends DynamicArray {
                 }
                 return this;
             } else {
-                return addRangeGrow(object, array, arrayLength, usedLength, lengthInt(object), (int) (offset - indexOffset), size, arrayOffset, indexOffset);
+                return addRangeGrow(object, array, arrayLength, usedLength, lengthInt(object), effectiveOffset, size, arrayOffset, indexOffset);
             }
         }
     }
 
-    private ScriptArray addRangeGrow(JSDynamicObject object, Object array, int arrayLength, int usedLength, int length, int offset, int size, int arrayOffset, long indexOffset) {
+    private ScriptArray addRangeGrow(JSDynamicObject object, Object array, int arrayLength, int usedLength, int length, long offset, int size, int arrayOffset, long indexOffset) {
         Object newArray = allocateArray(nextPower(arrayLength + size));
         if (offset >= arrayOffset + usedLength) {
             System.arraycopy(array, arrayOffset, newArray, arrayOffset, usedLength);
             fillWithHoles(newArray, arrayOffset + usedLength, arrayOffset + usedLength + size);
             return ensureHolesArray(object, length + size, newArray, indexOffset, arrayOffset, usedLength + size, arrayGetHoleCount(object) + size);
         } else {
-            System.arraycopy(array, arrayOffset, newArray, arrayOffset, offset - arrayOffset);
-            int toCopy = (arrayOffset + usedLength) - offset;
-            System.arraycopy(array, offset, newArray, offset + size, toCopy);
+            int insertionOffset = (int) offset;
+            System.arraycopy(array, arrayOffset, newArray, arrayOffset, insertionOffset - arrayOffset);
+            int toCopy = (arrayOffset + usedLength) - insertionOffset;
+            System.arraycopy(array, insertionOffset, newArray, insertionOffset + size, toCopy);
             arraySetLength(object, length + size);
             arraySetArray(object, newArray);
             arraySetUsedLength(object, usedLength + size);
             if (isHolesType()) {
-                fillWithHoles(newArray, offset, offset + size);
+                fillWithHoles(newArray, insertionOffset, insertionOffset + size);
                 arraySetHoleCount(object, arrayGetHoleCount(object) + size);
             }
             return this;
