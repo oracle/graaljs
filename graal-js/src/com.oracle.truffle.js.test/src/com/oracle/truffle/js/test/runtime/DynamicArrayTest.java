@@ -550,6 +550,43 @@ public class DynamicArrayTest extends JSTest {
         }
     }
 
+    /**
+     * Clearing writable storage must preserve non-extensibility and continue rejecting indexed additions.
+     */
+    @Test
+    public void testSetLengthZeroPreservesIntegrityLevel() {
+        for (String value : new String[]{"1", "1.5", "'x'", "{}"}) {
+            for (int offset : new int[]{0, 20, 1_000_000}) {
+                for (int gap : new int[]{0, 2}) {
+                    JSArrayObject arrayObject = (JSArrayObject) testHelper.runNoPolyglot(
+                                    "globalThis.array = []; array[" + offset + "] = " + value + "; array[" + (offset + gap) + "] = " + value + "; array");
+                    testHelper.runNoPolyglot("Object.preventExtensions(array); array.length = 0");
+
+                    assertEquals(false, arrayObject.getArrayType().isExtensible());
+                    assertEquals(false, testHelper.runNoPolyglot("Object.isExtensible(array)"));
+                    assertEquals(false, testHelper.runNoPolyglot("array[0] = 42; Object.hasOwn(array, 0)"));
+                    assertEquals(false, testHelper.runNoPolyglot("Reflect.set(array, 0, 42)"));
+                    assertEquals(0, arrayObject.getArrayType().length(arrayObject));
+                }
+            }
+        }
+    }
+
+    /**
+     * Clearing an already-empty sealed array must preserve sealing while leaving length writable.
+     */
+    @Test
+    public void testSetLengthZeroPreservesSealedEmptyArray() {
+        for (String value : new String[]{"1", "1.5", "'x'", "{}"}) {
+            JSArrayObject arrayObject = (JSArrayObject) testHelper.runNoPolyglot(
+                            "globalThis.array = []; array[0] = " + value + "; delete array[0]; Object.seal(array); array.length = 0; array");
+            assertEquals(true, arrayObject.getArrayType().isSealed());
+            assertEquals(false, arrayObject.getArrayType().isLengthNotWritable());
+            assertEquals(0, arrayObject.getArrayType().length(arrayObject));
+            assertEquals(false, testHelper.runNoPolyglot("array[0] = 42; Object.hasOwn(array, 0)"));
+        }
+    }
+
     @Test
     public void testSetLengthZeroReleasesBackingStore() {
         for (String source : new String[]{

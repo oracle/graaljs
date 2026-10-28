@@ -499,7 +499,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
             arraySetLength(object, length);
             arraySetHoleCount(object, 0);
             arraySetArray(object, ScriptArray.EMPTY_OBJECT_ARRAY);
-            return ConstantEmptyArray.createConstantEmptyArray();
+            return ConstantEmptyArray.createConstantEmptyArray(integrityLevel);
         } else if (profile.lengthLess(node, length < length(object))) {
             setLengthLess(object, length, node, profile);
         } else {
