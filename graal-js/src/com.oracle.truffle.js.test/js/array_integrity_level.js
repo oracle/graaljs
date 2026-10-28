@@ -5,6 +5,11 @@
  * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
  */
 
+/**
+ * Array integrity flags and indexed-property attributes must survive deletion, length changes,
+ * and transitions between sparse and empty storage.
+ */
+
 load("assert.js");
 
 [[], new Array(100)].forEach(function (array) {
@@ -41,4 +46,15 @@ for (const sealedArray of [[11, 22], Array.of(11, 22)]) {
     assertFalse(Object.getOwnPropertyDescriptor(sealedArray, "0").configurable);
     assertFalse(Reflect.deleteProperty(sealedArray, "0"));
     assertSame(11, sealedArray[0]);
+}
+
+for (const value of [1, 1.5, "x", {}]) {
+    const emptiedArray = [];
+    emptiedArray[1000000] = value;
+    delete emptiedArray[1000000];
+    Object.seal(emptiedArray);
+    emptiedArray.length = 0;
+    assertSame(0, emptiedArray.length);
+    assertTrue(Object.isSealed(emptiedArray));
+    assertSameContent([], Object.keys(emptiedArray));
 }

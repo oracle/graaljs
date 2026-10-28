@@ -617,6 +617,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
         long nextNonHoles = nextElementIndexHoles(object, index);
         if (nextNonHoles == JSRuntime.MAX_SAFE_INTEGER_LONG) {
             // there are no more elements in this Object
+            setIndexOffset(object, 0);
             setArrayOffset(object, 0);
             arraySetUsedLength(object, 0);
             arraySetHoleCount(object, 0);

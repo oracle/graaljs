@@ -532,6 +532,40 @@ public class DynamicArrayTest extends JSTest {
         }
     }
 
+    /**
+     * Deleting the last elements must reset used-range metadata so the array can be repopulated safely.
+     */
+    @Test
+    public void testDeleteAllElementsNormalizesEmptyRange() {
+        for (String value : new String[]{"1", "1.5", "'x'", "{}"}) {
+            for (int offset : new int[]{0, 20, 1_000_000}) {
+                for (int gap : new int[]{0, 2}) {
+                    JSArrayObject arrayObject = (JSArrayObject) testHelper.runNoPolyglot(
+                                    "globalThis.array = []; array[" + offset + "] = " + value + "; array[" + (offset + gap) + "] = " + value + "; array");
+                    testHelper.runNoPolyglot("delete array[" + offset + "]; delete array[" + (offset + gap) + "]");
+                    ScriptArray array = arrayObject.getArrayType();
+                    assertEquals(offset + gap + 1, array.length(arrayObject));
+                    assertEquals(0, arrayGetUsedLength(arrayObject));
+                    assertEquals(0, arrayGetHoleCount(arrayObject));
+                    assertEquals(0, arrayGetIndexOffset(arrayObject));
+                    assertEquals(0, arrayGetArrayOffset(arrayObject));
+                    assertEquals(0, array.firstElementIndex(arrayObject));
+                    assertEquals(-1, array.lastElementIndex(arrayObject));
+                    assertEquals(0, array.ownPropertyKeys(arrayObject).size());
+
+                    Object element = testHelper.runNoPolyglot("array[1] = " + value + "; array[3] = " + value);
+                    assertEquals(3, arrayGetUsedLength(arrayObject));
+                    assertEquals(1, arrayGetHoleCount(arrayObject));
+                    assertEquals(element, testHelper.runNoPolyglot("array[3]"));
+                    assertEquals(false, testHelper.runNoPolyglot("Object.hasOwn(array, 2)"));
+                    testHelper.runNoPolyglot("delete array[3]; delete array[1]; Object.seal(array); array.length = 0");
+                    assertEmpty(arrayObject);
+                    assertEquals(true, arrayObject.getArrayType().isSealed());
+                }
+            }
+        }
+    }
+
     @Test
     public void testSetLengthBeforeIndexOffsetClearsHoleCount() {
         for (String value : new String[]{"1", "1.5", "'x'", "{}"}) {
