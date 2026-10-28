@@ -1988,7 +1988,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         final boolean mustUseElementwise(JSDynamicObject obj, long expectedLength, long newLength, ScriptArray array, GetPrototypeNode getPrototypeNode) {
-            return newLength > JSRuntime.MAX_ARRAY_LENGTH || array.isLengthNotWritable() ||
+            return newLength > JSRuntime.MAX_ARRAY_LENGTH || array.isLengthNotWritable() || !array.isExtensible() ||
                             getPrototypeNode.execute(obj) != getRealm().getArrayPrototype() ||
                             !getContext().getArrayPrototypeNoElementsAssumption().isValid() ||
                             (!getContext().getFastArrayAssumption().isValid() && JSSlowArray.isJSSlowArray(obj)) ||
