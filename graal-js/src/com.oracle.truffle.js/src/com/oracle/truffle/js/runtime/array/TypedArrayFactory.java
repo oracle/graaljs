@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,10 +45,10 @@ import static com.oracle.truffle.js.runtime.array.TypedArray.BUFFER_TYPE_DIRECT;
 import static com.oracle.truffle.js.runtime.array.TypedArray.BUFFER_TYPE_INTEROP;
 import static com.oracle.truffle.js.runtime.array.TypedArray.BUFFER_TYPE_SHARED;
 
-import java.util.Arrays;
-
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.array.TypedArray.BigInt64Array;
@@ -332,9 +332,12 @@ public enum TypedArrayFactory implements PrototypeSupplier {
         return this == Float64Array || this == Float32Array || this == Float16Array;
     }
 
+    public final boolean isEnabled(JSContext context) {
+        return (!isBigInt() || context.getLanguageOptions().bigInt()) &&
+                        (this != Float16Array || context.getEcmaScriptVersion() >= JSConfig.ECMAScript2025);
+    }
+
     static final TypedArrayFactory[] FACTORIES_ALL = TypedArrayFactory.values();
-    static final TypedArrayFactory[] FACTORIES_PRE_FLOAT16 = Arrays.copyOf(FACTORIES_ALL, Float16Array.ordinal());
-    static final TypedArrayFactory[] FACTORIES_PRE_BIGINT = Arrays.copyOf(FACTORIES_ALL, BigInt64Array.ordinal());
     public static final int NUMBER_OF_ELEMENT_TYPES = FACTORIES_ALL.length;
 
 }

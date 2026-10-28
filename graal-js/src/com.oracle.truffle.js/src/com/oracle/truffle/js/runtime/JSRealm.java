@@ -797,8 +797,8 @@ public class JSRealm {
         ctor = JSArrayBuffer.createConstructor(this);
         this.arrayBufferConstructor = ctor.getFunctionObject();
         this.arrayBufferPrototype = ctor.getPrototype();
-        this.typedArrayConstructors = new JSFunctionObject[TypedArray.factories(context).length];
-        this.typedArrayPrototypes = new JSDynamicObject[TypedArray.factories(context).length];
+        this.typedArrayConstructors = new JSFunctionObject[TypedArrayFactory.NUMBER_OF_ELEMENT_TYPES];
+        this.typedArrayPrototypes = new JSDynamicObject[TypedArrayFactory.NUMBER_OF_ELEMENT_TYPES];
         initializeTypedArrayConstructors();
         ctor = JSDataView.createConstructor(this);
         this.dataViewConstructor = ctor.getFunctionObject();
@@ -1235,7 +1235,10 @@ public class JSRealm {
         typedArrayConstructor = taConst.getFunctionObject();
         typedArrayPrototype = taConst.getPrototype();
 
-        for (TypedArrayFactory factory : TypedArray.factories(context)) {
+        for (TypedArrayFactory factory : TypedArray.factories()) {
+            if (!factory.isEnabled(context)) {
+                continue;
+            }
             JSConstructor constructor = JSArrayBufferView.createConstructor(this, factory, taConst);
             typedArrayConstructors[factory.getFactoryIndex()] = constructor.getFunctionObject();
             typedArrayPrototypes[factory.getFactoryIndex()] = constructor.getPrototype();
@@ -2080,7 +2083,10 @@ public class JSRealm {
         }
 
         putGlobalProperty(JSArrayBuffer.CLASS_NAME, getArrayBufferConstructor());
-        for (TypedArrayFactory factory : TypedArray.factories(context)) {
+        for (TypedArrayFactory factory : TypedArray.factories()) {
+            if (!factory.isEnabled(context)) {
+                continue;
+            }
             putGlobalProperty(factory.getName(), getArrayBufferViewConstructor(factory));
         }
         putGlobalProperty(JSDataView.CLASS_NAME, getDataViewConstructor());

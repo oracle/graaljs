@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,8 +56,6 @@ import com.oracle.truffle.js.builtins.helper.SharedMemorySync;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList;
-import com.oracle.truffle.js.runtime.JSConfig;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
@@ -281,16 +279,6 @@ public abstract class TypedArray extends ScriptArray {
 
     public static TypedArrayFactory[] factories() {
         return TypedArrayFactory.FACTORIES_ALL;
-    }
-
-    public static TypedArrayFactory[] factories(JSContext context) {
-        if (!context.getLanguageOptions().bigInt()) {
-            return TypedArrayFactory.FACTORIES_PRE_BIGINT;
-        } else if (context.getEcmaScriptVersion() <= JSConfig.ECMAScript2024) {
-            return TypedArrayFactory.FACTORIES_PRE_FLOAT16;
-        } else {
-            return TypedArrayFactory.FACTORIES_ALL;
-        }
     }
 
     @TruffleBoundary

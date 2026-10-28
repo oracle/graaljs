@@ -756,8 +756,11 @@ public class JSContext {
         this.sharedArrayBufferFactory = isOptionSharedArrayBuffer() ? builder.create(JSSharedArrayBuffer.INSTANCE) : null;
         this.interopArrayBufferFactory = builder.create(JSArrayBuffer.INTEROP_INSTANCE);
         this.finalizationRegistryFactory = builder.create(JSFinalizationRegistry.INSTANCE);
-        this.typedArrayFactories = new JSObjectFactory[TypedArray.factories(this).length];
-        for (TypedArrayFactory factory : TypedArray.factories(this)) {
+        this.typedArrayFactories = new JSObjectFactory[TypedArrayFactory.NUMBER_OF_ELEMENT_TYPES];
+        for (TypedArrayFactory factory : TypedArray.factories()) {
+            if (!factory.isEnabled(this)) {
+                continue;
+            }
             typedArrayFactories[factory.getFactoryIndex()] = builder.create(factory, (c, p) -> JSArrayBufferView.makeInitialArrayBufferViewShape(c, p));
         }
 
