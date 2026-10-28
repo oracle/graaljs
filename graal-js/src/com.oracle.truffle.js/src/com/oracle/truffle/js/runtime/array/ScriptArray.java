@@ -193,11 +193,12 @@ public abstract class ScriptArray {
 
     public static class SetLengthProfileAccess extends CreateWritableProfileAccess {
 
-        private static final int REQUIRED_BITS = 8 * CONDITION_PROFILE_STATE_BITS;
+        private static final int REQUIRED_BITS = 9 * CONDITION_PROFILE_STATE_BITS;
         protected static final int TOTAL_REQUIRED_BITS = CreateWritableProfileAccess.REQUIRED_BITS + REQUIRED_BITS;
 
         private static final int lengthZero;
         private static final int lengthLess;
+        private static final int emptyUsedRange;
         private static final int zeroBasedSetUsedLength;
         private static final int zeroBasedClearUnusedArea;
         private static final int contiguousZeroUsed;
@@ -209,6 +210,7 @@ public abstract class ScriptArray {
             try (var b = new Builder(CreateWritableProfileAccess.REQUIRED_BITS, REQUIRED_BITS)) {
                 lengthZero = b.conditionProfile();
                 lengthLess = b.conditionProfile();
+                emptyUsedRange = b.conditionProfile();
                 zeroBasedSetUsedLength = b.conditionProfile();
                 zeroBasedClearUnusedArea = b.conditionProfile();
                 contiguousZeroUsed = b.conditionProfile();
@@ -241,6 +243,10 @@ public abstract class ScriptArray {
 
         public final boolean lengthLess(Node node, boolean condition) {
             return profile(node, condition, lengthLess);
+        }
+
+        public final boolean emptyUsedRange(Node node, boolean condition) {
+            return profile(node, condition, emptyUsedRange);
         }
 
         public final boolean zeroBasedSetUsedLength(Node node, boolean condition) {

@@ -502,6 +502,10 @@ public abstract class AbstractWritableArray extends DynamicArray {
             return ConstantEmptyArray.createConstantEmptyArray(integrityLevel);
         } else if (profile.lengthLess(node, length < length(object))) {
             setLengthLess(object, length, node, profile);
+            if (profile.emptyUsedRange(node, getUsedLength(object) == 0)) {
+                arraySetArray(object, ScriptArray.EMPTY_OBJECT_ARRAY);
+                return ConstantEmptyArray.createConstantEmptyArray(integrityLevel);
+            }
         } else {
             arraySetLength(object, length);
         }
@@ -530,7 +534,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
             if (isHolesType()) {
                 arraySetHoleCount(object, 0);
             }
-            setIndexOffset(object, length - 1);
+            setIndexOffset(object, 0);
             setArrayOffset(object, 0);
             long arrayCapacity = getArrayCapacity(object);
             clearUnusedArea(object, 0, (int) arrayCapacity, 0, node, profile);

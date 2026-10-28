@@ -551,6 +551,36 @@ public class DynamicArrayTest extends JSTest {
     }
 
     /**
+     * Truncating away all used elements must normalize offsets and holes without losing the requested length.
+     */
+    @Test
+    public void testSetLengthBeforeIndexOffsetNormalizesEmptyRange() {
+        for (String value : new String[]{"1", "1.5", "'x'", "{}"}) {
+            for (int offset : new int[]{20, 1_000_000}) {
+                for (int gap : new int[]{0, 2}) {
+                    for (int length : new int[]{1, 5, offset}) {
+                        JSArrayObject arrayObject = (JSArrayObject) testHelper.runNoPolyglot(
+                                        "globalThis.array = []; array[" + offset + "] = " + value + "; array[" + (offset + gap) + "] = " + value + "; array.length = " + length + "; array");
+                        ScriptArray array = arrayObject.getArrayType();
+                        assertEquals(length, array.length(arrayObject));
+                        assertEquals(0, arrayGetUsedLength(arrayObject));
+                        assertEquals(0, arrayGetHoleCount(arrayObject));
+                        assertEquals(0, arrayGetIndexOffset(arrayObject));
+                        assertEquals(0, arrayGetArrayOffset(arrayObject));
+                        assertEquals(0, array.firstElementIndex(arrayObject));
+                        assertEquals(-1, array.lastElementIndex(arrayObject));
+                        assertEquals(0, array.ownPropertyKeys(arrayObject).size());
+
+                        testHelper.runNoPolyglot("Object.seal(array); array.length = 0");
+                        assertEmpty(arrayObject);
+                        assertEquals(true, arrayObject.getArrayType().isSealed());
+                    }
+                }
+            }
+        }
+    }
+
+    /**
      * Clearing writable storage must preserve non-extensibility and continue rejecting indexed additions.
      */
     @Test
