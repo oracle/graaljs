@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -67,6 +67,7 @@ public final class EngineCacheData {
     private final ConcurrentHashMap<ObjectTemplate.Descriptor, JSFunctionData> persistedNativePropertyHandlerData;
     private final ConcurrentHashMap<SyntheticModuleDescriptor, SyntheticModuleRecord.SharedData> persistedSyntheticModulesData;
     private final Map<TruffleString, SingletonSymbolUsageDescriptor> cachedSingletonSymbols;
+    private final Map<TruffleString, SingletonSymbolUsageDescriptor> cachedPrivateSingletonSymbols;
 
     public EngineCacheData(JSContext context) {
         this.context = context;
@@ -75,6 +76,7 @@ public final class EngineCacheData {
         this.persistedNativePropertyHandlerData = new ConcurrentHashMap<>();
         this.persistedSyntheticModulesData = new ConcurrentHashMap<>();
         this.cachedSingletonSymbols = new HashMap<>();
+        this.cachedPrivateSingletonSymbols = new HashMap<>();
     }
 
     public JSFunctionData getOrCreateFunctionDataFromTemplate(FunctionTemplate template, Function<JSContext, JSFunctionData> factory) {
@@ -100,18 +102,36 @@ public final class EngineCacheData {
         return persistedSyntheticModulesData.computeIfAbsent(descriptor, factory);
     }
 
-    @TruffleBoundary
-    public Symbol createOrUseCachedSingleton(TruffleString name) {
+    public Symbol createOrUseCachedSymbol(TruffleString name) {
+        CompilerAsserts.neverPartOfCompilation();
+        return createOrUseCachedSingleton(name, false);
+    }
+
+    public Symbol createOrUseCachedPrivateSymbol(TruffleString name) {
+        CompilerAsserts.neverPartOfCompilation();
+        return createOrUseCachedSingleton(name, true);
+    }
+
+    private synchronized Symbol createOrUseCachedSingleton(TruffleString name, boolean isPrivate) {
         if (context.isMultiContext() && JSConfig.UseSingletonSymbols) {
-            if (cachedSingletonSymbols.size() < MaxSingletonSymbolsCacheSize) {
-                SingletonSymbolUsageDescriptor descriptor = cachedSingletonSymbols.computeIfAbsent(name, key -> new SingletonSymbolUsageDescriptor(Symbol.create(key)));
-                Symbol newSymbol = descriptor.tryUsingSingleton(context);
-                if (newSymbol != null) {
-                    return newSymbol;
+            var cache = isPrivate ? cachedPrivateSingletonSymbols : cachedSingletonSymbols;
+            SingletonSymbolUsageDescriptor descriptor = cache.get(name);
+            if (descriptor == null && cache.size() < MaxSingletonSymbolsCacheSize) {
+                descriptor = new SingletonSymbolUsageDescriptor(createSymbol(name, isPrivate));
+                cache.put(name, descriptor);
+            }
+            if (descriptor != null) {
+                Symbol symbol = descriptor.tryUsingSingleton(context);
+                if (symbol != null) {
+                    return symbol;
                 }
             }
         }
-        return Symbol.create(name);
+        return createSymbol(name, isPrivate);
+    }
+
+    private static Symbol createSymbol(TruffleString name, boolean isPrivate) {
+        return isPrivate ? Symbol.createPrivate(name) : Symbol.create(name);
     }
 
     public record SyntheticModuleDescriptor(TruffleString moduleName, List<TruffleString> exportNames) {

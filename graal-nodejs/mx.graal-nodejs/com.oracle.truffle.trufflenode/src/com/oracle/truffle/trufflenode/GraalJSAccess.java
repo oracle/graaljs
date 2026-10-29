@@ -1731,18 +1731,10 @@ public final class GraalJSAccess {
     }
 
     public Object symbolNew(Object name) {
-        Object prev = mainJSRealm.getTruffleContext().enter(null);
-        try {
-            Symbol symbol;
-            if (isAuxEngineCacheMode()) {
-                symbol = getContextEngineCacheData(mainJSContext).createOrUseCachedSingleton((TruffleString) name);
-            } else {
-                symbol = Symbol.create((TruffleString) name);
-            }
-            return symbol;
-        } finally {
-            mainJSRealm.getTruffleContext().leave(null, prev);
+        if (isAuxEngineCacheMode()) {
+            return getContextEngineCacheData(mainJSContext).createOrUseCachedSymbol((TruffleString) name);
         }
+        return Symbol.create((TruffleString) name);
     }
 
     public Object symbolName(Object symbol) {
@@ -1815,6 +1807,9 @@ public final class GraalJSAccess {
     }
 
     public Object symbolPrivateNew(Object description) {
+        if (isAuxEngineCacheMode()) {
+            return getContextEngineCacheData(mainJSContext).createOrUseCachedPrivateSymbol((TruffleString) description);
+        }
         return Symbol.createPrivate((TruffleString) description);
     }
 
