@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
@@ -55,6 +56,8 @@ import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.trufflenode.ContextData.FunctionKey;
+import com.oracle.truffle.trufflenode.GraalJSAccess;
 
 /**
  * JS Builtins used by Node.s workers to send Java object references via message passing (@see
@@ -81,15 +84,20 @@ public final class SharedMemMessagingBindings extends JSNonProxy {
 
     @TruffleBoundary
     public static Object createInitFunction(JSRealm realm) {
+        JSContext context = realm.getContext();
+        JSFunctionData functionData = GraalJSAccess.getContextEmbedderData(context).getOrCreateFunctionData(FunctionKey.SharedMemMessagingInit, SharedMemMessagingBindings::createInitFunctionData);
+        return JSFunction.create(realm, functionData);
+    }
+
+    private static JSFunctionData createInitFunctionData(JSContext context) {
         // This JS function will be executed at node.js bootstrap time
-        JavaScriptRootNode wrapperNode = new JavaScriptRootNode() {
+        JavaScriptRootNode wrapperNode = new JavaScriptRootNode(context.getLanguage()) {
             @Override
             public Object execute(VirtualFrame frame) {
                 return create(getRealm());
             }
         };
-        JSFunctionData functionData = JSFunctionData.createCallOnly(realm.getContext(), wrapperNode.getCallTarget(), 2, SHARED_MEM_MESSAGING_INIT);
-        return JSFunction.create(realm, functionData);
+        return JSFunctionData.createCallOnly(context, wrapperNode.getCallTarget(), 2, SHARED_MEM_MESSAGING_INIT);
     }
 
     public static final class Instance extends JSNonProxyObject {
