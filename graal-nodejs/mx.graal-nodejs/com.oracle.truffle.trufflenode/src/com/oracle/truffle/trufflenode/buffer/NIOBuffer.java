@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,6 +55,7 @@ import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.trufflenode.ContextData.FunctionKey;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 import com.oracle.truffle.trufflenode.RealmData;
 
@@ -77,9 +78,15 @@ public final class NIOBuffer extends JSNonProxy {
 
     @TruffleBoundary
     public static Object createInitFunction(JSRealm functionRealm) {
+        JSContext context = functionRealm.getContext();
+        JSFunctionData functionData = GraalJSAccess.getContextEmbedderData(context).getOrCreateFunctionData(FunctionKey.NIOBufferInit, NIOBuffer::createInitFunctionData);
+        return JSFunction.create(functionRealm, functionData);
+    }
+
+    private static JSFunctionData createInitFunctionData(JSContext context) {
         // This JS function will be executed at node.js bootstrap time to register
         // the "default" Buffer API functions.
-        JavaScriptRootNode wrapperNode = new JavaScriptRootNode(functionRealm.getContext().getLanguage()) {
+        JavaScriptRootNode wrapperNode = new JavaScriptRootNode(context.getLanguage()) {
             @Override
             public Object execute(VirtualFrame frame) {
                 Object[] args = frame.getArguments();
@@ -91,8 +98,7 @@ public final class NIOBuffer extends JSNonProxy {
                 return create(realm);
             }
         };
-        JSFunctionData functionData = JSFunctionData.createCallOnly(functionRealm.getContext(), wrapperNode.getCallTarget(), 2, NIO_BUFFER_BUILTINS_INIT_FUNCTION);
-        return JSFunction.create(functionRealm, functionData);
+        return JSFunctionData.createCallOnly(context, wrapperNode.getCallTarget(), 2, NIO_BUFFER_BUILTINS_INIT_FUNCTION);
     }
 
 }
