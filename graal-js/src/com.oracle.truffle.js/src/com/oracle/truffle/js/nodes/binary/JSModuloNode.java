@@ -79,66 +79,54 @@ public abstract class JSModuloNode extends JSBinaryNode {
         return (b > 0) && (b & (b - 1)) == 0;
     }
 
-    @Specialization(rewriteOn = ArithmeticException.class, guards = "isPowOf2(b)")
-    protected int doIntPow2(int a, int b,
-                    @Cached @Exclusive InlinedBranchProfile negativeBranch,
-                    @Cached @Exclusive InlinedBranchProfile negativeZeroBranch) {
-        int mask = b - 1;
-        int result;
-        if (a < 0) {
-            negativeBranch.enter(this);
-            result = -(-a & mask);
-            if (result == 0) {
-                negativeZeroBranch.enter(this);
-                throw arithmeticException();
-            }
-        } else {
-            result = a & mask;
-        }
-        return result;
+    @Specialization(guards = {"a >= 0", "isPowOf2(b)"})
+    protected static int doIntPow2(int a, int b) {
+        return a & (b - 1);
     }
 
-    @Specialization(rewriteOn = ArithmeticException.class, guards = "!isPowOf2(b)")
-    protected int doInt(int a, int b,
-                    @Cached @Exclusive InlinedBranchProfile specialBranch) {
-        int result = a % b;
+    @Specialization(guards = {"a >= 0", "!isPowOf2(b)"}, rewriteOn = ArithmeticException.class)
+    protected static int doInt(int a, int b) {
+        return a % b;
+    }
+
+    @Specialization(guards = "a < 0", rewriteOn = ArithmeticException.class)
+    protected static int doIntNegative(int a, int b) {
+        int result = isPowOf2(b) ? -(-a & (b - 1)) : a % b;
         if (result == 0) {
-            specialBranch.enter(this);
-            if (a < 0) {
-                throw arithmeticException();
-            }
+            throw arithmeticException();
         }
         return result;
     }
 
     @Specialization
-    protected double doDouble(double a, double b) {
+    protected static double doDouble(double a, double b) {
         return a % b;
     }
 
-    @Specialization(guards = "isBigIntZero(b)")
-    protected void doBigIntegerZeroDivision(@SuppressWarnings("unused") BigInt a, @SuppressWarnings("unused") BigInt b) {
-        throw Errors.createRangeError("Remainder of zero division");
+    @Specialization(guards = {"!isBigIntZero(b)"})
+    protected static BigInt doBigInteger(BigInt a, BigInt b) {
+        return a.remainder(b);
     }
 
-    @Specialization(guards = {"!isBigIntZero(b)"})
-    protected BigInt doBigInteger(BigInt a, BigInt b) {
-        return a.remainder(b);
+    @Specialization(guards = "isBigIntZero(b)")
+    protected static void doBigIntegerZeroDivision(@SuppressWarnings("unused") BigInt a, @SuppressWarnings("unused") BigInt b,
+                    @Bind Node node) {
+        throw Errors.createRangeError("Remainder of zero division", node);
     }
 
     @InliningCutoff
     @Specialization(guards = {"hasOverloadedOperators(a) || hasOverloadedOperators(b)"})
-    protected Object doOverloaded(Object a, Object b,
+    protected static Object doOverloaded(Object a, Object b,
                     @Cached("createNumeric(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
         return overloadedOperatorNode.execute(a, b);
     }
 
-    protected TruffleString getOverloadedOperatorName() {
+    protected static TruffleString getOverloadedOperatorName() {
         return Strings.SYMBOL_PERCENT;
     }
 
-    @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {"doInt", "doDouble", "doBigIntegerZeroDivision",
-                    "doBigInteger"})
+    @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {
+                    "doInt", "doIntNegative", "doDouble", "doBigInteger", "doBigIntegerZeroDivision"})
     protected static Object doGeneric(Object a, Object b,
                     @Bind Node node,
                     @Cached JSModuloNode nestedModuloNode,
