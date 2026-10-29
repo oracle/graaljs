@@ -48,6 +48,7 @@ import static com.oracle.truffle.trufflenode.ContextData.FunctionKey.PropertyHan
 import static com.oracle.truffle.trufflenode.ContextData.FunctionKey.PropertyHandlerPrototypeGlobal;
 import static com.oracle.truffle.trufflenode.ContextData.FunctionKey.SetBreakPoint;
 import static com.oracle.truffle.trufflenode.ContextData.FunctionKey.SetContinuationPreservedEmbedderData;
+import static com.oracle.truffle.trufflenode.ContextData.FunctionKey.WasmStreamingCallback;
 import static com.oracle.truffle.trufflenode.ValueType.ARRAY_BUFFER_VIEW_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.ARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.BIG_INT_VALUE;
@@ -4480,6 +4481,11 @@ public final class GraalJSAccess {
     }
 
     private static Object createWasmStreamingCallback(JSRealm realm) {
+        JSFunctionData functionData = getContextEmbedderData(realm.getContext()).getOrCreateFunctionData(WasmStreamingCallback, GraalJSAccess::createWasmStreamingCallbackFunctionData);
+        return JSFunction.create(realm, functionData);
+    }
+
+    private static JSFunctionData createWasmStreamingCallbackFunctionData(JSContext context) {
         JavaScriptRootNode rootNode = new JavaScriptRootNode() {
             @Override
             public Object execute(VirtualFrame frame) {
@@ -4491,8 +4497,7 @@ public final class GraalJSAccess {
                 return Undefined.instance;
             }
         };
-        JSFunctionData functionData = JSFunctionData.createCallOnly(realm.getContext(), rootNode.getCallTarget(), 3, Strings.EMPTY_STRING);
-        return JSFunction.create(realm, functionData);
+        return JSFunctionData.createCallOnly(context, rootNode.getCallTarget(), 3, Strings.EMPTY_STRING);
     }
 
     @TruffleBoundary

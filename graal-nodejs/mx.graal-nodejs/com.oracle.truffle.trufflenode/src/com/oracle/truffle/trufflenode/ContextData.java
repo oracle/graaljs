@@ -78,7 +78,8 @@ public final class ContextData {
         GetContinuationPreservedEmbedderData,
         SetContinuationPreservedEmbedderData,
         NIOBufferInit,
-        SharedMemMessagingInit;
+        SharedMemMessagingInit,
+        WasmStreamingCallback;
 
         static final int LENGTH = FunctionKey.values().length;
     }
