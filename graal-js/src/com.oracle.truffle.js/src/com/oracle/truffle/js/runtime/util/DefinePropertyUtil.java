@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,7 +56,6 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
-import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -204,12 +203,11 @@ public final class DefinePropertyUtil {
         assert !JSProperty.isDataSpecial(currentProperty) || JSProperty.isProxy(currentProperty) : currentProperty;
 
         if (JSProperty.isProxy(currentProperty) && descriptor.isDataDescriptor()) {
-            PropertyProxy proxy = (PropertyProxy) JSDynamicObject.getOrNull(thisObj, key);
             if (currentProperty.getFlags() != newAttr) {
                 if (descriptor.hasValue()) {
                     JSObjectUtil.defineDataProperty(thisObj, key, descriptor.getValue(), newAttr);
                 } else {
-                    JSObjectUtil.defineProxyProperty(thisObj, key, proxy, newAttr);
+                    JSObjectUtil.changePropertyFlags(thisObj, key, newAttr);
                 }
             } else if (descriptor.hasValue()) {
                 JSObject.set(thisObj, key, descriptor.getValue(), doThrow, null);

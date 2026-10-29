@@ -59,6 +59,7 @@ import org.junit.runners.Parameterized.Parameters;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
@@ -202,6 +203,89 @@ public class GlobalPropertyCacheTest {
                         }
                     } finally {
                         helper.leaveContext();
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void constantPropertyProxyAttributeChangePreservesLocation() {
+        String[][] cases = {
+                        {"new Error('test')", "stack"},
+                        {"(function named() {})", "name"},
+                        {"/(?<group>a)/.exec('a').groups", "group"},
+                        {"/(?<group>a)/.exec('a')", "index"}
+        };
+        try (Engine engine = multiContext ? JSTest.newEngineBuilder().build() : null;
+                        TestHelper helper = new TestHelper(newContextBuilder(engine))) {
+            helper.enterContext();
+            try {
+                for (String[] testCase : cases) {
+                    JSDynamicObject object = (JSDynamicObject) helper.runNoPolyglot(testCase[0]);
+                    var key = Strings.fromJavaString(testCase[1]);
+                    var property = object.getShape().getProperty(key);
+                    var location = property.getLocation();
+                    assertTrue(JSProperty.isProxy(property));
+                    assertTrue(location.isConstant());
+                    Object value = JSObject.get(object, key);
+                    JSObjectUtil.defineDataProperty(helper.getGlobalObject(), Strings.constant("proxyObject"), object, JSAttributes.getDefault());
+                    for (boolean enabled : new boolean[]{true, false}) {
+                        helper.runVoid("Object.defineProperty(proxyObject, '" + testCase[1] + "', {enumerable: " + enabled + ", writable: " + enabled + "})");
+                        property = object.getShape().getProperty(key);
+                        assertSame(location, property.getLocation());
+                        assertTrue(JSProperty.isProxy(property));
+                        assertEquals(enabled, JSProperty.isEnumerable(property));
+                        assertEquals(enabled, JSProperty.isWritable(property));
+                        assertTrue(JSRuntime.isSameValue(value, JSObject.get(object, key)));
+                    }
+                }
+            } finally {
+                helper.leaveContext();
+            }
+        }
+    }
+
+    @Test
+    public void instancePropertyProxyAttributeChangePreservesLocationAndShape() {
+        Source source = Source.create("js", "function readLazyGlobal() { return lazyGlobal; } readLazyGlobal();");
+        try (Engine engine = multiContext ? JSTest.newEngineBuilder().build() : null) {
+            Shape expectedShape = null;
+            for (int i = 0; i < 3; i++) {
+                int value = i;
+                try (Context context = newContextBuilder(engine).build()) {
+                    context.initialize("js");
+                    context.enter();
+                    try {
+                        var global = JavaScriptLanguage.getJSRealm(context).getGlobalObject();
+                        var key = Strings.constant("lazyGlobal");
+                        PropertyProxy proxy = new PropertyProxy() {
+                            @Override
+                            public Object get(JSDynamicObject store) {
+                                return value;
+                            }
+                        };
+                        JSObjectUtil.defineInstanceProxyProperty(global, key, proxy, JSAttributes.getDefault());
+                        var location = global.getShape().getProperty(key).getLocation();
+                        assertEquals(!multiContext, location.isConstant());
+                        assertEquals(value, context.eval(source).asInt());
+                        context.eval("js", "Object.defineProperty(globalThis, 'lazyGlobal', {enumerable: false, writable: false})");
+                        var property = global.getShape().getProperty(key);
+                        assertSame(location, property.getLocation());
+                        assertTrue(JSProperty.isProxy(property));
+                        assertSame(proxy, JSDynamicObject.getOrNull(global, key));
+                        assertFalse(JSProperty.isEnumerable(property));
+                        assertFalse(JSProperty.isWritable(property));
+                        assertEquals(value, context.eval(source).asInt());
+                        assertFalse(context.eval("js", "Reflect.set(globalThis, 'lazyGlobal', 42)").asBoolean());
+                        if (multiContext) {
+                            if (expectedShape != null) {
+                                assertSame("Attribute changes must not move instance proxies into shared shapes", expectedShape, global.getShape());
+                            }
+                            expectedShape = global.getShape();
+                        }
+                    } finally {
+                        context.leave();
                     }
                 }
             }
