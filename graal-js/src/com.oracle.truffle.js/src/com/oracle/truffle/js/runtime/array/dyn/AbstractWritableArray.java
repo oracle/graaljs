@@ -115,7 +115,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
      */
     @Override
     public final boolean isInBoundsFast(JSDynamicObject object, long index) {
-        return firstElementIndex(object) <= index && index <= lastElementIndex(object);
+        return firstElementIndex(object) <= index && index < lastElementIndex(object) + 1;
     }
 
     protected abstract int prepareInBoundsFast(JSDynamicObject object, long index);
@@ -284,7 +284,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
         if (profile.updateStatePrepend(node, internalIndex < offset)) {
             arraySetUsedLength(object, used + 1);
             setArrayOffset(object, offset - 1);
-        } else if (profile.updateStateAppend(node, internalIndex >= offset + used)) {
+        } else if (profile.updateStateAppend(node, internalIndex >= (long) offset + used)) {
             arraySetUsedLength(object, used + 1);
             long length = arrayGetLength(object);
             long calcLength = getIndexOffset(object) + offset + used + 1;
@@ -300,7 +300,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
         int size;
         if (profile.updateStatePrepend(node, internalIndex < offset)) {
             size = -(offset - internalIndex);
-        } else if (profile.updateStateAppend(node, internalIndex >= offset + used)) {
+        } else if (profile.updateStateAppend(node, internalIndex >= (long) offset + used)) {
             if (used == 0) {
                 // empty array, array offset should match the new element
                 offset = internalIndex;
