@@ -1211,7 +1211,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                     if (desc.isAccessorDescriptor()) {
                         JSObject.defineOwnProperty(target, key, desc);
                     } else {
-                        JSObjectUtil.defineProxyProperty(target, key, new BoundProperty(source, key, sourceClass), desc.getFlags());
+                        JSObjectUtil.defineInstanceProxyProperty(target, key, new BoundProperty(source, key, sourceClass), desc.getFlags());
                     }
                 }
             }
@@ -1251,7 +1251,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 if (!extensible) {
                     throw Errors.createTypeErrorNotExtensible(target, tStringKey);
                 }
-                JSObjectUtil.defineProxyProperty(target, tStringKey, new ForeignBoundProperty(source, stringKey), JSAttributes.getDefault());
+                JSObjectUtil.defineInstanceProxyProperty(target, tStringKey, new ForeignBoundProperty(source, stringKey), JSAttributes.getDefault());
             }
         }
 
@@ -1285,7 +1285,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 }
                 String setKey = beanAccessor("set", beanProperty);
                 String setter = interop.isMemberExisting(source, setKey) ? setKey : null;
-                JSObjectUtil.defineProxyProperty(target, tStringBeanProperty, new ForeignBoundBeanProperty(source, getter, setter), JSAttributes.getDefault());
+                JSObjectUtil.defineInstanceProxyProperty(target, tStringBeanProperty, new ForeignBoundBeanProperty(source, getter, setter), JSAttributes.getDefault());
             }
         }
 

@@ -1064,7 +1064,7 @@ public final class GraalJSAccess {
     public boolean objectDefineDataProperty(Object object, Object key, long getterPtr, long setterPtr, Object data, int attributes, boolean lazy) {
         int flags = propertyAttributes(attributes);
         PropertyProxy proxy = new NativeDataProperty(key, getterPtr, setterPtr, data, flags, lazy);
-        JSObjectUtil.defineProxyProperty((JSDynamicObject) object, key, proxy, flags);
+        JSObjectUtil.defineInstanceProxyProperty((JSDynamicObject) object, key, proxy, flags);
         return true;
     }
 
@@ -2245,7 +2245,7 @@ public final class GraalJSAccess {
                 Object setter = (setterTemplate == null) ? Undefined.instance : functionTemplateGetFunction(realm, setterTemplate);
                 JSObjectUtil.defineAccessorProperty(context, obj, name, (JSDynamicObject) getter, (JSDynamicObject) setter, attributes);
             } else if (processedValue instanceof PropertyProxy proxy) {
-                JSObjectUtil.defineProxyProperty(obj, name, proxy, attributes);
+                JSObjectUtil.defineInstanceProxyProperty(obj, name, proxy, attributes);
             } else {
                 if (name instanceof HiddenKey) {
                     if (!template.hasPropertyHandler()) {

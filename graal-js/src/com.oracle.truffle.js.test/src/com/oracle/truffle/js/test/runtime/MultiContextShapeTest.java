@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,10 @@
 package com.oracle.truffle.js.test.runtime;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -92,6 +95,48 @@ public class MultiContextShapeTest {
         testSameShapeAcrossContexts("class C extends null {} C;");
     }
 
+    @Test
+    public void regExpGroupsShape() {
+        String[] expressions = {
+                        "/(?<group>a)/.exec('a').groups",
+                        "new RegExp('(?<group>a)').exec('a').groups",
+                        "/(?<group>a)/d.exec('a').indices.groups",
+                        "/(?<group>a)|(?<group>b)/.exec('b').groups"
+        };
+        for (String expression : expressions) {
+            try (Engine engine = JSTest.newEngineBuilder().build()) {
+                Shape previousShape = null;
+                for (int i = 0; i < 2; i++) {
+                    try (Context context = JSTest.newContextBuilder().engine(engine).build()) {
+                        Shape shape = evalWithoutInterop(context, expression).getShape();
+                        assertTrue(shape.getProperty(Strings.constant("group")).getLocation().isConstant());
+                        if (previousShape != null) {
+                            assertSame(previousShape, shape);
+                        }
+                        previousShape = shape;
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void regExpGroupsWithDifferentIndices() {
+        try (Context context = JSTest.newContextBuilder().build()) {
+            JSDynamicObject first = evalWithoutInterop(context, "/(?<group>a)(b)/.exec('ab').groups");
+            assertEquals("a", context.eval(ID, "_testObject.group").asString());
+            JSDynamicObject second = evalWithoutInterop(context, "/(a)(?<group>b)/.exec('ab').groups");
+            assertEquals("b", context.eval(ID, "_testObject.group").asString());
+            assertNotSame(first.getShape(), second.getShape());
+
+            first = evalWithoutInterop(context, "/(?<group>a)|(?<group>b)/.exec('b').groups");
+            assertEquals("b", context.eval(ID, "_testObject.group").asString());
+            second = evalWithoutInterop(context, "/(?<group>a)|(b)(?<group>c)/.exec('bc').groups");
+            assertEquals("c", context.eval(ID, "_testObject.group").asString());
+            assertNotSame(first.getShape(), second.getShape());
+        }
+    }
+
     private static void testSameShapeAcrossContexts(String source) {
         try (Engine engine = JSTest.newEngineBuilder().build()) {
             Shape lastShape = null;
@@ -107,6 +152,12 @@ public class MultiContextShapeTest {
                 }
             }
         }
+    }
+
+    private static JSDynamicObject evalWithoutInterop(Context context, String expression) {
+        // Exporting the groups object to interop materializes its lazy properties.
+        context.eval(ID, "globalThis._testObject = " + expression + "; void 0");
+        return (JSDynamicObject) JSObject.get(JavaScriptLanguage.getJSRealm(context).getGlobalObject(), Strings.constant("_testObject"));
     }
 
     private static JSDynamicObject unwrapJSObject(Context c, Value value) {

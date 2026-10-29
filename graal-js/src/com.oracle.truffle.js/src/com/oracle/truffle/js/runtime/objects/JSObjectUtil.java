@@ -158,12 +158,31 @@ public final class JSObjectUtil {
         defineAccessorProperty(context, thisObj, key, accessor, flags);
     }
 
+    /**
+     * Defines a property backed by a shared, realm-independent proxy stored as a shape constant.
+     */
     @TruffleBoundary
     public static void defineProxyProperty(JSDynamicObject thisObj, Object key, PropertyProxy proxy, int flags) {
         assert JSRuntime.isPropertyKey(key) : key;
         JSContext context = JSObject.getJSContext(thisObj);
         checkForNoSuchPropertyOrMethod(context, key);
         Properties.putConstantUncached(thisObj, key, proxy, flags | JSProperty.PROXY);
+    }
+
+    /**
+     * Defines a property backed by a proxy that captures instance-specific state. In multi-context
+     * mode, the proxy is stored on the receiver to keep that state out of shared shapes.
+     */
+    @TruffleBoundary
+    public static void defineInstanceProxyProperty(JSDynamicObject thisObj, Object key, PropertyProxy proxy, int flags) {
+        assert JSRuntime.isPropertyKey(key) : key;
+        JSContext context = JSObject.getJSContext(thisObj);
+        checkForNoSuchPropertyOrMethod(context, key);
+        if (context.isMultiContext()) {
+            Properties.putWithFlagsUncached(thisObj, key, proxy, flags | JSProperty.PROXY);
+        } else {
+            Properties.putConstantUncached(thisObj, key, proxy, flags | JSProperty.PROXY);
+        }
     }
 
     @TruffleBoundary

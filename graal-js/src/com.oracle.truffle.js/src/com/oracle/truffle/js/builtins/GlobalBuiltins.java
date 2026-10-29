@@ -1757,7 +1757,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                         if ((value == Undefined.instance || value instanceof ScriptEngineGlobalScopeBindingsPropertyProxy &&
                                         ((ScriptEngineGlobalScopeBindingsPropertyProxy) value).get(globalObject) == Undefined.instance) &&
                                         !JSObject.getPrototype(globalObject).getShape().hasProperty(stringKey)) {
-                            JSObjectUtil.defineProxyProperty(globalObject, stringKey, new ScriptEngineGlobalScopeBindingsPropertyProxy(stringKey, globalContextBindings, bindingsInterop),
+                            JSObjectUtil.defineInstanceProxyProperty(globalObject, stringKey, new ScriptEngineGlobalScopeBindingsPropertyProxy(stringKey, globalContextBindings, bindingsInterop),
                                             JSAttributes.getDefault());
                         }
                     }
