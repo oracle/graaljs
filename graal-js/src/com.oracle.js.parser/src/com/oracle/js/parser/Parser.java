@@ -7375,7 +7375,8 @@ public class Parser extends AbstractParser {
                 // ImportedDefaultBinding
                 IdentNode importedDefaultBinding = importedBindingIdentifier();
 
-                if (env.sourcePhaseImports && SOURCE.equals(importedDefaultBinding.getName()) && isBindingIdentifier() && lookahead() == FROM) {
+                if (env.sourcePhaseImports && SOURCE.equals(importedDefaultBinding.getName()) && !isEscapedIdent(importedDefaultBinding) &&
+                                isBindingIdentifier() && lookahead() == FROM) {
                     // import source ImportedBinding FromClause WithClause_opt;
                     long identToken = token;
                     IdentNode importedBinding = importedBindingIdentifier();
@@ -7391,7 +7392,7 @@ public class Parser extends AbstractParser {
                     module.addModuleRequest(moduleRequest);
                     module.addImportEntry(ImportEntry.importSource(moduleRequest, importedBinding.getNameTS()));
                     break end;
-                } else if ((isImportDefer() && DEFER.equals(importedDefaultBinding.getName())) && type == MUL) {
+                } else if (isImportDefer() && DEFER.equals(importedDefaultBinding.getName()) && !isEscapedIdent(importedDefaultBinding) && type == MUL) {
                     // import defer * as ImportedBinding FromClause WithClause_opt;
                     NameSpaceImportNode namespaceNode = nameSpaceImport();
                     importClause = new ImportClauseNode(startToken, Token.descPosition(startToken), finish, namespaceNode);

@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.test.parser;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 
 import java.util.List;
 import java.util.Map;
@@ -49,6 +50,7 @@ import org.junit.Test;
 
 import com.oracle.js.parser.ErrorManager;
 import com.oracle.js.parser.Parser;
+import com.oracle.js.parser.ParserException;
 import com.oracle.js.parser.ScriptEnvironment;
 import com.oracle.js.parser.Source;
 import com.oracle.js.parser.ir.FunctionNode;
@@ -77,7 +79,11 @@ public class ImportParserTest {
     }
 
     private static FunctionNode parseModule(String code, Boolean sourcePhaseImports) {
-        ScriptEnvironment.Builder envBuilder = ScriptEnvironment.builder().strict(true).ecmaScriptVersion(ScriptEnvironment.ES_2020).importAttributes(true);
+        return parseModule(code, sourcePhaseImports, ScriptEnvironment.ES_2020);
+    }
+
+    private static FunctionNode parseModule(String code, Boolean sourcePhaseImports, int ecmaScriptVersion) {
+        ScriptEnvironment.Builder envBuilder = ScriptEnvironment.builder().strict(true).ecmaScriptVersion(ecmaScriptVersion).importAttributes(true);
         if (sourcePhaseImports != null) {
             envBuilder.sourcePhaseImports(sourcePhaseImports);
         }
@@ -321,6 +327,54 @@ public class ImportParserTest {
         assertEquals(BAR, request2.specifier());
         assertEquals(Map.of(Strings.fromJavaString("type"), Strings.fromJavaString("text")), request2.attributes());
         assertEquals(ImportPhase.Evaluation, request2.phase());
+    }
+
+    /** The source import modifier must be spelled without Unicode escapes. */
+    @Test
+    public void testEscapedSourceImportModifier() {
+        for (String modifier : List.of("sour\\u0063e", "\\u0073ource", "sour\\u{63}e")) {
+            assertThrows(ParserException.class, () -> parseModule("import " + modifier + " bar from 'foo';", true));
+        }
+    }
+
+    /** The defer import modifier must be spelled without Unicode escapes. */
+    @Test
+    public void testEscapedDeferImportModifier() {
+        for (String modifier : List.of("de\\u0066er", "\\u0064efer", "de\\u{66}er")) {
+            assertThrows(ParserException.class, () -> parseModule("import " + modifier + " * as bar from 'foo';", true, ScriptEnvironment.ES_STAGING));
+        }
+    }
+
+    /** Unescaped modifiers must still produce source- and defer-phase import requests. */
+    @Test
+    public void testUnescapedImportModifiers() {
+        Module source = parseModule("import source bar from 'foo';", true).getModule();
+        assertEquals(ImportPhase.Source, source.getImportEntries().get(0).getModuleRequest().phase());
+        assertEquals(BAR, source.getImportEntries().get(0).getLocalName());
+
+        Module defer = parseModule("import defer * as bar from 'foo';", true, ScriptEnvironment.ES_STAGING).getModule();
+        assertEquals(ImportPhase.Defer, defer.getImportEntries().get(0).getModuleRequest().phase());
+        assertEquals(BAR, defer.getImportEntries().get(0).getLocalName());
+    }
+
+    /** Escapes remain valid in default binding names, even when their decoded name is a modifier. */
+    @Test
+    public void testEscapedDefaultImportBindings() {
+        for (String[] binding : List.of(new String[]{"sour\\u0063e", "source"}, new String[]{"de\\u0066er", "defer"})) {
+            for (boolean sourcePhaseImports : new boolean[]{false, true}) {
+                Module module = parseModule("import " + binding[0] + " from 'foo';", sourcePhaseImports, ScriptEnvironment.ES_STAGING).getModule();
+                ImportEntry entry = module.getImportEntries().get(0);
+                assertEquals(ImportPhase.Evaluation, entry.getModuleRequest().phase());
+                assertEquals(DEFAULT, entry.getImportName());
+                assertEquals(Strings.fromJavaString(binding[1]), entry.getLocalName());
+
+                Module namespace = parseModule("import " + binding[0] + ", * as bar from 'foo';", sourcePhaseImports, ScriptEnvironment.ES_STAGING).getModule();
+                assertEquals(2, namespace.getImportEntries().size());
+                for (ImportEntry namespaceEntry : namespace.getImportEntries()) {
+                    assertEquals(ImportPhase.Evaluation, namespaceEntry.getModuleRequest().phase());
+                }
+            }
+        }
     }
 
     @Test
