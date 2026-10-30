@@ -2128,12 +2128,12 @@ public class Parser extends AbstractParser {
         boolean isPrivate = false;
         if (!computed) {
             final String name = ((PropertyKey) propertyName).getPropertyName();
-            if (!generator && nameTokenType == GET && type != LPAREN) {
+            if (!generator && !async && nameTokenType == GET && type != LPAREN) {
                 PropertyFunction methodDefinition = propertyGetterFunction(startToken, methodLine, yield, await, true);
                 verifyAllowedMethodName(methodDefinition.key, isStatic, methodDefinition.computed, generator, true, async);
                 return ClassElement.createAccessor(startToken, finish, methodDefinition.key, methodDefinition.functionNode, null, classElementDecorators, isPrivate, isStatic,
                                 methodDefinition.computed);
-            } else if (!generator && nameTokenType == SET && type != LPAREN) {
+            } else if (!generator && !async && nameTokenType == SET && type != LPAREN) {
                 PropertyFunction methodDefinition = propertySetterFunction(startToken, methodLine, yield, await, true);
                 verifyAllowedMethodName(methodDefinition.key, isStatic, methodDefinition.computed, generator, true, async);
                 return ClassElement.createAccessor(startToken, finish, methodDefinition.key, null, methodDefinition.functionNode, classElementDecorators, isPrivate, isStatic,
@@ -4685,7 +4685,7 @@ public class Parser extends AbstractParser {
             final TokenType getOrSet = type;
             next();
 
-            if (!generator && type != COLON && type != COMMARIGHT && type != RBRACE && ((type != ASSIGN && type != LPAREN) || !isES6())) {
+            if (!generator && !async && type != COLON && type != COMMARIGHT && type != RBRACE && ((type != ASSIGN && type != LPAREN) || !isES6())) {
                 final long getOrSetToken = propertyToken;
                 if (getOrSet == GET) {
                     final PropertyFunction getter = propertyGetterFunction(getOrSetToken, functionLine, yield, await, false);
