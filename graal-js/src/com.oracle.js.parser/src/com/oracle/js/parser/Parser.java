@@ -1866,6 +1866,7 @@ public class Parser extends AbstractParser {
                 final Expression classElementName = classElementName(yield, await, true);
 
                 ClassElement classElement;
+                boolean privateAccessorPair = false;
                 if (!generator && !async && isClassFieldDefinition(nameTokenType)) {
                     classElement = fieldDefinition(classElementName, isStatic, isAutoAccessor, classElementToken, computed, classElementDecorators);
                     if (!isStatic) {
@@ -1880,24 +1881,29 @@ public class Parser extends AbstractParser {
 
                     if (!classElement.isComputed() && classElement.isAccessor()) {
                         if (classElement.isPrivate()) {
-                            // merge private accessor methods
+                            // Match private accessor pairs, but only merge undecorated elements.
                             String privateName = classElement.getPrivateName();
                             Integer existing = privateNameToAccessorIndexMap.get(privateName);
                             if (existing == null) {
                                 privateNameToAccessorIndexMap.put(privateName, classElements.size());
                             } else {
                                 ClassElement otherAccessor = classElements.get(existing);
-                                if (isStatic == otherAccessor.isStatic()) {
-                                    if (otherAccessor.getGetter() == null && classElement.getGetter() != null) {
-                                        classElements.set(existing, otherAccessor.setGetter(classElement.getGetter()));
-                                        continue;
-                                    } else if (otherAccessor.getSetter() == null && classElement.getSetter() != null) {
-                                        classElements.set(existing, otherAccessor.setSetter(classElement.getSetter()));
+                                boolean getterMatches = otherAccessor.getGetter() == null && classElement.getGetter() != null;
+                                boolean setterMatches = otherAccessor.getSetter() == null && classElement.getSetter() != null;
+                                if (isStatic == otherAccessor.isStatic() && (getterMatches || setterMatches)) {
+                                    // A completed pair must not match any further declaration.
+                                    privateNameToAccessorIndexMap.remove(privateName);
+                                    if (classElement.getDecorators() == null && otherAccessor.getDecorators() == null) {
+                                        ClassElement merged = getterMatches
+                                                        ? otherAccessor.setGetter(classElement.getGetter())
+                                                        : otherAccessor.setSetter(classElement.getSetter());
+                                        classElements.set(existing, merged);
                                         continue;
                                     }
+                                    privateAccessorPair = true;
                                 }
                                 // else: more than one getter or setter with the same private name
-                                // fall through: a syntax error will be thrown below
+                                // fall through: a duplicate-name syntax error will be thrown below
                             }
                         } else if (!classElements.isEmpty()) {
                             // try to merge consecutive getter and setter pairs if they are not
@@ -1917,7 +1923,11 @@ public class Parser extends AbstractParser {
                 if (classElement.isPrivate()) {
                     hasPrivateMethods = hasPrivateMethods || classElement.isMethodOrAccessor();
                     hasPrivateInstanceMethods = hasPrivateInstanceMethods || (!classElement.isClassField() && !classElement.isStatic());
-                    declarePrivateName(classScope, classElement);
+                    // A decorated accessor pair remains separate elements but shares the private
+                    // binding declared by its first accessor. Do not redeclare it for the second.
+                    if (!privateAccessorPair) {
+                        declarePrivateName(classScope, classElement);
+                    }
                 }
 
                 if (!classElement.isStatic() && !classElement.isComputed() && classElement.getKeyNameTS().equals(CONSTRUCTOR_NAME_TS)) {
