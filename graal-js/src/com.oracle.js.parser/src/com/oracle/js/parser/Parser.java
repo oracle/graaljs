@@ -1049,7 +1049,7 @@ public class Parser extends AbstractParser {
 
                     break;
                 } else if (lhs instanceof AccessNode || lhs instanceof IndexNode) {
-                    if (((BaseNode) lhs).isOptional()) {
+                    if (((BaseNode) lhs).isOptionalChain()) {
                         throw invalidLHSError(lhs);
                     }
                     break;
@@ -1108,7 +1108,7 @@ public class Parser extends AbstractParser {
 
             @Override
             public boolean enterAccessNode(AccessNode accessNode) {
-                if (accessNode.isOptional()) {
+                if (accessNode.isOptionalChain()) {
                     throw error(AbstractParser.message(MSG_INVALID_LVALUE), accessNode.getToken());
                 }
                 return false;
@@ -1116,7 +1116,7 @@ public class Parser extends AbstractParser {
 
             @Override
             public boolean enterIndexNode(IndexNode indexNode) {
-                if (indexNode.isOptional()) {
+                if (indexNode.isOptionalChain()) {
                     throw error(AbstractParser.message(MSG_INVALID_LVALUE), indexNode.getToken());
                 }
                 return false;
@@ -3324,7 +3324,7 @@ public class Parser extends AbstractParser {
             verifyStrictIdent(ident, contextString);
             return true;
         } else if (init instanceof AccessNode || init instanceof IndexNode) {
-            return !((BaseNode) init).isOptional();
+            return !((BaseNode) init).isOptionalChain();
         } else if (isDestructuringLhs(init)) {
             verifyDestructuringAssignmentPattern(init, contextString);
             return true;
@@ -6292,7 +6292,7 @@ public class Parser extends AbstractParser {
             assert opType == TokenType.INCPREFIX || opType == TokenType.DECPREFIX;
             String contextString = opType == TokenType.INCPREFIX ? CONTEXT_OPERAND_FOR_INC_OPERATOR : CONTEXT_OPERAND_FOR_DEC_OPERATOR;
             verifyStrictIdent((IdentNode) lhs, contextString);
-        } else if (!(lhs instanceof AccessNode || lhs instanceof IndexNode) || ((BaseNode) lhs).isOptional()) {
+        } else if (!(lhs instanceof AccessNode || lhs instanceof IndexNode) || ((BaseNode) lhs).isOptionalChain()) {
             if (!isWebCompatAssignmentTargetType(lhs)) {
                 throw invalidLHSError(lhs);
             }
