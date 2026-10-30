@@ -1289,7 +1289,8 @@ public class Parser extends AbstractParser {
         final Expression exp = ((ExpressionStatement) stmt).getExpression();
         // A directive is either a string or an escape string
         // Make sure that we don't unescape anything. Return as seen in source!
-        return source.getContent().regionMatches(exp.getStart() + 1, USE_STRICT, 0, Token.descLength(exp.getToken()) - 2);
+        return Token.descLength(exp.getToken()) == USE_STRICT.length() + 2 &&
+                        source.getContent().regionMatches(exp.getStart() + 1, USE_STRICT, 0, USE_STRICT.length());
     }
 
     /**
