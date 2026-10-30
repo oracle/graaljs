@@ -1082,6 +1082,14 @@ public class Parser extends AbstractParser {
         assert pattern instanceof ObjectNode || pattern instanceof ArrayLiteralNode;
         pattern.accept(new VerifyDestructuringPatternNodeVisitor(new LexicalContext()) {
             @Override
+            protected void verifyRestProperty(Expression lvalue) {
+                if (isDestructuringLhs(lvalue)) {
+                    throw error(AbstractParser.message(MSG_INVALID_LVALUE), lvalue.getToken());
+                }
+                verifySpreadElement(lvalue);
+            }
+
+            @Override
             protected void verifySpreadElement(Expression lvalue) {
                 if (!checkValidLValue(lvalue, contextString)) {
                     throw error(AbstractParser.message(MSG_INVALID_LVALUE), lvalue.getToken());
@@ -2880,6 +2888,8 @@ public class Parser extends AbstractParser {
 
         protected abstract void verifySpreadElement(Expression lvalue);
 
+        protected abstract void verifyRestProperty(Expression lvalue);
+
         @Override
         public boolean enterObjectNode(ObjectNode objectNode) {
             if (objectNode.isParenthesized()) {
@@ -2901,7 +2911,7 @@ public class Parser extends AbstractParser {
                     if (property.isRest()) {
                         restElement = true;
                         Expression lvalue = ((UnaryNode) property.getKey()).getExpression();
-                        verifySpreadElement(lvalue);
+                        verifyRestProperty(lvalue);
                     } else {
                         property.accept(this);
                     }
@@ -2942,6 +2952,14 @@ public class Parser extends AbstractParser {
     private void verifyDestructuringBindingPattern(Expression pattern, Consumer<IdentNode> identifierCallback) {
         assert pattern instanceof ObjectNode || pattern instanceof ArrayLiteralNode;
         pattern.accept(new VerifyDestructuringPatternNodeVisitor(new LexicalContext()) {
+            @Override
+            protected void verifyRestProperty(Expression lvalue) {
+                if (!(lvalue instanceof IdentNode)) {
+                    throw error("Expected a valid binding identifier", lvalue.getToken());
+                }
+                verifySpreadElement(lvalue);
+            }
+
             @Override
             protected void verifySpreadElement(Expression lvalue) {
                 if (lvalue instanceof IdentNode) {
