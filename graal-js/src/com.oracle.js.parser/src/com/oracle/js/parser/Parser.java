@@ -4793,6 +4793,7 @@ public class Parser extends AbstractParser {
             } finally {
                 restoreBlock(parameterBlock);
             }
+            verifyParameterList(functionNode);
             if (parameterBlock != null) {
                 functionBody = wrapParameterBlock(parameterBlock, functionBody);
             }
