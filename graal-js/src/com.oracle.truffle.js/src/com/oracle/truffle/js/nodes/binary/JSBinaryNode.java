@@ -95,6 +95,11 @@ public abstract class JSBinaryNode extends JavaScriptNode {
         }
     }
 
+    protected static ArithmeticException arithmeticException() {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new ArithmeticException();
+    }
+
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
         if (tag == BinaryOperationTag.class) {

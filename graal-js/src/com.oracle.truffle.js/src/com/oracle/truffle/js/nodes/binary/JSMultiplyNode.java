@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.binary;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Bind;
@@ -91,37 +92,36 @@ public abstract class JSMultiplyNode extends JSBinaryNode {
 
     public abstract Object execute(Object a, Object b);
 
-    @Specialization(guards = "b > 0", rewriteOn = ArithmeticException.class)
-    protected int doIntBLargerZero(int a, int b) {
-        return Math.multiplyExact(a, b);
-    }
-
-    @Specialization(guards = "a > 0", rewriteOn = ArithmeticException.class)
-    protected int doIntALargerZero(int a, int b) {
-        return Math.multiplyExact(a, b);
+    static boolean hasPositiveConstantOperand(int a, int b) {
+        // A positive int operand rules out -0. This shortcut eliminates the -0 check for
+        // PE constants without adding extra a > 0 or b > 0 checks for variable operands.
+        return CompilerDirectives.inCompiledCode() &&
+                        ((CompilerDirectives.isPartialEvaluationConstant(a) && a > 0) || (CompilerDirectives.isPartialEvaluationConstant(b) && b > 0));
     }
 
     @Specialization(rewriteOn = ArithmeticException.class)
-    protected int doInt(int a, int b, //
-                    @Cached @Exclusive InlinedBranchProfile resultZeroBranch) {
+    protected static int doInt(int a, int b) {
         int result = Math.multiplyExact(a, b);
-        if (result == 0) {
-            resultZeroBranch.enter(this);
-            if (a < 0 || b < 0) {
-                throw new ArithmeticException("could be -0");
-            }
+        if (hasPositiveConstantOperand(a, b)) {
+            return result;
+        }
+        // With overflow checked above, a zero product implies at least one operand is zero,
+        // so (a ^ b) < 0 and (a | b) < 0 are equivalent here. Prefer XOR: for x * x, x ^ x
+        // folds to zero, eliminating this check without having to prove x * x == 0 implies x == 0.
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, result == 0) && (a ^ b) < 0) {
+            throw arithmeticException();
         }
         return result;
     }
 
     @Specialization
-    protected double doDouble(double a, double b) {
+    protected static double doDouble(double a, double b) {
         return a * b;
     }
 
     @Specialization
     @TruffleBoundary
-    protected BigInt doBigInts(BigInt a, BigInt b) {
+    protected static BigInt doBigInts(BigInt a, BigInt b) {
         try {
             return a.multiply(b);
         } catch (ArithmeticException ae) {
@@ -131,12 +131,12 @@ public abstract class JSMultiplyNode extends JSBinaryNode {
 
     @InliningCutoff
     @Specialization(guards = {"hasOverloadedOperators(a) || hasOverloadedOperators(b)"})
-    protected Object doOverloaded(Object a, Object b,
+    protected static Object doOverloaded(Object a, Object b,
                     @Cached("createNumeric(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
         return overloadedOperatorNode.execute(a, b);
     }
 
-    protected TruffleString getOverloadedOperatorName() {
+    protected static TruffleString getOverloadedOperatorName() {
         return Strings.SYMBOL_STAR;
     }
 

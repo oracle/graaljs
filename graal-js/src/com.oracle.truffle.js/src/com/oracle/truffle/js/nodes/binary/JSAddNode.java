@@ -44,7 +44,6 @@ import static com.oracle.truffle.js.nodes.JSGuards.isString;
 
 import java.util.Set;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
@@ -124,8 +123,7 @@ public abstract class JSAddNode extends JSBinaryNode {
         } else if (JSRuntime.isSafeInteger(result)) {
             return SafeInteger.valueOf(result);
         } else {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new ArithmeticException();
+            throw arithmeticException();
         }
     }
 
