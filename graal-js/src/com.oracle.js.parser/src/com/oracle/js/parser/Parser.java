@@ -7997,8 +7997,8 @@ public class Parser extends AbstractParser {
      *
      * DecoratorMemberExpression[Yield, Await] :
      *      IdentifierReference[?Yield, ?Await]
-     *      PrivateIdentifier
      *      DecoratorMemberExpression[?Yield, ?Await] . IdentifierName
+     *      DecoratorMemberExpression[?Yield, ?Await] . PrivateIdentifier
      *
      * DecoratorCallExpression[Yield, Await] :
      *      DecoratorMemberExpression[?Yield, ?Await] Arguments[?Yield, ?Await]
@@ -8024,13 +8024,8 @@ public class Parser extends AbstractParser {
                 expect(RPAREN);
                 decoratorList.add(decoratorExpression);
                 continue;
-            } else {
-                if (type == PRIVATE_IDENT) {
-                    decoratorExpression = privateIdentifierUse();
-                } else {
-                    decoratorExpression = identifierReference(yield, await);
-                }
             }
+            decoratorExpression = identifierReference(yield, await);
             long callToken = token;
             while (type == PERIOD) {
                 next();
