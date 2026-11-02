@@ -332,7 +332,7 @@ public class Parser extends AbstractParser {
     private static final String MSG_NO_FUNC_DECL_HERE_WARN = "no.func.decl.here.warn";
     private static final String MSG_NOT_LVALUE_FOR_IN_LOOP = "not.lvalue.for.in.loop";
     private static final String MSG_OPTIONAL_CHAIN_TEMPLATE = "optional.chain.template";
-    private static final String MSG_PRIVATE_CONSTRUCTOR_METHOD = "private.constructor.method";
+    private static final String MSG_PRIVATE_CONSTRUCTOR = "private.constructor";
     private static final String MSG_PROPERTY_REDEFINITON = "property.redefinition";
     private static final String MSG_STATIC_PROTOTYPE_FIELD = "static.prototype.field";
     private static final String MSG_STATIC_PROTOTYPE_METHOD = "static.prototype.method";
@@ -2015,6 +2015,9 @@ public class Parser extends AbstractParser {
         if (currentClass == null) {
             throw error(AbstractParser.message(MSG_INVALID_PRIVATE_IDENT), privateIdent.getToken());
         }
+        if (PRIVATE_CONSTRUCTOR_NAME.equals(privateIdent.getName())) {
+            throw error(AbstractParser.message(MSG_PRIVATE_CONSTRUCTOR), privateIdent.getToken());
+        }
 
         return privateIdent;
     }
@@ -2172,17 +2175,14 @@ public class Parser extends AbstractParser {
             if (isStatic && name.equals(PROTOTYPE_NAME)) {
                 throw error(AbstractParser.message(MSG_STATIC_PROTOTYPE_METHOD), key.getToken());
             }
-            if (name.equals(PRIVATE_CONSTRUCTOR_NAME)) {
-                throw error(AbstractParser.message(MSG_PRIVATE_CONSTRUCTOR_METHOD), key.getToken());
-            }
         }
     }
 
     private ClassElement fieldDefinition(Expression propertyName, boolean isStatic, boolean isAutoAccessor, long startToken, boolean computed, List<Expression> classElementDecorators) {
-        // "constructor" or #constructor is not allowed as an instance field name
+        // A non-computed public field cannot be named "constructor".
         if (!computed && propertyName instanceof PropertyKey) {
             String name = ((PropertyKey) propertyName).getPropertyName();
-            if (CONSTRUCTOR_NAME.equals(name) || PRIVATE_CONSTRUCTOR_NAME.equals(name)) {
+            if (CONSTRUCTOR_NAME.equals(name)) {
                 throw error(AbstractParser.message(MSG_CONSTRUCTOR_FIELD), startToken);
             }
             if (isStatic && PROTOTYPE_NAME.equals(name)) {
