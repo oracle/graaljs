@@ -49,6 +49,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
@@ -298,30 +299,55 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         }
 
         if (ctx.isOptionTemporal()) {
+            String resolvedHourCycle = hc;
             if (timeStyleOpt != null || dateStyleOpt != null) {
+                DateFormat styleFormat = dateFormat;
                 if (dateStyleOpt != null) {
-                    state.temporalPlainDateFormat = adjustDateTimeStyleFormat(dateFormat, "GyYuUrQqMLdFgEec", patternGenerator, javaLocale, hc);
-                    state.temporalPlainYearMonthFormat = adjustDateTimeStyleFormat(dateFormat, "GyYuUrQqML", patternGenerator, javaLocale, hc);
-                    state.temporalPlainMonthDayFormat = adjustDateTimeStyleFormat(dateFormat, "MLdFg", patternGenerator, javaLocale, hc);
+                    state.temporalPlainDateFormat = new LazyDateFormat(
+                                    () -> adjustDateTimeStyleFormat(styleFormat, "GyYuUrQqMLdFgEec", patternGenerator, javaLocale, resolvedHourCycle),
+                                    TimeZone.GMT_ZONE);
+                    state.temporalPlainYearMonthFormat = new LazyDateFormat(
+                                    () -> adjustDateTimeStyleFormat(styleFormat, "GyYuUrQqML", patternGenerator, javaLocale, resolvedHourCycle),
+                                    TimeZone.GMT_ZONE);
+                    state.temporalPlainMonthDayFormat = new LazyDateFormat(
+                                    () -> adjustDateTimeStyleFormat(styleFormat, "MLdFg", patternGenerator, javaLocale, resolvedHourCycle),
+                                    TimeZone.GMT_ZONE);
                 }
                 if (timeStyleOpt != null) {
-                    state.temporalPlainTimeFormat = adjustDateTimeStyleFormat(dateFormat, "abBhHkKjJCmsSA", patternGenerator, javaLocale, hc);
+                    state.temporalPlainTimeFormat = new LazyDateFormat(
+                                    () -> adjustDateTimeStyleFormat(styleFormat, "abBhHkKjJCmsSA", patternGenerator, javaLocale, resolvedHourCycle),
+                                    TimeZone.GMT_ZONE);
                 }
-                state.temporalPlainDateTimeFormat = adjustDateTimeStyleFormat(dateFormat, "GyYuUrQqMLdFgEecabBhHkKjJCmsSA", patternGenerator, javaLocale, hc);
-                state.temporalInstanceFormat = dateFormat;
+                state.temporalPlainDateTimeFormat = new LazyDateFormat(
+                                () -> adjustDateTimeStyleFormat(styleFormat, "GyYuUrQqMLdFgEecabBhHkKjJCmsSA", patternGenerator, javaLocale, resolvedHourCycle),
+                                TimeZone.GMT_ZONE);
+                state.temporalInstanceFormat = new LazyDateFormat(() -> styleFormat, timeZone);
             } else {
-                state.temporalPlainDateFormat = getDateTimeFormat(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, null, null, null, null, null, -1, null, Required.DATE, Defaults.DATE, false,
-                                anyPresent, patternGenerator, javaLocale, null);
-                state.temporalPlainYearMonthFormat = getDateTimeFormat(null, eraOpt, yearOpt, monthOpt, null, null, null, null, null, null, -1, null, Required.YEAR_MONTH, Defaults.YEAR_MONTH, false,
-                                anyPresent, patternGenerator, javaLocale, null);
-                state.temporalPlainMonthDayFormat = getDateTimeFormat(null, null, null, monthOpt, dayOpt, null, null, null, null, null, -1, null, Required.MONTH_DAY, Defaults.MONTH_DAY, false,
-                                anyPresent, patternGenerator, javaLocale, null);
-                state.temporalPlainTimeFormat = getDateTimeFormat(null, null, null, null, null, dayPeriodOpt, hourOpt, hc, minuteOpt, secondOpt, fractionalSecondDigitsOpt, null, Required.TIME,
-                                Defaults.TIME, false, anyPresent, patternGenerator, javaLocale, null);
-                state.temporalPlainDateTimeFormat = getDateTimeFormat(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, dayPeriodOpt, hourOpt, hc, minuteOpt, secondOpt, fractionalSecondDigitsOpt,
-                                null, Required.ANY, Defaults.ALL, false, anyPresent, patternGenerator, javaLocale, null);
-                state.temporalInstanceFormat = getDateTimeFormat(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, dayPeriodOpt, hourOpt, hc, minuteOpt, secondOpt, fractionalSecondDigitsOpt, tzNameOpt,
-                                Required.ANY, (toLocaleStringTimeZone == null) ? Defaults.ALL : Defaults.ZONED_DATE_TIME, true, anyPresent, patternGenerator, javaLocale, null);
+                state.temporalPlainDateFormat = new LazyDateFormat(
+                                () -> getDateTimeFormat(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, null, null, null, null, null, -1, null, Required.DATE, Defaults.DATE, false,
+                                                anyPresent, patternGenerator, javaLocale, null),
+                                TimeZone.GMT_ZONE);
+                state.temporalPlainYearMonthFormat = new LazyDateFormat(
+                                () -> getDateTimeFormat(null, eraOpt, yearOpt, monthOpt, null, null, null, null, null, null, -1, null, Required.YEAR_MONTH, Defaults.YEAR_MONTH, false,
+                                                anyPresent, patternGenerator, javaLocale, null),
+                                TimeZone.GMT_ZONE);
+                state.temporalPlainMonthDayFormat = new LazyDateFormat(
+                                () -> getDateTimeFormat(null, null, null, monthOpt, dayOpt, null, null, null, null, null, -1, null, Required.MONTH_DAY, Defaults.MONTH_DAY, false,
+                                                anyPresent, patternGenerator, javaLocale, null),
+                                TimeZone.GMT_ZONE);
+                state.temporalPlainTimeFormat = new LazyDateFormat(
+                                () -> getDateTimeFormat(null, null, null, null, null, dayPeriodOpt, hourOpt, resolvedHourCycle, minuteOpt, secondOpt, fractionalSecondDigitsOpt, null, Required.TIME,
+                                                Defaults.TIME, false, anyPresent, patternGenerator, javaLocale, null),
+                                TimeZone.GMT_ZONE);
+                state.temporalPlainDateTimeFormat = new LazyDateFormat(
+                                () -> getDateTimeFormat(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, dayPeriodOpt, hourOpt, resolvedHourCycle, minuteOpt, secondOpt, fractionalSecondDigitsOpt,
+                                                null, Required.ANY, Defaults.ALL, false, anyPresent, patternGenerator, javaLocale, null),
+                                TimeZone.GMT_ZONE);
+                Defaults instantDefaults = (toLocaleStringTimeZone == null) ? Defaults.ALL : Defaults.ZONED_DATE_TIME;
+                state.temporalInstanceFormat = new LazyDateFormat(
+                                () -> getDateTimeFormat(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, dayPeriodOpt, hourOpt, resolvedHourCycle, minuteOpt, secondOpt, fractionalSecondDigitsOpt,
+                                                tzNameOpt, Required.ANY, instantDefaults, true, anyPresent, patternGenerator, javaLocale, null),
+                                timeZone);
             }
         }
 
@@ -346,12 +372,6 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         }
 
         configureDateFormat(state.dateFormat, timeZone);
-        configureDateFormat(state.temporalInstanceFormat, timeZone);
-        configureDateFormat(state.temporalPlainDateFormat, TimeZone.GMT_ZONE);
-        configureDateFormat(state.temporalPlainYearMonthFormat, TimeZone.GMT_ZONE);
-        configureDateFormat(state.temporalPlainMonthDayFormat, TimeZone.GMT_ZONE);
-        configureDateFormat(state.temporalPlainDateTimeFormat, TimeZone.GMT_ZONE);
-        configureDateFormat(state.temporalPlainTimeFormat, TimeZone.GMT_ZONE);
 
         state.timeZone = timeZoneId;
         state.initialized = true;
@@ -915,22 +935,22 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         DateFormat format;
         double epochMs;
         if (x instanceof JSTemporalPlainDateObject date) {
-            format = state.temporalPlainDateFormat;
+            format = getTemporalDateFormat(state.temporalPlainDateFormat);
             epochMs = handleDateTimeTemporalDate(dateTimeFormat, date);
         } else if (x instanceof JSTemporalPlainYearMonthObject yearMonth) {
-            format = state.temporalPlainYearMonthFormat;
+            format = getTemporalDateFormat(state.temporalPlainYearMonthFormat);
             epochMs = handleDateTimeTemporalYearMonth(dateTimeFormat, yearMonth);
         } else if (x instanceof JSTemporalPlainMonthDayObject monthDay) {
-            format = state.temporalPlainMonthDayFormat;
+            format = getTemporalDateFormat(state.temporalPlainMonthDayFormat);
             epochMs = handleDateTimeTemporalMonthDay(dateTimeFormat, monthDay);
         } else if (x instanceof JSTemporalPlainTimeObject time) {
-            format = state.temporalPlainTimeFormat;
+            format = getTemporalDateFormat(state.temporalPlainTimeFormat);
             epochMs = handleDateTimeTemporalTime(time);
         } else if (x instanceof JSTemporalPlainDateTimeObject dateTime) {
-            format = state.temporalPlainDateTimeFormat;
+            format = getTemporalDateFormat(state.temporalPlainDateTimeFormat);
             epochMs = handleDateTimeTemporalDateTime(dateTimeFormat, dateTime);
         } else if (x instanceof JSTemporalInstantObject instant) {
-            format = state.temporalInstanceFormat;
+            format = getTemporalDateFormat(state.temporalInstanceFormat);
             epochMs = handleDateTimeTemporalInstant(instant);
         } else {
             format = state.dateFormat;
@@ -940,6 +960,10 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
             throw Errors.createTypeErrorIncompatibleReceiver(x);
         }
         return new Pair<>(format, epochMs);
+    }
+
+    private static DateFormat getTemporalDateFormat(LazyDateFormat format) {
+        return format == null ? null : format.get();
     }
 
     private static double handleDateTimeTemporalDate(JSDateTimeFormatObject dateTimeFormat, JSTemporalPlainDateObject date) {
@@ -1284,16 +1308,38 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         return p;
     }
 
+    private static final class LazyDateFormat {
+        private Supplier<DateFormat> initializer;
+        private final TimeZone timeZone;
+        private DateFormat dateFormat;
+
+        private LazyDateFormat(Supplier<DateFormat> initializer, TimeZone timeZone) {
+            this.initializer = initializer;
+            this.timeZone = timeZone;
+        }
+
+        private DateFormat get() {
+            if (initializer != null) {
+                DateFormat format = initializer.get();
+                configureDateFormat(format, timeZone);
+                dateFormat = format;
+                // A null formatter represents incompatible options and must also be cached.
+                initializer = null;
+            }
+            return dateFormat;
+        }
+    }
+
     public static class InternalState {
 
         private boolean initialized = false;
         private DateFormat dateFormat;
-        private DateFormat temporalInstanceFormat;
-        private DateFormat temporalPlainDateFormat;
-        private DateFormat temporalPlainYearMonthFormat;
-        private DateFormat temporalPlainMonthDayFormat;
-        private DateFormat temporalPlainDateTimeFormat;
-        private DateFormat temporalPlainTimeFormat;
+        private LazyDateFormat temporalInstanceFormat;
+        private LazyDateFormat temporalPlainDateFormat;
+        private LazyDateFormat temporalPlainYearMonthFormat;
+        private LazyDateFormat temporalPlainMonthDayFormat;
+        private LazyDateFormat temporalPlainDateTimeFormat;
+        private LazyDateFormat temporalPlainTimeFormat;
         private DateIntervalFormat dateIntervalFormat;
 
         private JSDynamicObject boundFormatFunction = null;
