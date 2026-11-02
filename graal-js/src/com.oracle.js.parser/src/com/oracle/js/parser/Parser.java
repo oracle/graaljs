@@ -1459,7 +1459,7 @@ public class Parser extends AbstractParser {
      * </pre>
      */
     private void statement(boolean yield, boolean await) {
-        statement(yield, await, false, 0, false, false, false);
+        statement(yield, await, false, 0, false, false, true);
     }
 
     private void statement(boolean yield, boolean await, boolean topLevel, int reparseFlags, boolean singleStatement, boolean labelledStatement, boolean mayBeFunctionDeclaration) {
@@ -3981,36 +3981,86 @@ public class Parser extends AbstractParser {
         }
     }
 
+    private IdentNode labelHead(boolean yield, boolean await) {
+        final IdentNode ident = labelIdentifier(yield, await);
+        expect(COLON);
+
+        if (lc.findLabel(ident.getName()) != null) {
+            throw error(AbstractParser.message(MSG_DUPLICATE_LABEL, ident), ident.getToken());
+        }
+        return ident;
+    }
+
     /**
      * Parse label statement.
      *
      * <pre>
      * LabelledStatement :
      *      Identifier : Statement
+     *      Identifier : FunctionDeclaration
      * </pre>
      */
     private void labelStatement(boolean yield, boolean await, boolean mayBeFunctionDeclaration) {
-        // Capture label token.
-        final long labelToken = token;
-        // Get label ident.
-        final IdentNode ident = labelIdentifier(yield, await);
-
-        expect(COLON);
-
-        if (lc.findLabel(ident.getName()) != null) {
-            throw error(AbstractParser.message(MSG_DUPLICATE_LABEL, ident), labelToken);
+        if (mayBeFunctionDeclaration && !isStrictMode && isAnnexB() && lookaheadIsLabelledFunction()) {
+            labelledFunctionStatement(yield, await);
+            return;
         }
 
+        final long labelToken = token;
+        final IdentNode ident = labelHead(yield, await);
+
         final ParserContextLabelNode labelNode = new ParserContextLabelNode(ident.getName());
-        Block body = null;
+        final Block body;
+        lc.push(labelNode);
         try {
-            lc.push(labelNode);
             body = getStatement(yield, await, true, mayBeFunctionDeclaration);
         } finally {
             lc.pop(labelNode);
         }
 
         appendStatement(new LabelNode(line, labelToken, finish, ident.getName(), body));
+    }
+
+    /**
+     * Parse a label chain ending in a function declaration, allowed by Annex B in non-strict code.
+     * The caller has verified this form with {@link #lookaheadIsLabelledFunction()}. Validate the
+     * labels and duplicate names, then parse the function in the enclosing declaration scope,
+     * preserving normal hoisting and Annex B var promotion at the declaration's source position. No
+     * LabelNode (or synthetic block) is needed because a break cannot cross the function boundary.
+     */
+    private void labelledFunctionStatement(boolean yield, boolean await) {
+        assert lookaheadIsLabelledFunction();
+        HashSet<String> labels = new HashSet<>();
+        while (type != FUNCTION) {
+            IdentNode ident = labelHead(yield, await);
+            if (!labels.add(ident.getName())) {
+                throw error(AbstractParser.message(MSG_DUPLICATE_LABEL, ident), ident.getToken());
+            }
+        }
+
+        boolean topLevel = lc.getCurrentScope() == lc.getCurrentFunction().getBodyScope();
+        functionDeclaration(true, topLevel, true, yield, await, false);
+    }
+
+    private boolean lookaheadIsLabelledFunction() {
+        boolean expectLabel = true;
+        for (int i = 0;; i++) {
+            TokenType t = T(k + i);
+            if (t == COMMENT || t == EOL) {
+                continue;
+            }
+            if (expectLabel) {
+                if (t == FUNCTION) {
+                    return true;
+                }
+                if (t != IDENT && !t.isContextualKeyword() && !t.isFutureStrict()) {
+                    return false;
+                }
+            } else if (t != COLON) {
+                return false;
+            }
+            expectLabel = !expectLabel;
+        }
     }
 
     /**
