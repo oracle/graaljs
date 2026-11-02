@@ -2553,8 +2553,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 FrameSlotVarRef frameVarRef = (FrameSlotVarRef) varRef;
                 JSFrameSlot frameSlot = frameVarRef.getFrameSlot();
                 if (JSFrameUtil.isConst(frameSlot)) {
-                    // we know this is going to throw. do the read and throw TypeError.
-                    return tagExpression(checkMutableBinding(frameVarRef.createReadNode(), frameSlot.getIdentifier()), unaryNode);
+                    // Perform ToNumeric before throwing for the immutable binding write.
+                    JavaScriptNode value = factory.createToNumericOperand(frameVarRef.createReadNode());
+                    return tagExpression(checkMutableBinding(value, frameSlot.getIdentifier()), unaryNode);
                 }
                 return tagExpression(factory.createLocalVarInc(tokenTypeToUnaryOperation(unaryNode.tokenType()), frameSlot, frameVarRef.hasTDZCheck(),
                                 frameVarRef.createScopeFrameNode()), unaryNode);
