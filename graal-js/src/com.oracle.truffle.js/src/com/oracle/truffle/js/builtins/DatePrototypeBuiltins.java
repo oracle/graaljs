@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -104,6 +104,8 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.JSRealm.DateTimeFormatCacheType;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -114,6 +116,7 @@ import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormatObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
 import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
@@ -358,9 +361,22 @@ public final class DatePrototypeBuiltins {
             }
         }
 
-        protected JSDateTimeFormatObject createDateTimeFormat(InitializeDateTimeFormatNode initDateTimeFormatNode, Object locales, Object options) {
-            JSDateTimeFormatObject dateTimeFormatObj = JSDateTimeFormat.create(getContext(), getRealm());
+        protected JSDateTimeFormatObject getOrCreateDateTimeFormat(InitializeDateTimeFormatNode initDateTimeFormatNode, DateTimeFormatCacheType type,
+                        Object locales, Object options, TruffleString.EqualNode equalsNode) {
+            // Only skip argument processing when it cannot invoke user code.
+            boolean cacheable = options == Undefined.instance && (locales == Undefined.instance || locales instanceof TruffleString);
+            JSRealm realm = getRealm();
+            if (cacheable) {
+                JSDateTimeFormatObject cached = realm.getCachedDateTimeFormat(type, locales, equalsNode);
+                if (cached != null) {
+                    return cached;
+                }
+            }
+            JSDateTimeFormatObject dateTimeFormatObj = JSDateTimeFormat.create(getContext(), realm);
             initDateTimeFormatNode.initialize(dateTimeFormatObj, locales, options);
+            if (cacheable) {
+                realm.setCachedDateTimeFormat(type, locales, dateTimeFormatObj);
+            }
             return dateTimeFormatObj;
         }
     }
@@ -419,12 +435,13 @@ public final class DatePrototypeBuiltins {
         }
 
         @Specialization
-        protected TruffleString doOperation(Object thisDate, Object locales, Object options) {
+        protected TruffleString doOperation(Object thisDate, Object locales, Object options,
+                        @Cached TruffleString.EqualNode equalsNode) {
             double t = asDateMillis(thisDate);
             if (isNaN.profile(Double.isNaN(t))) {
                 return JSDate.INVALID_DATE_STRING;
             }
-            JSDateTimeFormatObject formatter = createDateTimeFormat(initDateTimeFormatNode, locales, options);
+            JSDateTimeFormatObject formatter = getOrCreateDateTimeFormat(initDateTimeFormatNode, DateTimeFormatCacheType.DATE_TIME, locales, options, equalsNode);
             return JSDateTimeFormat.format(formatter, t);
         }
     }
@@ -487,12 +504,13 @@ public final class DatePrototypeBuiltins {
         }
 
         @Specialization
-        protected TruffleString doOperation(Object thisDate, Object locales, Object options) {
+        protected TruffleString doOperation(Object thisDate, Object locales, Object options,
+                        @Cached TruffleString.EqualNode equalsNode) {
             double t = asDateMillis(thisDate);
             if (isNaN.profile(Double.isNaN(t))) {
                 return JSDate.INVALID_DATE_STRING;
             }
-            JSDateTimeFormatObject formatter = createDateTimeFormat(initDateTimeFormatNode, locales, options);
+            JSDateTimeFormatObject formatter = getOrCreateDateTimeFormat(initDateTimeFormatNode, DateTimeFormatCacheType.DATE, locales, options, equalsNode);
             return JSDateTimeFormat.format(formatter, t);
         }
     }
@@ -523,12 +541,13 @@ public final class DatePrototypeBuiltins {
         }
 
         @Specialization
-        protected TruffleString doOperation(Object thisDate, Object locales, Object options) {
+        protected TruffleString doOperation(Object thisDate, Object locales, Object options,
+                        @Cached TruffleString.EqualNode equalsNode) {
             double t = asDateMillis(thisDate);
             if (isNaN.profile(Double.isNaN(t))) {
                 return JSDate.INVALID_DATE_STRING;
             }
-            JSDateTimeFormatObject formatter = createDateTimeFormat(initDateTimeFormatNode, locales, options);
+            JSDateTimeFormatObject formatter = getOrCreateDateTimeFormat(initDateTimeFormatNode, DateTimeFormatCacheType.TIME, locales, options, equalsNode);
             return JSDateTimeFormat.format(formatter, t);
         }
     }

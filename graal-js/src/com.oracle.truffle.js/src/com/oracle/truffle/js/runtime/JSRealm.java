@@ -184,6 +184,7 @@ import com.oracle.truffle.js.runtime.builtins.asynccontext.JSAsyncContextSnapsho
 import com.oracle.truffle.js.runtime.builtins.asynccontext.JSAsyncContextVariable;
 import com.oracle.truffle.js.runtime.builtins.intl.JSCollator;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
+import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormatObject;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDisplayNames;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDurationFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSIntl;
@@ -572,6 +573,18 @@ public class JSRealm {
     private DateFormat jsShortTimeFormat;
     private DateFormat jsShortTimeLocalFormat;
     private DateFormat jsDateToStringFormat;
+
+    public enum DateTimeFormatCacheType {
+        DATE,
+        TIME,
+        DATE_TIME
+    }
+
+    private record DateTimeFormatCacheEntry(Object locales, JSDateTimeFormatObject formatter) {
+    }
+
+    /** Date.prototype.toLocale*String formatters with undefined options, one locale per type. */
+    private DateTimeFormatCacheEntry[] dateTimeFormatCache;
 
     public static final long NANOSECONDS_PER_MILLISECOND = 1000000;
     public static final long NANOSECONDS_PER_SECOND = 1000 * NANOSECONDS_PER_MILLISECOND;
@@ -2868,6 +2881,7 @@ public class JSRealm {
         if (localTimeZoneId != null) {
             localTimeZoneId = getTimeZoneFromEnv();
         }
+        dateTimeFormatCache = null;
         initTimeOffsetAndRandom();
 
         // Patch the RegExp constructor's static result properties
@@ -3487,6 +3501,26 @@ public class JSRealm {
         return foreignIteratorPrototype;
     }
 
+    public JSDateTimeFormatObject getCachedDateTimeFormat(DateTimeFormatCacheType type, Object locales, TruffleString.EqualNode equalsNode) {
+        assert locales == Undefined.instance || locales instanceof TruffleString;
+        if (dateTimeFormatCache != null) {
+            DateTimeFormatCacheEntry entry = dateTimeFormatCache[type.ordinal()];
+            if (entry != null && (entry.locales() == locales ||
+                            (entry.locales() instanceof TruffleString cachedLocale && locales instanceof TruffleString locale && Strings.equals(equalsNode, cachedLocale, locale)))) {
+                return entry.formatter();
+            }
+        }
+        return null;
+    }
+
+    public void setCachedDateTimeFormat(DateTimeFormatCacheType type, Object locales, JSDateTimeFormatObject formatter) {
+        assert locales == Undefined.instance || locales instanceof TruffleString;
+        if (dateTimeFormatCache == null) {
+            dateTimeFormatCache = new DateTimeFormatCacheEntry[DateTimeFormatCacheType.values().length];
+        }
+        dateTimeFormatCache[type.ordinal()] = new DateTimeFormatCacheEntry(locales, formatter);
+    }
+
     public DateFormat getJSDateISOFormat(double time) {
         long milliseconds = (long) time;
         if (milliseconds < -62167219200000L) {
@@ -3615,6 +3649,7 @@ public class JSRealm {
         jsShortTimeLocalFormat = null;
         jsShortDateFormat = null;
         jsShortDateLocalFormat = null;
+        dateTimeFormatCache = null;
     }
 
     /**
