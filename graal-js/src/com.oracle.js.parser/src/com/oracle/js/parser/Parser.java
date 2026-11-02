@@ -1668,13 +1668,15 @@ public class Parser extends AbstractParser {
      * @return Class expression node.
      */
     private ClassNode classDeclaration(boolean yield, boolean await, boolean defaultExport) {
-        assert type == CLASS || type == AT;
-        List<Expression> classDecorators = null;
-        if (type == AT) {
+        return classDeclaration(yield, await, defaultExport, null);
+    }
+
+    private ClassNode classDeclaration(boolean yield, boolean await, boolean defaultExport, List<Expression> precedingClassDecorators) {
+        List<Expression> classDecorators = precedingClassDecorators;
+        if (classDecorators == null && type == AT) {
             assert isClassDecorators();
             classDecorators = decoratorList(yield, await);
         }
-
         int classLineNumber = line;
         long classToken = token;
         expect(CLASS);
@@ -7229,20 +7231,30 @@ public class Parser extends AbstractParser {
                     break loop;
                 case EXPORT:
                     exportDeclaration(module);
-                    break;
+                    continue;
                 case IMPORT:
                     // Ensure we are parsing an import declaration and not import.meta or import().
                     if (!isImportExpression()) {
                         importDeclaration(module);
-                        break;
+                        continue;
                     }
-                    // fall through
-                default:
-                    // StatementListItem
-                    boolean await = isTopLevelAwait();
-                    statement(false, await, true, 0, false, false, false);
+                    break;
+                case AT:
+                    if (isClassDecorators()) {
+                        boolean await = isTopLevelAwait();
+                        List<Expression> decorators = decoratorList(false, await);
+                        if (type == EXPORT) {
+                            exportDeclaration(module, decorators);
+                        } else {
+                            classDeclaration(false, await, false, decorators);
+                        }
+                        continue;
+                    }
                     break;
             }
+            // StatementListItem
+            boolean await = isTopLevelAwait();
+            statement(false, await, true, 0, false, false, false);
         }
     }
 
@@ -7620,10 +7632,17 @@ public class Parser extends AbstractParser {
      * </pre>
      */
     private void exportDeclaration(ParserContextModuleNode module) {
+        exportDeclaration(module, null);
+    }
+
+    private void exportDeclaration(ParserContextModuleNode module, List<Expression> classDecorators) {
         final long exportToken = token;
         expect(EXPORT);
         final boolean yield = false;
         final boolean await = isTopLevelAwait();
+        if (classDecorators != null && type != TokenType.DEFAULT) {
+            expectDontAdvance(CLASS);
+        }
         switch (type) {
             case MUL: {
                 next();
@@ -7664,6 +7683,9 @@ public class Parser extends AbstractParser {
             }
             case DEFAULT: {
                 next();
+                if (classDecorators != null) {
+                    expectDontAdvance(CLASS);
+                }
                 Expression assignmentExpression;
                 IdentNode ident = null;
                 int lineNumber = line;
@@ -7676,7 +7698,7 @@ public class Parser extends AbstractParser {
                         break;
                     case CLASS:
                     case AT:
-                        assignmentExpression = classDeclaration(yield, await, true);
+                        assignmentExpression = classDeclaration(yield, await, true, classDecorators);
                         ident = ((ClassNode) assignmentExpression).getIdent();
                         break;
                     default:
@@ -7730,7 +7752,7 @@ public class Parser extends AbstractParser {
             }
             case CLASS:
             case AT: {
-                ClassNode classDeclaration = classDeclaration(yield, await, false);
+                ClassNode classDeclaration = classDeclaration(yield, await, false, classDecorators);
                 module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, classDeclaration.getIdent(), classDeclaration, false));
                 break;
             }
