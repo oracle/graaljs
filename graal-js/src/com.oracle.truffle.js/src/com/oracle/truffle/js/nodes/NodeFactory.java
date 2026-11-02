@@ -856,6 +856,10 @@ public class NodeFactory {
         return ConstantVariableWriteNode.create(rhs, doThrow, name);
     }
 
+    public ConstantVariableWriteNode createWriteConstantVariable(JavaScriptNode rhs, boolean doThrow, Object name, JavaScriptNode tdzCheck) {
+        return ConstantVariableWriteNode.create(rhs, doThrow, name, tdzCheck);
+    }
+
     public JSTargetableNode createReadGlobalProperty(JSContext context, TruffleString name) {
         return GlobalPropertyNode.createPropertyNode(context, name);
     }
