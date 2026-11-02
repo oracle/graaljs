@@ -1043,7 +1043,7 @@ public class Parser extends AbstractParser {
                     verifyStrictIdent(ident, CONTEXT_ASSIGNMENT_TARGET);
 
                     // IsIdentifierRef must be true, so lhs must not be parenthesized.
-                    if (!lhs.isParenthesized() && isAnonymousFunctionDefinition(rhsExpr)) {
+                    if (!lhs.isParenthesized() && isAnonymousFunctionDefinition(rhsExpr) && opType.isAssignmentWithNamedEvaluation()) {
                         rhsExpr = setAnonymousFunctionName(rhsExpr, ident.getNameTS());
                     }
 
