@@ -2953,42 +2953,26 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return transformAssignmentImpl(assignmentExpression, lhsExpression, assignedValue, false, binaryOp, returnOldValue, convertLHSToNumeric);
     }
 
-    @SuppressWarnings("fallthrough")
     private JavaScriptNode transformAssignmentImpl(Expression assignmentExpression, Expression lhsExpression, JavaScriptNode assignedValue, boolean initializationAssignment,
                     BinaryOperation binaryOp, boolean returnOldValue, boolean convertLHSToNumeric) {
         JavaScriptNode assignedNode;
-        switch (lhsExpression.tokenType()) {
-            // Checkstyle: stop
-            default: // ident with other token type
-                // Checkstyle: resume
-                if (!(lhsExpression instanceof IdentNode) && !(lhsExpression instanceof CallNode)) {
-                    throw Errors.unsupported("unsupported assignment to token type: " + lhsExpression.tokenType().toString() + " " + lhsExpression.toString());
-                }
-                // fall through
-            case IDENT:
-                if (lhsExpression instanceof CallNode callNode) {
-                    assert callNode.isWebCompatAssignmentTargetType();
-                    assignedNode = factory.createDual(context, transform(lhsExpression), factory.createThrowError(JSErrorType.ReferenceError, INVALID_LHS));
-                } else {
-                    assignedNode = transformAssignmentIdent((IdentNode) lhsExpression, assignedValue, binaryOp, returnOldValue, convertLHSToNumeric, initializationAssignment);
-                }
-                break;
-            case LBRACKET:
-                // target[element]
-                assignedNode = transformIndexAssignment((IndexNode) lhsExpression, assignedValue, binaryOp, returnOldValue, convertLHSToNumeric);
-                break;
-            case PERIOD:
-                // target.property
-                assignedNode = transformPropertyAssignment((AccessNode) lhsExpression, assignedValue, binaryOp, returnOldValue, convertLHSToNumeric);
-                break;
-            case ARRAY:
-                assert binaryOp == null;
-                assignedNode = transformDestructuringArrayAssignment(lhsExpression, assignedValue, initializationAssignment);
-                break;
-            case LBRACE:
-                assert binaryOp == null;
-                assignedNode = transformDestructuringObjectAssignment(lhsExpression, assignedValue, initializationAssignment);
-                break;
+        if (lhsExpression instanceof IdentNode identNode) {
+            assignedNode = transformAssignmentIdent(identNode, assignedValue, binaryOp, returnOldValue, convertLHSToNumeric, initializationAssignment);
+        } else if (lhsExpression instanceof IndexNode indexNode) {
+            assignedNode = transformIndexAssignment(indexNode, assignedValue, binaryOp, returnOldValue, convertLHSToNumeric);
+        } else if (lhsExpression instanceof AccessNode accessNode) {
+            assignedNode = transformPropertyAssignment(accessNode, assignedValue, binaryOp, returnOldValue, convertLHSToNumeric);
+        } else if (lhsExpression instanceof LiteralNode.ArrayLiteralNode) {
+            assert binaryOp == null;
+            assignedNode = transformDestructuringArrayAssignment(lhsExpression, assignedValue, initializationAssignment);
+        } else if (lhsExpression instanceof ObjectNode) {
+            assert binaryOp == null;
+            assignedNode = transformDestructuringObjectAssignment(lhsExpression, assignedValue, initializationAssignment);
+        } else if (lhsExpression instanceof CallNode callNode) {
+            assert callNode.isWebCompatAssignmentTargetType();
+            assignedNode = factory.createDual(context, transform(lhsExpression), factory.createThrowError(JSErrorType.ReferenceError, INVALID_LHS));
+        } else {
+            throw Errors.unsupported("unsupported assignment to token type: " + lhsExpression.tokenType().toString() + " " + lhsExpression.toString());
         }
         if (returnOldValue && assignedNode instanceof DualNode) {
             ensureHasSourceSection(((DualNode) assignedNode).getLeft(), assignmentExpression);
