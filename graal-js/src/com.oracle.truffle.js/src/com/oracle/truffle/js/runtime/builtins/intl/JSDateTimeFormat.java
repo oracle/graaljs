@@ -1213,7 +1213,6 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         }
 
         String formattedString = formattedRange.toString();
-        String digits = null;
 
         List<Object> parts = new ArrayList<>();
         int startRangeStart = 0;
@@ -1251,10 +1250,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
                 String type;
                 if (field == DateFormat.Field.YEAR) {
                     // DateFormat.Field.YEAR covers both "year" and "yearName"
-                    if (digits == null) {
-                        String numberingSystem = dateTimeFormat.getInternalState().numberingSystem;
-                        digits = NumberingSystem.getInstanceByName(numberingSystem).getDescription();
-                    }
+                    String digits = dateTimeFormat.getInternalState().getNumberingSystemDescription();
                     boolean year = (value.length() > 0) && (digits.indexOf(value.charAt(0)) != -1);
                     type = year ? IntlUtil.YEAR : IntlUtil.YEAR_NAME;
                 } else {
@@ -1373,6 +1369,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         private String locale;
         private String calendar;
         private String numberingSystem;
+        private String numberingSystemDescription;
 
         private String weekday;
         private String era;
@@ -1394,6 +1391,13 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
 
         private String dateStyle;
         private String timeStyle;
+
+        private String getNumberingSystemDescription() {
+            if (numberingSystemDescription == null) {
+                numberingSystemDescription = NumberingSystem.getInstanceByName(numberingSystem).getDescription();
+            }
+            return numberingSystemDescription;
+        }
 
         JSObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
             JSObject result = JSOrdinary.create(context, realm);
