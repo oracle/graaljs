@@ -1677,7 +1677,7 @@ public class Parser extends AbstractParser {
 
         int classLineNumber = line;
         long classToken = token;
-        next();
+        expect(CLASS);
 
         boolean oldStrictMode = isStrictMode;
         isStrictMode = true;
@@ -1719,7 +1719,7 @@ public class Parser extends AbstractParser {
         }
         int classLineNumber = line;
         long classToken = token;
-        next();
+        expect(CLASS);
 
         boolean oldStrictMode = isStrictMode;
         isStrictMode = true;
