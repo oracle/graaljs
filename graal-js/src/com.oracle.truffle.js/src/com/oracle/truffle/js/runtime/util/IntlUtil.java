@@ -526,8 +526,10 @@ public final class IntlUtil {
         return Set.of(result.toArray(new Locale[result.size()]));
     }
 
+    private static final LazyValue<Set<String>> AVAILABLE_NUMBERING_SYSTEMS = new LazyValue<>(() -> Set.of(NumberingSystem.getAvailableNames()));
+
     public static boolean isValidNumberingSystem(String numberingSystem) {
-        return Arrays.asList(NumberingSystem.getAvailableNames()).contains(numberingSystem);
+        return numberingSystem != null && AVAILABLE_NUMBERING_SYSTEMS.get().contains(numberingSystem);
     }
 
     public static String defaultNumberingSystemName(JSContext context, Locale locale) {
