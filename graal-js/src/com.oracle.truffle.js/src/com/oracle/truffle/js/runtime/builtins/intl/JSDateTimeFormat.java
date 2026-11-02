@@ -334,7 +334,8 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         }
 
         state.dateFormat = dateFormat;
-        state.dateIntervalFormat = intervalFormatFrom(dateFormat, javaLocale, hc);
+        state.javaLocale = javaLocale;
+        state.resolvedHourCycle = hc;
 
         if (state.calendar == null) {
             state.calendar = IntlUtil.normalizeCAType(Calendar.getInstance(javaLocale).getType());
@@ -1112,7 +1113,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         DateIntervalFormat intervalFormat;
         if (x instanceof Double) {
             assert (y instanceof Double);
-            intervalFormat = state.dateIntervalFormat;
+            intervalFormat = state.getDateIntervalFormat();
         } else {
             assert isTemporalObject(x) && isTemporalObject(y);
             intervalFormat = intervalFormatFrom(dateFormat, dateFormat.getCalendar().getLocale(ULocale.ACTUAL_LOCALE).toLocale(), state.hourCycle);
@@ -1294,6 +1295,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
 
         private JSDynamicObject boundFormatFunction = null;
 
+        private Locale javaLocale;
         private String locale;
         private String calendar;
         private String numberingSystem;
@@ -1310,12 +1312,21 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         private int fractionalSecondDigits;
 
         private String hourCycle;
+        // Also set for date-only formats, whose resolved options omit hourCycle.
+        private String resolvedHourCycle;
 
         private String timeZoneName;
         private String timeZone;
 
         private String dateStyle;
         private String timeStyle;
+
+        private DateIntervalFormat getDateIntervalFormat() {
+            if (dateIntervalFormat == null) {
+                dateIntervalFormat = intervalFormatFrom(dateFormat, javaLocale, resolvedHourCycle);
+            }
+            return dateIntervalFormat;
+        }
 
         JSObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
             JSObject result = JSOrdinary.create(context, realm);
