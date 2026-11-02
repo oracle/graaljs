@@ -3254,12 +3254,11 @@ public class Parser extends AbstractParser {
                             }
                             init = varDeclList.firstBinding;
                             assert init instanceof IdentNode || isDestructuringLhs(init) : init;
-                            if (varDeclList.declarationWithInitializerToken != 0 && (isStrictMode || type != IN || varType != VAR || isDestructuringLhs(init))) {
+                            if (varDeclList.declarationWithInitializerToken != 0 && (!isAnnexB() || isStrictMode || type != IN || varType != VAR || isDestructuringLhs(init))) {
                                 /*
                                  * ES5 legacy: for (var i = AssignmentExpressionNoIn in Expression).
-                                 * Invalid in ES6, but allowed in non-strict mode if no ES6 features
-                                 * are used, i.e., it is a syntax error in strict mode, for-of
-                                 * loops, let/const, or destructuring.
+                                 * Annex B permits these legacy var initializers in non-strict mode
+                                 * in for-in loops without lexical bindings or destructuring.
                                  */
                                 throw error(AbstractParser.message(MSG_FOR_IN_LOOP_INITIALIZER, isForOf || isForAwaitOf ? CONTEXT_OF : CONTEXT_IN), varDeclList.declarationWithInitializerToken);
                             }
