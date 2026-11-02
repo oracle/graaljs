@@ -1377,8 +1377,10 @@ public final class Lexer extends Scanner implements StringPool {
             if (octal && position - start > 1) {
                 type = OCTAL_LEGACY;
             } else if (ch0 == '.' || ch0 == 'E' || ch0 == 'e') {
-                // Must be a double.
-                type = FLOATING;
+                // Preserve legacy leading-zero syntax so strict-mode checks still reject it.
+                if (type != NON_OCTAL_DECIMAL) {
+                    type = FLOATING;
+                }
                 if (ch0 == '.') {
                     // Skip period.
                     skip(1);
