@@ -1056,7 +1056,10 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
 
         List<Object> resultParts = new ArrayList<>();
         AttributedCharacterIterator fit = dateFormat.formatToCharacterIterator(x);
-        String formatted = dateFormat.format(x);
+        StringBuilder formatted = new StringBuilder(fit.getEndIndex());
+        for (int j = fit.getBeginIndex(); j < fit.getEndIndex(); j++) {
+            formatted.append(fit.setIndex(j));
+        }
         int i = fit.getBeginIndex();
         while (i < fit.getEndIndex()) {
             fit.setIndex(i);
