@@ -489,9 +489,6 @@
     "status" : "FAIL",
     "comment" : "Eval var/lexical redeclaration behavior differs from V8."
   }, {
-    "filePath" : "mjsunit/es6/block-let-semantics-sloppy.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/es6/block-sloppy-function.js",
     "status" : "FAIL"
   }, {
@@ -572,10 +569,6 @@
     "filePath" : "mjsunit/es6/regress/regress-crbug-465671.js",
     "status" : "SKIP",
     "comment" : "spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
-  }, {
-    "filePath" : "mjsunit/es6/sloppy-restrictive-block-function.js",
-    "status" : "FAIL",
-    "comment" : "GraalJS rejects a sloppy-mode block function declaration accepted by V8."
   }, {
     "filePath" : "mjsunit/es6/typedarray-construct-offset-not-smi.js",
     "status" : "FAIL",

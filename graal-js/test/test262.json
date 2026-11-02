@@ -2303,14 +2303,6 @@
     },
     "comment" : "requires json-parse-with-source"
   }, {
-    "filePath" : "staging/sm/lexical-environment/block-scoped-functions-annex-b-label.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
-  }, {
-    "filePath" : "staging/sm/lexical-environment/block-scoped-functions-deprecated-redecl.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
-  }, {
     "filePath" : "staging/sm/Math/exp-exact.js",
     "status" : "PASS",
     "statusOverrides" : {
