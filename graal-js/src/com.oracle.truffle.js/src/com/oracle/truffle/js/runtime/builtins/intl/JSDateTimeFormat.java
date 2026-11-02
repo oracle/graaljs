@@ -326,8 +326,8 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         }
 
         String pattern = ((SimpleDateFormat) dateFormat).toPattern();
-        String skeleton = patternGenerator.getSkeleton(pattern);
         if (!Objects.equals(state.hourCycle, hourCycleFromPattern(pattern))) {
+            String skeleton = patternGenerator.getSkeleton(pattern);
             skeleton = replaceHourCycle(skeleton, hc);
             String bestPattern = patternGenerator.getBestPattern(skeleton, DateTimePatternGenerator.MATCH_HOUR_FIELD_LENGTH);
             dateFormat = new SimpleDateFormat(replaceHourCycle(bestPattern, hc), javaLocale);
