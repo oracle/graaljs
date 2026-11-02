@@ -669,11 +669,13 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
     }
 
     private static boolean isValidCAType(Locale locale, String calendar) {
-        assert Objects.equals(calendar, IntlUtil.normalizeCAType(calendar));
-        String[] validValues = Calendar.getKeywordValuesForLocale("ca", ULocale.forLocale(locale), false);
-        for (String validValue : validValues) {
-            if (IntlUtil.normalizeCAType(validValue).equals(calendar)) {
-                return true;
+        if (calendar != null) {
+            assert Objects.equals(calendar, IntlUtil.normalizeCAType(calendar));
+            String[] validValues = Calendar.getKeywordValuesForLocale("ca", ULocale.forLocale(locale), false);
+            for (String validValue : validValues) {
+                if (IntlUtil.normalizeCAType(validValue).equals(calendar)) {
+                    return true;
+                }
             }
         }
         return false;
