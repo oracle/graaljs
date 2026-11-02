@@ -92,23 +92,14 @@ public abstract class JSMultiplyNode extends JSBinaryNode {
 
     public abstract Object execute(Object a, Object b);
 
-    static boolean sameSign(int a, int b) {
-        return (a ^ b) >= 0;
-    }
-
     static boolean hasPositiveConstantOperand(int a, int b) {
-        // A positive int operand rules out negative zero. This shortcut eliminates the same-sign
-        // check for PE constants without adding extra a > 0 or b > 0 checks for variable operands.
+        // A positive int operand rules out -0. This shortcut eliminates the -0 check for
+        // PE constants without adding extra a > 0 or b > 0 checks for variable operands.
         return CompilerDirectives.inCompiledCode() &&
                         ((CompilerDirectives.isPartialEvaluationConstant(a) && a > 0) || (CompilerDirectives.isPartialEvaluationConstant(b) && b > 0));
     }
 
-    @Specialization(guards = "sameSign(a, b) || hasPositiveConstantOperand(a, b)", rewriteOn = ArithmeticException.class)
-    protected static int doIntSameSign(int a, int b) {
-        return Math.multiplyExact(a, b);
-    }
-
-    @Specialization(replaces = "doIntSameSign", rewriteOn = ArithmeticException.class)
+    @Specialization(rewriteOn = ArithmeticException.class)
     protected static int doInt(int a, int b) {
         int result = Math.multiplyExact(a, b);
         if (hasPositiveConstantOperand(a, b)) {
