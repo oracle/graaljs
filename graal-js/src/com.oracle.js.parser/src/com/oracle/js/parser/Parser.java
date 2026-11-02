@@ -1817,7 +1817,7 @@ public class Parser extends AbstractParser {
                     } // else, this is a method/field named 'accessor'
                 }
                 boolean isStatic = false;
-                if (type == STATIC) {
+                if (!isAutoAccessor && type == STATIC) {
                     TokenType nextToken = lookahead();
                     if (isClassDecorators() && nextToken == ACCESSOR) {
                         next();
