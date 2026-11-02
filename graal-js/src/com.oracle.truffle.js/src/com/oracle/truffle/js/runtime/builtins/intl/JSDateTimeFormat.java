@@ -887,8 +887,8 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
     }
 
     private static boolean containsOneOf(String suspect, String containees) {
-        for (int c : containees.getBytes()) {
-            if (suspect.indexOf(c) > -1) {
+        for (int i = 0; i < containees.length(); i++) {
+            if (suspect.indexOf(containees.charAt(i)) > -1) {
                 return true;
             }
         }
