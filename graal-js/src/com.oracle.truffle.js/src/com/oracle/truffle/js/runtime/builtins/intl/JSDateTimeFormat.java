@@ -1071,7 +1071,6 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         DateFormat dateFormat = pair.getFirst().get();
         double x = pair.getSecond();
 
-        String yearPattern = yearRelatedSubpattern(dateFormat);
         int yearPatternIndex = 0;
 
         List<Object> resultParts = new ArrayList<>();
@@ -1092,6 +1091,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
                         String type;
                         if (a == DateFormat.Field.YEAR) {
                             // DateFormat.Field.YEAR covers both "year" and "yearName"
+                            String yearPattern = pair.getFirst().getYearRelatedSubpattern();
                             if (yearPatternIndex < yearPattern.length() && yearPattern.charAt(yearPatternIndex) == 'U') {
                                 type = IntlUtil.YEAR_NAME;
                             } else {
@@ -1310,6 +1310,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         private final TimeZone timeZone;
         private DateFormat dateFormat;
         private DateIntervalFormat dateIntervalFormat;
+        private String yearPattern;
 
         private LazyDateFormat(DateFormat dateFormat, TimeZone timeZone) {
             this.dateFormat = dateFormat;
@@ -1330,6 +1331,13 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
                 initializer = null;
             }
             return dateFormat;
+        }
+
+        private String getYearRelatedSubpattern() {
+            if (yearPattern == null) {
+                yearPattern = yearRelatedSubpattern(get());
+            }
+            return yearPattern;
         }
 
         private DateIntervalFormat getDateIntervalFormat(String hc) {
