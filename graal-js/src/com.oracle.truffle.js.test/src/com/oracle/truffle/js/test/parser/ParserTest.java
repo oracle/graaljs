@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,8 @@ import com.oracle.js.parser.Parser;
 import com.oracle.js.parser.ParserException;
 import com.oracle.js.parser.ScriptEnvironment;
 import com.oracle.js.parser.Source;
+import com.oracle.js.parser.ir.CallNode;
+import com.oracle.js.parser.ir.ExpressionStatement;
 import com.oracle.js.parser.ir.FunctionNode;
 import com.oracle.truffle.js.test.JSTest;
 
@@ -134,6 +136,22 @@ public class ParserTest {
                 Assert.assertTrue("SyntaxError", e.isSyntaxError());
                 Assert.assertTrue("incomplete source", e.isIncompleteSource());
             }
+        }
+    }
+
+    /** All tagged-template grammar paths must mark their call node, unlike ordinary calls. */
+    @Test
+    public void testTaggedTemplateCalls() {
+        for (String source : new String[]{"tag``", "tag`a${x}b`", "obj.tag``", "obj[key]``", "tag()``", "(tag)``", "tag````", "tag``.next``", "tag()````"}) {
+            FunctionNode tree = testHelper(source + ";");
+            CallNode call = (CallNode) ((ExpressionStatement) tree.getBody().getStatements().get(0)).getExpression();
+            Assert.assertTrue(source, call.isTaggedTemplateLiteral());
+            Assert.assertFalse(source, call.isWebCompatAssignmentTargetType());
+        }
+        for (String source : new String[]{"tag()", "obj.tag()", "tag``()"}) {
+            FunctionNode tree = testHelper(source + ";");
+            CallNode call = (CallNode) ((ExpressionStatement) tree.getBody().getStatements().get(0)).getExpression();
+            Assert.assertFalse(source, call.isTaggedTemplateLiteral());
         }
     }
 }

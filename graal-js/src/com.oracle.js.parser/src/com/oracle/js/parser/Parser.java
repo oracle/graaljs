@@ -5368,7 +5368,7 @@ public class Parser extends AbstractParser {
                     final int callLine = line;
                     final List<Expression> arguments = templateLiteralArgumentList(yield, await);
 
-                    lhs = CallNode.forCall(callLine, callToken, lhs.getStart(), finish, lhs, arguments, false, false);
+                    lhs = CallNode.forTaggedTemplateLiteral(callLine, callToken, lhs.getStart(), finish, lhs, arguments);
 
                     break;
                 }

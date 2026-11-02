@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -66,5 +66,13 @@ public class PrintVisitorTest extends JSTest {
         assertTrue(result.length() > 100);
         assertTrue(result.contains("function fn"));
         assertTrue(result.contains("[TERMINAL]"));
+    }
+
+    @Test
+    public void testTaggedTemplate() {
+        String call = "obj.tag`a${x}b${y}c`";
+        Source source = Source.newBuilder(JavaScriptLanguage.ID, "function fn(x, y) { return " + call + "; }", "test").build();
+        FunctionNode node = GraalJSParserHelper.parseScript(testHelper.getJSContext(), source, testHelper.getJSContext().getParserOptions());
+        assertTrue(new PrintVisitor(node).toString().contains("return " + call + ";"));
     }
 }
