@@ -338,7 +338,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         state.resolvedHourCycle = hc;
 
         if (state.calendar == null) {
-            state.calendar = IntlUtil.normalizeCAType(Calendar.getInstance(javaLocale).getType());
+            state.calendar = IntlUtil.normalizeCAType(dateFormat.getCalendar().getType());
         }
 
         if (tzNameOpt != null && !tzNameOpt.isEmpty()) {
