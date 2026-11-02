@@ -1533,7 +1533,7 @@ public class Parser extends AbstractParser {
                     // It is a Syntax Error if any strict mode source code matches this rule:
                     // LabelledItem : FunctionDeclaration.
                     // ES6 B.3.4 FunctionDeclarations in IfStatement Statement Clauses
-                    if (isStrictMode || !mayBeFunctionDeclaration) {
+                    if (isStrictMode || !mayBeFunctionDeclaration || !isAnnexB()) {
                         throw error(AbstractParser.message(MSG_EXPECTED_STMT, CONTEXT_FUNCTION_DECLARATION), token);
                     }
                 }
