@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,22 +49,32 @@ import com.oracle.truffle.js.runtime.Errors;
 
 public class ConstantVariableWriteNode extends JavaScriptNode implements WriteNode {
     @Child protected JavaScriptNode rhs;
+    // Keep the check separate from rhs so dynamic bindings can evaluate rhs without checking TDZ.
+    @Child private JavaScriptNode tdzCheck;
     protected final boolean doThrow;
     protected final Object varName;
 
-    protected ConstantVariableWriteNode(JavaScriptNode rhs, boolean doThrow, Object varName) {
+    protected ConstantVariableWriteNode(JavaScriptNode rhs, boolean doThrow, Object varName, JavaScriptNode tdzCheck) {
         this.rhs = rhs;
+        this.tdzCheck = tdzCheck;
         this.doThrow = doThrow;
         this.varName = varName;
     }
 
     public static ConstantVariableWriteNode create(JavaScriptNode rhs, boolean doThrow, Object varName) {
-        return new ConstantVariableWriteNode(rhs, doThrow, varName);
+        return create(rhs, doThrow, varName, null);
+    }
+
+    public static ConstantVariableWriteNode create(JavaScriptNode rhs, boolean doThrow, Object varName, JavaScriptNode tdzCheck) {
+        return new ConstantVariableWriteNode(rhs, doThrow, varName, tdzCheck);
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
         Object result = rhs.execute(frame);
+        if (tdzCheck != null) {
+            tdzCheck.executeVoid(frame);
+        }
         if (doThrow) {
             throw Errors.createTypeErrorConstReassignment(varName, this);
         } else {
@@ -84,7 +94,7 @@ public class ConstantVariableWriteNode extends JavaScriptNode implements WriteNo
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return create(cloneUninitialized(rhs, materializedTags), doThrow, varName);
+        return create(cloneUninitialized(rhs, materializedTags), doThrow, varName, cloneUninitialized(tdzCheck, materializedTags));
     }
 
 }

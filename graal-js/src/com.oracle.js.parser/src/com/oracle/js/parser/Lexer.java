@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1300,23 +1300,8 @@ public final class Lexer extends Scanner implements StringPool {
             if (radix == 10) {
                 return Double.parseDouble(valueString);
             }
-            // (CWirth) added by Oracle Labs Graal.js
-            if (radix == 16 && valueString.length() >= 15) {
-                // special case to parse large hex values; see testv8/hex-parsing.js
-                return (new BigInteger(valueString, 16)).doubleValue();
-            }
-
-            double value = 0.0;
-
-            for (int i = 0; i < valueString.length(); i++) {
-                final char ch = valueString.charAt(i);
-                // Preverified, should always be a valid digit.
-                final int digit = convertDigit(ch, radix);
-                value *= radix;
-                value += digit;
-            }
-
-            return value;
+            // Round the exact integer once; digit-by-digit accumulation can lose rounding bits.
+            return new BigInteger(valueString, radix).doubleValue();
         }
     }
 
@@ -1392,8 +1377,10 @@ public final class Lexer extends Scanner implements StringPool {
             if (octal && position - start > 1) {
                 type = OCTAL_LEGACY;
             } else if (ch0 == '.' || ch0 == 'E' || ch0 == 'e') {
-                // Must be a double.
-                type = FLOATING;
+                // Preserve legacy leading-zero syntax so strict-mode checks still reject it.
+                if (type != NON_OCTAL_DECIMAL) {
+                    type = FLOATING;
+                }
                 if (ch0 == '.') {
                     // Skip period.
                     skip(1);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -186,7 +186,33 @@ public final class CallNode extends OptionalExpression {
     public void toString(final StringBuilder sb, final boolean printType) {
         final StringBuilder fsb = new StringBuilder();
         function.toString(fsb, printType);
-        sb.append(fsb);
+        if (isTaggedTemplateLiteral() && function.isParenthesized()) {
+            sb.append('(').append(fsb).append(')');
+        } else {
+            sb.append(fsb);
+        }
+
+        if (isTaggedTemplateLiteral()) {
+            // The first argument holds the template strings; the rest are substitutions.
+            List<Expression> rawStrings = ((TemplateLiteralNode.TaggedTemplateLiteralNode) args.get(0)).getRawStrings();
+            assert rawStrings.size() == args.size();
+            sb.append('`');
+            for (int i = 0; i < rawStrings.size(); i++) {
+                Expression rawString = rawStrings.get(i);
+                if (rawString instanceof LiteralNode<?> literal) {
+                    sb.append(literal.getString());
+                } else {
+                    rawString.toString(sb, printType);
+                }
+                if (i + 1 < args.size()) {
+                    sb.append("${");
+                    args.get(i + 1).toString(sb, printType);
+                    sb.append('}');
+                }
+            }
+            sb.append('`');
+            return;
+        }
 
         if (isOptional()) {
             sb.append('?').append('.');

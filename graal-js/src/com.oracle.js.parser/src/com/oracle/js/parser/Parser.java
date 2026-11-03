@@ -332,7 +332,7 @@ public class Parser extends AbstractParser {
     private static final String MSG_NO_FUNC_DECL_HERE_WARN = "no.func.decl.here.warn";
     private static final String MSG_NOT_LVALUE_FOR_IN_LOOP = "not.lvalue.for.in.loop";
     private static final String MSG_OPTIONAL_CHAIN_TEMPLATE = "optional.chain.template";
-    private static final String MSG_PRIVATE_CONSTRUCTOR_METHOD = "private.constructor.method";
+    private static final String MSG_PRIVATE_CONSTRUCTOR = "private.constructor";
     private static final String MSG_PROPERTY_REDEFINITON = "property.redefinition";
     private static final String MSG_STATIC_PROTOTYPE_FIELD = "static.prototype.field";
     private static final String MSG_STATIC_PROTOTYPE_METHOD = "static.prototype.method";
@@ -1043,13 +1043,13 @@ public class Parser extends AbstractParser {
                     verifyStrictIdent(ident, CONTEXT_ASSIGNMENT_TARGET);
 
                     // IsIdentifierRef must be true, so lhs must not be parenthesized.
-                    if (!lhs.isParenthesized() && isAnonymousFunctionDefinition(rhsExpr)) {
+                    if (!lhs.isParenthesized() && isAnonymousFunctionDefinition(rhsExpr) && opType.isAssignmentWithNamedEvaluation()) {
                         rhsExpr = setAnonymousFunctionName(rhsExpr, ident.getNameTS());
                     }
 
                     break;
                 } else if (lhs instanceof AccessNode || lhs instanceof IndexNode) {
-                    if (((BaseNode) lhs).isOptional()) {
+                    if (((BaseNode) lhs).isOptionalChain()) {
                         throw invalidLHSError(lhs);
                     }
                     break;
@@ -1082,6 +1082,14 @@ public class Parser extends AbstractParser {
         assert pattern instanceof ObjectNode || pattern instanceof ArrayLiteralNode;
         pattern.accept(new VerifyDestructuringPatternNodeVisitor(new LexicalContext()) {
             @Override
+            protected void verifyRestProperty(Expression lvalue) {
+                if (isDestructuringLhs(lvalue)) {
+                    throw error(AbstractParser.message(MSG_INVALID_LVALUE), lvalue.getToken());
+                }
+                verifySpreadElement(lvalue);
+            }
+
+            @Override
             protected void verifySpreadElement(Expression lvalue) {
                 if (!checkValidLValue(lvalue, contextString)) {
                     throw error(AbstractParser.message(MSG_INVALID_LVALUE), lvalue.getToken());
@@ -1100,7 +1108,7 @@ public class Parser extends AbstractParser {
 
             @Override
             public boolean enterAccessNode(AccessNode accessNode) {
-                if (accessNode.isOptional()) {
+                if (accessNode.isOptionalChain()) {
                     throw error(AbstractParser.message(MSG_INVALID_LVALUE), accessNode.getToken());
                 }
                 return false;
@@ -1108,7 +1116,7 @@ public class Parser extends AbstractParser {
 
             @Override
             public boolean enterIndexNode(IndexNode indexNode) {
-                if (indexNode.isOptional()) {
+                if (indexNode.isOptionalChain()) {
                     throw error(AbstractParser.message(MSG_INVALID_LVALUE), indexNode.getToken());
                 }
                 return false;
@@ -1289,7 +1297,8 @@ public class Parser extends AbstractParser {
         final Expression exp = ((ExpressionStatement) stmt).getExpression();
         // A directive is either a string or an escape string
         // Make sure that we don't unescape anything. Return as seen in source!
-        return source.getContent().regionMatches(exp.getStart() + 1, USE_STRICT, 0, Token.descLength(exp.getToken()) - 2);
+        return Token.descLength(exp.getToken()) == USE_STRICT.length() + 2 &&
+                        source.getContent().regionMatches(exp.getStart() + 1, USE_STRICT, 0, USE_STRICT.length());
     }
 
     /**
@@ -1450,7 +1459,7 @@ public class Parser extends AbstractParser {
      * </pre>
      */
     private void statement(boolean yield, boolean await) {
-        statement(yield, await, false, 0, false, false, false);
+        statement(yield, await, false, 0, false, false, true);
     }
 
     private void statement(boolean yield, boolean await, boolean topLevel, int reparseFlags, boolean singleStatement, boolean labelledStatement, boolean mayBeFunctionDeclaration) {
@@ -1524,7 +1533,7 @@ public class Parser extends AbstractParser {
                     // It is a Syntax Error if any strict mode source code matches this rule:
                     // LabelledItem : FunctionDeclaration.
                     // ES6 B.3.4 FunctionDeclarations in IfStatement Statement Clauses
-                    if (isStrictMode || !mayBeFunctionDeclaration) {
+                    if (isStrictMode || !mayBeFunctionDeclaration || !isAnnexB()) {
                         throw error(AbstractParser.message(MSG_EXPECTED_STMT, CONTEXT_FUNCTION_DECLARATION), token);
                     }
                 }
@@ -1659,16 +1668,18 @@ public class Parser extends AbstractParser {
      * @return Class expression node.
      */
     private ClassNode classDeclaration(boolean yield, boolean await, boolean defaultExport) {
-        assert type == CLASS || type == AT;
-        List<Expression> classDecorators = null;
-        if (type == AT) {
+        return classDeclaration(yield, await, defaultExport, null);
+    }
+
+    private ClassNode classDeclaration(boolean yield, boolean await, boolean defaultExport, List<Expression> precedingClassDecorators) {
+        List<Expression> classDecorators = precedingClassDecorators;
+        if (classDecorators == null && type == AT) {
             assert isClassDecorators();
             classDecorators = decoratorList(yield, await);
         }
-
         int classLineNumber = line;
         long classToken = token;
-        next();
+        expect(CLASS);
 
         boolean oldStrictMode = isStrictMode;
         isStrictMode = true;
@@ -1710,7 +1721,7 @@ public class Parser extends AbstractParser {
         }
         int classLineNumber = line;
         long classToken = token;
-        next();
+        expect(CLASS);
 
         boolean oldStrictMode = isStrictMode;
         isStrictMode = true;
@@ -1806,7 +1817,7 @@ public class Parser extends AbstractParser {
                     } // else, this is a method/field named 'accessor'
                 }
                 boolean isStatic = false;
-                if (type == STATIC) {
+                if (!isAutoAccessor && type == STATIC) {
                     TokenType nextToken = lookahead();
                     if (isClassDecorators() && nextToken == ACCESSOR) {
                         next();
@@ -1857,6 +1868,7 @@ public class Parser extends AbstractParser {
                 final Expression classElementName = classElementName(yield, await, true);
 
                 ClassElement classElement;
+                boolean privateAccessorPair = false;
                 if (!generator && !async && isClassFieldDefinition(nameTokenType)) {
                     classElement = fieldDefinition(classElementName, isStatic, isAutoAccessor, classElementToken, computed, classElementDecorators);
                     if (!isStatic) {
@@ -1871,24 +1883,29 @@ public class Parser extends AbstractParser {
 
                     if (!classElement.isComputed() && classElement.isAccessor()) {
                         if (classElement.isPrivate()) {
-                            // merge private accessor methods
+                            // Match private accessor pairs, but only merge undecorated elements.
                             String privateName = classElement.getPrivateName();
                             Integer existing = privateNameToAccessorIndexMap.get(privateName);
                             if (existing == null) {
                                 privateNameToAccessorIndexMap.put(privateName, classElements.size());
                             } else {
                                 ClassElement otherAccessor = classElements.get(existing);
-                                if (isStatic == otherAccessor.isStatic()) {
-                                    if (otherAccessor.getGetter() == null && classElement.getGetter() != null) {
-                                        classElements.set(existing, otherAccessor.setGetter(classElement.getGetter()));
-                                        continue;
-                                    } else if (otherAccessor.getSetter() == null && classElement.getSetter() != null) {
-                                        classElements.set(existing, otherAccessor.setSetter(classElement.getSetter()));
+                                boolean getterMatches = otherAccessor.getGetter() == null && classElement.getGetter() != null;
+                                boolean setterMatches = otherAccessor.getSetter() == null && classElement.getSetter() != null;
+                                if (isStatic == otherAccessor.isStatic() && (getterMatches || setterMatches)) {
+                                    // A completed pair must not match any further declaration.
+                                    privateNameToAccessorIndexMap.remove(privateName);
+                                    if (classElement.getDecorators() == null && otherAccessor.getDecorators() == null) {
+                                        ClassElement merged = getterMatches
+                                                        ? otherAccessor.setGetter(classElement.getGetter())
+                                                        : otherAccessor.setSetter(classElement.getSetter());
+                                        classElements.set(existing, merged);
                                         continue;
                                     }
+                                    privateAccessorPair = true;
                                 }
                                 // else: more than one getter or setter with the same private name
-                                // fall through: a syntax error will be thrown below
+                                // fall through: a duplicate-name syntax error will be thrown below
                             }
                         } else if (!classElements.isEmpty()) {
                             // try to merge consecutive getter and setter pairs if they are not
@@ -1908,7 +1925,11 @@ public class Parser extends AbstractParser {
                 if (classElement.isPrivate()) {
                     hasPrivateMethods = hasPrivateMethods || classElement.isMethodOrAccessor();
                     hasPrivateInstanceMethods = hasPrivateInstanceMethods || (!classElement.isClassField() && !classElement.isStatic());
-                    declarePrivateName(classScope, classElement);
+                    // A decorated accessor pair remains separate elements but shares the private
+                    // binding declared by its first accessor. Do not redeclare it for the second.
+                    if (!privateAccessorPair) {
+                        declarePrivateName(classScope, classElement);
+                    }
                 }
 
                 if (!classElement.isStatic() && !classElement.isComputed() && classElement.getKeyNameTS().equals(CONSTRUCTOR_NAME_TS)) {
@@ -1993,6 +2014,9 @@ public class Parser extends AbstractParser {
         ParserContextClassNode currentClass = lc.getCurrentClass();
         if (currentClass == null) {
             throw error(AbstractParser.message(MSG_INVALID_PRIVATE_IDENT), privateIdent.getToken());
+        }
+        if (PRIVATE_CONSTRUCTOR_NAME.equals(privateIdent.getName())) {
+            throw error(AbstractParser.message(MSG_PRIVATE_CONSTRUCTOR), privateIdent.getToken());
         }
 
         return privateIdent;
@@ -2109,12 +2133,12 @@ public class Parser extends AbstractParser {
         boolean isPrivate = false;
         if (!computed) {
             final String name = ((PropertyKey) propertyName).getPropertyName();
-            if (!generator && nameTokenType == GET && type != LPAREN) {
+            if (!generator && !async && nameTokenType == GET && type != LPAREN) {
                 PropertyFunction methodDefinition = propertyGetterFunction(startToken, methodLine, yield, await, true);
                 verifyAllowedMethodName(methodDefinition.key, isStatic, methodDefinition.computed, generator, true, async);
                 return ClassElement.createAccessor(startToken, finish, methodDefinition.key, methodDefinition.functionNode, null, classElementDecorators, isPrivate, isStatic,
                                 methodDefinition.computed);
-            } else if (!generator && nameTokenType == SET && type != LPAREN) {
+            } else if (!generator && !async && nameTokenType == SET && type != LPAREN) {
                 PropertyFunction methodDefinition = propertySetterFunction(startToken, methodLine, yield, await, true);
                 verifyAllowedMethodName(methodDefinition.key, isStatic, methodDefinition.computed, generator, true, async);
                 return ClassElement.createAccessor(startToken, finish, methodDefinition.key, null, methodDefinition.functionNode, classElementDecorators, isPrivate, isStatic,
@@ -2151,17 +2175,14 @@ public class Parser extends AbstractParser {
             if (isStatic && name.equals(PROTOTYPE_NAME)) {
                 throw error(AbstractParser.message(MSG_STATIC_PROTOTYPE_METHOD), key.getToken());
             }
-            if (name.equals(PRIVATE_CONSTRUCTOR_NAME)) {
-                throw error(AbstractParser.message(MSG_PRIVATE_CONSTRUCTOR_METHOD), key.getToken());
-            }
         }
     }
 
     private ClassElement fieldDefinition(Expression propertyName, boolean isStatic, boolean isAutoAccessor, long startToken, boolean computed, List<Expression> classElementDecorators) {
-        // "constructor" or #constructor is not allowed as an instance field name
+        // A non-computed public field cannot be named "constructor".
         if (!computed && propertyName instanceof PropertyKey) {
             String name = ((PropertyKey) propertyName).getPropertyName();
-            if (CONSTRUCTOR_NAME.equals(name) || PRIVATE_CONSTRUCTOR_NAME.equals(name)) {
+            if (CONSTRUCTOR_NAME.equals(name)) {
                 throw error(AbstractParser.message(MSG_CONSTRUCTOR_FIELD), startToken);
             }
             if (isStatic && PROTOTYPE_NAME.equals(name)) {
@@ -2879,6 +2900,8 @@ public class Parser extends AbstractParser {
 
         protected abstract void verifySpreadElement(Expression lvalue);
 
+        protected abstract void verifyRestProperty(Expression lvalue);
+
         @Override
         public boolean enterObjectNode(ObjectNode objectNode) {
             if (objectNode.isParenthesized()) {
@@ -2900,7 +2923,7 @@ public class Parser extends AbstractParser {
                     if (property.isRest()) {
                         restElement = true;
                         Expression lvalue = ((UnaryNode) property.getKey()).getExpression();
-                        verifySpreadElement(lvalue);
+                        verifyRestProperty(lvalue);
                     } else {
                         property.accept(this);
                     }
@@ -2941,6 +2964,14 @@ public class Parser extends AbstractParser {
     private void verifyDestructuringBindingPattern(Expression pattern, Consumer<IdentNode> identifierCallback) {
         assert pattern instanceof ObjectNode || pattern instanceof ArrayLiteralNode;
         pattern.accept(new VerifyDestructuringPatternNodeVisitor(new LexicalContext()) {
+            @Override
+            protected void verifyRestProperty(Expression lvalue) {
+                if (!(lvalue instanceof IdentNode)) {
+                    throw error("Expected a valid binding identifier", lvalue.getToken());
+                }
+                verifySpreadElement(lvalue);
+            }
+
             @Override
             protected void verifySpreadElement(Expression lvalue) {
                 if (lvalue instanceof IdentNode) {
@@ -3223,12 +3254,11 @@ public class Parser extends AbstractParser {
                             }
                             init = varDeclList.firstBinding;
                             assert init instanceof IdentNode || isDestructuringLhs(init) : init;
-                            if (varDeclList.declarationWithInitializerToken != 0 && (isStrictMode || type != IN || varType != VAR || isDestructuringLhs(init))) {
+                            if (varDeclList.declarationWithInitializerToken != 0 && (!isAnnexB() || isStrictMode || type != IN || varType != VAR || isDestructuringLhs(init))) {
                                 /*
                                  * ES5 legacy: for (var i = AssignmentExpressionNoIn in Expression).
-                                 * Invalid in ES6, but allowed in non-strict mode if no ES6 features
-                                 * are used, i.e., it is a syntax error in strict mode, for-of
-                                 * loops, let/const, or destructuring.
+                                 * Annex B permits these legacy var initializers in non-strict mode
+                                 * in for-in loops without lexical bindings or destructuring.
                                  */
                                 throw error(AbstractParser.message(MSG_FOR_IN_LOOP_INITIALIZER, isForOf || isForAwaitOf ? CONTEXT_OF : CONTEXT_IN), varDeclList.declarationWithInitializerToken);
                             }
@@ -3305,7 +3335,7 @@ public class Parser extends AbstractParser {
             verifyStrictIdent(ident, contextString);
             return true;
         } else if (init instanceof AccessNode || init instanceof IndexNode) {
-            return !((BaseNode) init).isOptional();
+            return !((BaseNode) init).isOptionalChain();
         } else if (isDestructuringLhs(init)) {
             verifyDestructuringAssignmentPattern(init, contextString);
             return true;
@@ -3950,36 +3980,86 @@ public class Parser extends AbstractParser {
         }
     }
 
+    private IdentNode labelHead(boolean yield, boolean await) {
+        final IdentNode ident = labelIdentifier(yield, await);
+        expect(COLON);
+
+        if (lc.findLabel(ident.getName()) != null) {
+            throw error(AbstractParser.message(MSG_DUPLICATE_LABEL, ident), ident.getToken());
+        }
+        return ident;
+    }
+
     /**
      * Parse label statement.
      *
      * <pre>
      * LabelledStatement :
      *      Identifier : Statement
+     *      Identifier : FunctionDeclaration
      * </pre>
      */
     private void labelStatement(boolean yield, boolean await, boolean mayBeFunctionDeclaration) {
-        // Capture label token.
-        final long labelToken = token;
-        // Get label ident.
-        final IdentNode ident = labelIdentifier(yield, await);
-
-        expect(COLON);
-
-        if (lc.findLabel(ident.getName()) != null) {
-            throw error(AbstractParser.message(MSG_DUPLICATE_LABEL, ident), labelToken);
+        if (mayBeFunctionDeclaration && !isStrictMode && isAnnexB() && lookaheadIsLabelledFunction()) {
+            labelledFunctionStatement(yield, await);
+            return;
         }
 
+        final long labelToken = token;
+        final IdentNode ident = labelHead(yield, await);
+
         final ParserContextLabelNode labelNode = new ParserContextLabelNode(ident.getName());
-        Block body = null;
+        final Block body;
+        lc.push(labelNode);
         try {
-            lc.push(labelNode);
             body = getStatement(yield, await, true, mayBeFunctionDeclaration);
         } finally {
             lc.pop(labelNode);
         }
 
         appendStatement(new LabelNode(line, labelToken, finish, ident.getName(), body));
+    }
+
+    /**
+     * Parse a label chain ending in a function declaration, allowed by Annex B in non-strict code.
+     * The caller has verified this form with {@link #lookaheadIsLabelledFunction()}. Validate the
+     * labels and duplicate names, then parse the function in the enclosing declaration scope,
+     * preserving normal hoisting and Annex B var promotion at the declaration's source position. No
+     * LabelNode (or synthetic block) is needed because a break cannot cross the function boundary.
+     */
+    private void labelledFunctionStatement(boolean yield, boolean await) {
+        assert lookaheadIsLabelledFunction();
+        HashSet<String> labels = new HashSet<>();
+        while (type != FUNCTION) {
+            IdentNode ident = labelHead(yield, await);
+            if (!labels.add(ident.getName())) {
+                throw error(AbstractParser.message(MSG_DUPLICATE_LABEL, ident), ident.getToken());
+            }
+        }
+
+        boolean topLevel = lc.getCurrentScope() == lc.getCurrentFunction().getBodyScope();
+        functionDeclaration(true, topLevel, true, yield, await, false);
+    }
+
+    private boolean lookaheadIsLabelledFunction() {
+        boolean expectLabel = true;
+        for (int i = 0;; i++) {
+            TokenType t = T(k + i);
+            if (t == COMMENT || t == EOL) {
+                continue;
+            }
+            if (expectLabel) {
+                if (t == FUNCTION) {
+                    return true;
+                }
+                if (t != IDENT && !t.isContextualKeyword() && !t.isFutureStrict()) {
+                    return false;
+                }
+            } else if (t != COLON) {
+                return false;
+            }
+            expectLabel = !expectLabel;
+        }
     }
 
     /**
@@ -4656,7 +4736,7 @@ public class Parser extends AbstractParser {
             final TokenType getOrSet = type;
             next();
 
-            if (!generator && type != COLON && type != COMMARIGHT && type != RBRACE && ((type != ASSIGN && type != LPAREN) || !isES6())) {
+            if (!generator && !async && type != COLON && type != COMMARIGHT && type != RBRACE && ((type != ASSIGN && type != LPAREN) || !isES6())) {
                 final long getOrSetToken = propertyToken;
                 if (getOrSet == GET) {
                     final PropertyFunction getter = propertyGetterFunction(getOrSetToken, functionLine, yield, await, false);
@@ -4792,6 +4872,7 @@ public class Parser extends AbstractParser {
             } finally {
                 restoreBlock(parameterBlock);
             }
+            verifyParameterList(functionNode);
             if (parameterBlock != null) {
                 functionBody = wrapParameterBlock(parameterBlock, functionBody);
             }
@@ -5287,7 +5368,7 @@ public class Parser extends AbstractParser {
                     final int callLine = line;
                     final List<Expression> arguments = templateLiteralArgumentList(yield, await);
 
-                    lhs = CallNode.forCall(callLine, callToken, lhs.getStart(), finish, lhs, arguments, false, false);
+                    lhs = CallNode.forTaggedTemplateLiteral(callLine, callToken, lhs.getStart(), finish, lhs, arguments);
 
                     break;
                 }
@@ -6272,7 +6353,7 @@ public class Parser extends AbstractParser {
             assert opType == TokenType.INCPREFIX || opType == TokenType.DECPREFIX;
             String contextString = opType == TokenType.INCPREFIX ? CONTEXT_OPERAND_FOR_INC_OPERATOR : CONTEXT_OPERAND_FOR_DEC_OPERATOR;
             verifyStrictIdent((IdentNode) lhs, contextString);
-        } else if (!(lhs instanceof AccessNode || lhs instanceof IndexNode) || ((BaseNode) lhs).isOptional()) {
+        } else if (!(lhs instanceof AccessNode || lhs instanceof IndexNode) || ((BaseNode) lhs).isOptionalChain()) {
             if (!isWebCompatAssignmentTargetType(lhs)) {
                 throw invalidLHSError(lhs);
             }
@@ -7199,20 +7280,30 @@ public class Parser extends AbstractParser {
                     break loop;
                 case EXPORT:
                     exportDeclaration(module);
-                    break;
+                    continue;
                 case IMPORT:
                     // Ensure we are parsing an import declaration and not import.meta or import().
                     if (!isImportExpression()) {
                         importDeclaration(module);
-                        break;
+                        continue;
                     }
-                    // fall through
-                default:
-                    // StatementListItem
-                    boolean await = isTopLevelAwait();
-                    statement(false, await, true, 0, false, false, false);
+                    break;
+                case AT:
+                    if (isClassDecorators()) {
+                        boolean await = isTopLevelAwait();
+                        List<Expression> decorators = decoratorList(false, await);
+                        if (type == EXPORT) {
+                            exportDeclaration(module, decorators);
+                        } else {
+                            classDeclaration(false, await, false, decorators);
+                        }
+                        continue;
+                    }
                     break;
             }
+            // StatementListItem
+            boolean await = isTopLevelAwait();
+            statement(false, await, true, 0, false, false, false);
         }
     }
 
@@ -7345,7 +7436,8 @@ public class Parser extends AbstractParser {
                 // ImportedDefaultBinding
                 IdentNode importedDefaultBinding = importedBindingIdentifier();
 
-                if (env.sourcePhaseImports && SOURCE.equals(importedDefaultBinding.getName()) && isBindingIdentifier() && lookahead() == FROM) {
+                if (env.sourcePhaseImports && SOURCE.equals(importedDefaultBinding.getName()) && !isEscapedIdent(importedDefaultBinding) &&
+                                isBindingIdentifier() && lookahead() == FROM) {
                     // import source ImportedBinding FromClause WithClause_opt;
                     long identToken = token;
                     IdentNode importedBinding = importedBindingIdentifier();
@@ -7361,7 +7453,7 @@ public class Parser extends AbstractParser {
                     module.addModuleRequest(moduleRequest);
                     module.addImportEntry(ImportEntry.importSource(moduleRequest, importedBinding.getNameTS()));
                     break end;
-                } else if ((isImportDefer() && DEFER.equals(importedDefaultBinding.getName())) && type == MUL) {
+                } else if (isImportDefer() && DEFER.equals(importedDefaultBinding.getName()) && !isEscapedIdent(importedDefaultBinding) && type == MUL) {
                     // import defer * as ImportedBinding FromClause WithClause_opt;
                     NameSpaceImportNode namespaceNode = nameSpaceImport();
                     importClause = new ImportClauseNode(startToken, Token.descPosition(startToken), finish, namespaceNode);
@@ -7589,10 +7681,17 @@ public class Parser extends AbstractParser {
      * </pre>
      */
     private void exportDeclaration(ParserContextModuleNode module) {
+        exportDeclaration(module, null);
+    }
+
+    private void exportDeclaration(ParserContextModuleNode module, List<Expression> classDecorators) {
         final long exportToken = token;
         expect(EXPORT);
         final boolean yield = false;
         final boolean await = isTopLevelAwait();
+        if (classDecorators != null && type != TokenType.DEFAULT) {
+            expectDontAdvance(CLASS);
+        }
         switch (type) {
             case MUL: {
                 next();
@@ -7633,6 +7732,9 @@ public class Parser extends AbstractParser {
             }
             case DEFAULT: {
                 next();
+                if (classDecorators != null) {
+                    expectDontAdvance(CLASS);
+                }
                 Expression assignmentExpression;
                 IdentNode ident = null;
                 int lineNumber = line;
@@ -7645,7 +7747,7 @@ public class Parser extends AbstractParser {
                         break;
                     case CLASS:
                     case AT:
-                        assignmentExpression = classDeclaration(yield, await, true);
+                        assignmentExpression = classDeclaration(yield, await, true, classDecorators);
                         ident = ((ClassNode) assignmentExpression).getIdent();
                         break;
                     default:
@@ -7699,7 +7801,7 @@ public class Parser extends AbstractParser {
             }
             case CLASS:
             case AT: {
-                ClassNode classDeclaration = classDeclaration(yield, await, false);
+                ClassNode classDeclaration = classDeclaration(yield, await, false, classDecorators);
                 module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, classDeclaration.getIdent(), classDeclaration, false));
                 break;
             }
@@ -7944,8 +8046,8 @@ public class Parser extends AbstractParser {
      *
      * DecoratorMemberExpression[Yield, Await] :
      *      IdentifierReference[?Yield, ?Await]
-     *      PrivateIdentifier
      *      DecoratorMemberExpression[?Yield, ?Await] . IdentifierName
+     *      DecoratorMemberExpression[?Yield, ?Await] . PrivateIdentifier
      *
      * DecoratorCallExpression[Yield, Await] :
      *      DecoratorMemberExpression[?Yield, ?Await] Arguments[?Yield, ?Await]
@@ -7971,13 +8073,8 @@ public class Parser extends AbstractParser {
                 expect(RPAREN);
                 decoratorList.add(decoratorExpression);
                 continue;
-            } else {
-                if (type == PRIVATE_IDENT) {
-                    decoratorExpression = privateIdentifierUse();
-                } else {
-                    decoratorExpression = identifierReference(yield, await);
-                }
             }
+            decoratorExpression = identifierReference(yield, await);
             long callToken = token;
             while (type == PERIOD) {
                 next();

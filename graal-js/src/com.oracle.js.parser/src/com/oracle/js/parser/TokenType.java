@@ -411,6 +411,16 @@ public enum TokenType {
         }
     }
 
+    /**
+     * Is this an assignment that uses named evaluation for an anonymous function definition?
+     */
+    public boolean isAssignmentWithNamedEvaluation() {
+        return switch (this) {
+            case ASSIGN, ASSIGN_INIT, ASSIGN_AND, ASSIGN_OR, ASSIGN_NULLCOAL -> true;
+            default -> false;
+        };
+    }
+
     public boolean isContextualKeyword() {
         return kind == TokenKind.CONTEXTUAL;
     }

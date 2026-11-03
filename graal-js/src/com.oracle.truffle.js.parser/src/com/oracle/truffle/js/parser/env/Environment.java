@@ -978,10 +978,18 @@ public abstract class Environment {
 
         @Override
         public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
-            JavaScriptNode delegateNode = wrappee.isConst() ? factory.createWriteConstantVariable(rhs, true, getName()) : wrappee.createWriteNode(rhs);
+            JavaScriptNode delegateNode = createWriteDelegate(rhs);
             assert delegateNode instanceof WriteNode : delegateNode;
             JSTargetableNode scopeAccessNode = factory.createWriteProperty(null, getName(), null, context, isStrictMode());
             return createAccessWrapperNode(delegateNode, scopeAccessNode);
+        }
+
+        protected final JavaScriptNode createWriteDelegate(JavaScriptNode rhs) {
+            if (wrappee.isConst()) {
+                JavaScriptNode tdzCheck = wrappee.hasTDZCheck() ? wrappee.createReadNode() : null;
+                return factory.createWriteConstantVariable(rhs, true, getName(), tdzCheck);
+            }
+            return wrappee.createWriteNode(rhs);
         }
 
         @Override
@@ -1092,7 +1100,7 @@ public abstract class Environment {
 
         @Override
         public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
-            JavaScriptNode delegateNode = wrappee.isConst() ? factory.createWriteConstantVariable(rhs, true, getName()) : wrappee.createWriteNode(rhs);
+            JavaScriptNode delegateNode = createWriteDelegate(rhs);
             assert delegateNode instanceof WriteNode : delegateNode;
             JSTargetableNode withAccessNode = factory.createWriteProperty(null, getName(), null, context, isStrictMode(), false, true);
             return createAccessWrapperNode(delegateNode, withAccessNode);
@@ -1104,7 +1112,7 @@ public abstract class Environment {
             VarRef withTargetTempVar = Environment.this.createTempVar();
             Pair<Supplier<JavaScriptNode>, UnaryOperator<JavaScriptNode>> suppliers = wrappee.createCompoundAssignNode();
             Supplier<JavaScriptNode> innerReadSupplier = suppliers.getFirst();
-            UnaryOperator<JavaScriptNode> innerWriteSupplier = suppliers.getSecond();
+            UnaryOperator<JavaScriptNode> innerWriteSupplier = wrappee.isConst() ? this::createWriteDelegate : suppliers.getSecond();
             Supplier<JavaScriptNode> readSupplier = () -> {
                 JavaScriptNode withTarget = withTargetTempVar.createReadNode();
                 JSTargetableNode readWithProperty = factory.createReadProperty(context, null, getName());

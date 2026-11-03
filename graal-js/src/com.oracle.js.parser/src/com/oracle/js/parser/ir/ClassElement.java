@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.js.parser.ir;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -215,11 +214,11 @@ public final class ClassElement extends PropertyNode {
             ClassElement element = setKey(key == null ? null : (Expression) key.accept(visitor)).setValue(value == null ? null : (Expression) value.accept(visitor)).setGetter(
                             getter == null ? null : (FunctionNode) getter.accept(visitor)).setSetter(setter == null ? null : (FunctionNode) setter.accept(visitor));
             if (decorators != null) {
-                element = element.setDecorators(Node.accept(visitor, new ArrayList<>()));
+                element = element.setDecorators(Node.accept(visitor, decorators));
             } else {
                 element = element.setDecorators(null);
             }
-            return element;
+            return visitor.leaveClassElement(element);
         }
         return this;
     }
