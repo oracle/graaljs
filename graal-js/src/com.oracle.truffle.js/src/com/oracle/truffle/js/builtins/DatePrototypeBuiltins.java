@@ -77,12 +77,10 @@ import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateSetYear
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToDateStringNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToISOStringNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToJSONNodeGen;
-import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToLocaleDateStringIntlNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToLocaleDateStringNodeGen;
-import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToLocaleTimeStringIntlNodeGen;
+import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToLocaleStringIntlNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToLocaleTimeStringNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToPrimitiveNodeGen;
-import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToStringIntlNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToStringNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToTemporalInstantNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToTimeStringNodeGen;
@@ -236,15 +234,18 @@ public final class DatePrototypeBuiltins {
                     return JSDateToTimeStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
                 case toLocaleString:
                     return context.isOptionIntl402()
-                                    ? JSDateToStringIntlNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context))
+                                    ? JSDateToLocaleStringIntlNodeGen.create(context, builtin, DateTimeFormatCacheType.DATE_TIME,
+                                                    args().withThis().fixedArgs(2).createArgumentNodes(context))
                                     : JSDateToStringNodeGen.create(context, builtin, isUTC, args().withThis().createArgumentNodes(context));
                 case toLocaleDateString:
                     return context.isOptionIntl402()
-                                    ? JSDateToLocaleDateStringIntlNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context))
+                                    ? JSDateToLocaleStringIntlNodeGen.create(context, builtin, DateTimeFormatCacheType.DATE,
+                                                    args().withThis().fixedArgs(2).createArgumentNodes(context))
                                     : JSDateToLocaleDateStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
                 case toLocaleTimeString:
                     return context.isOptionIntl402()
-                                    ? JSDateToLocaleTimeStringIntlNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context))
+                                    ? JSDateToLocaleStringIntlNodeGen.create(context, builtin, DateTimeFormatCacheType.TIME,
+                                                    args().withThis().fixedArgs(2).createArgumentNodes(context))
                                     : JSDateToLocaleTimeStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
                 case toISOString:
                     return JSDateToISOStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
@@ -360,25 +361,6 @@ public final class DatePrototypeBuiltins {
                 throw Errors.createRangeError("time value is not a finite number");
             }
         }
-
-        protected JSDateTimeFormatObject getOrCreateDateTimeFormat(InitializeDateTimeFormatNode initDateTimeFormatNode, DateTimeFormatCacheType type,
-                        Object locales, Object options, TruffleString.EqualNode equalsNode) {
-            // Only skip argument processing when it cannot invoke user code.
-            boolean cacheable = options == Undefined.instance && (locales == Undefined.instance || locales instanceof TruffleString);
-            JSRealm realm = getRealm();
-            if (cacheable) {
-                JSDateTimeFormatObject cached = realm.getCachedDateTimeFormat(type, locales, equalsNode);
-                if (cached != null) {
-                    return cached;
-                }
-            }
-            JSDateTimeFormatObject dateTimeFormatObj = JSDateTimeFormat.create(getContext(), realm);
-            initDateTimeFormatNode.initialize(dateTimeFormatObj, locales, options);
-            if (cacheable) {
-                realm.setCachedDateTimeFormat(type, locales, dateTimeFormatObj);
-            }
-            return dateTimeFormatObj;
-        }
     }
 
     public abstract static class JSDateOperationWithToNumberNode extends JSDateOperation {
@@ -425,13 +407,20 @@ public final class DatePrototypeBuiltins {
         }
     }
 
-    public abstract static class JSDateToStringIntlNode extends JSDateOperation {
+    public abstract static class JSDateToLocaleStringIntlNode extends JSDateOperation {
 
-        @Child InitializeDateTimeFormatNode initDateTimeFormatNode;
+        private final DateTimeFormatCacheType cacheType;
 
-        public JSDateToStringIntlNode(JSContext context, JSBuiltin builtin) {
+        @Child private InitializeDateTimeFormatNode initDateTimeFormatNode;
+
+        public JSDateToLocaleStringIntlNode(JSContext context, JSBuiltin builtin, DateTimeFormatCacheType cacheType) {
             super(context, builtin, NO_UTC);
-            this.initDateTimeFormatNode = InitializeDateTimeFormatNode.createAnyAll(context);
+            this.cacheType = cacheType;
+            this.initDateTimeFormatNode = switch (cacheType) {
+                case DATE -> InitializeDateTimeFormatNode.createDateDate(context);
+                case TIME -> InitializeDateTimeFormatNode.createTimeTime(context);
+                case DATE_TIME -> InitializeDateTimeFormatNode.createAnyAll(context);
+            };
         }
 
         @Specialization
@@ -441,8 +430,26 @@ public final class DatePrototypeBuiltins {
             if (isNaN.profile(Double.isNaN(t))) {
                 return JSDate.INVALID_DATE_STRING;
             }
-            JSDateTimeFormatObject formatter = getOrCreateDateTimeFormat(initDateTimeFormatNode, DateTimeFormatCacheType.DATE_TIME, locales, options, equalsNode);
+            JSDateTimeFormatObject formatter = getOrCreateDateTimeFormat(locales, options, equalsNode);
             return JSDateTimeFormat.format(formatter, t);
+        }
+
+        private JSDateTimeFormatObject getOrCreateDateTimeFormat(Object locales, Object options, TruffleString.EqualNode equalsNode) {
+            // Only skip argument processing when it cannot invoke user code.
+            boolean cacheable = options == Undefined.instance && (locales == Undefined.instance || locales instanceof TruffleString);
+            JSRealm realm = getRealm();
+            if (cacheable) {
+                JSDateTimeFormatObject cached = realm.getCachedDateTimeFormat(cacheType, locales, equalsNode);
+                if (cached != null) {
+                    return cached;
+                }
+            }
+            JSDateTimeFormatObject dateTimeFormatObj = JSDateTimeFormat.create(getContext(), realm);
+            initDateTimeFormatNode.initialize(dateTimeFormatObj, locales, options);
+            if (cacheable) {
+                realm.setCachedDateTimeFormat(cacheType, locales, dateTimeFormatObj);
+            }
+            return dateTimeFormatObj;
         }
     }
 
@@ -494,27 +501,6 @@ public final class DatePrototypeBuiltins {
         }
     }
 
-    public abstract static class JSDateToLocaleDateStringIntlNode extends JSDateOperation {
-
-        @Child InitializeDateTimeFormatNode initDateTimeFormatNode;
-
-        public JSDateToLocaleDateStringIntlNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin, NO_UTC);
-            this.initDateTimeFormatNode = InitializeDateTimeFormatNode.createDateDate(context);
-        }
-
-        @Specialization
-        protected TruffleString doOperation(Object thisDate, Object locales, Object options,
-                        @Cached TruffleString.EqualNode equalsNode) {
-            double t = asDateMillis(thisDate);
-            if (isNaN.profile(Double.isNaN(t))) {
-                return JSDate.INVALID_DATE_STRING;
-            }
-            JSDateTimeFormatObject formatter = getOrCreateDateTimeFormat(initDateTimeFormatNode, DateTimeFormatCacheType.DATE, locales, options, equalsNode);
-            return JSDateTimeFormat.format(formatter, t);
-        }
-    }
-
     public abstract static class JSDateToLocaleTimeStringNode extends JSDateOperation {
 
         public JSDateToLocaleTimeStringNode(JSContext context, JSBuiltin builtin) {
@@ -528,27 +514,6 @@ public final class DatePrototypeBuiltins {
                 return JSDate.INVALID_DATE_STRING;
             }
             return JSDate.format(getRealm().getJSShortTimeLocalFormat(), t);
-        }
-    }
-
-    public abstract static class JSDateToLocaleTimeStringIntlNode extends JSDateOperation {
-
-        @Child InitializeDateTimeFormatNode initDateTimeFormatNode;
-
-        public JSDateToLocaleTimeStringIntlNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin, NO_UTC);
-            this.initDateTimeFormatNode = InitializeDateTimeFormatNode.createTimeTime(context);
-        }
-
-        @Specialization
-        protected TruffleString doOperation(Object thisDate, Object locales, Object options,
-                        @Cached TruffleString.EqualNode equalsNode) {
-            double t = asDateMillis(thisDate);
-            if (isNaN.profile(Double.isNaN(t))) {
-                return JSDate.INVALID_DATE_STRING;
-            }
-            JSDateTimeFormatObject formatter = getOrCreateDateTimeFormat(initDateTimeFormatNode, DateTimeFormatCacheType.TIME, locales, options, equalsNode);
-            return JSDateTimeFormat.format(formatter, t);
         }
     }
 
