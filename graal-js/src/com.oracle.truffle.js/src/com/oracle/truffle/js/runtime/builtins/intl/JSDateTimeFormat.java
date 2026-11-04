@@ -1075,19 +1075,21 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
 
         List<Object> resultParts = new ArrayList<>();
         AttributedCharacterIterator fit = dateFormat.formatToCharacterIterator(x);
-        StringBuilder formatted = new StringBuilder(fit.getEndIndex());
-        for (int j = fit.getBeginIndex(); j < fit.getEndIndex(); j++) {
+        int beginIndex = fit.getBeginIndex();
+        int endIndex = fit.getEndIndex();
+        StringBuilder formatted = new StringBuilder(endIndex - beginIndex);
+        for (int j = beginIndex; j < endIndex; j++) {
             formatted.append(fit.setIndex(j));
         }
-        int i = fit.getBeginIndex();
-        while (i < fit.getEndIndex()) {
+        int i = beginIndex;
+        while (i < endIndex) {
             fit.setIndex(i);
             Map<AttributedCharacterIterator.Attribute, Object> attributes = fit.getAttributes();
             Set<AttributedCharacterIterator.Attribute> attKeySet = attributes.keySet();
             if (!attKeySet.isEmpty()) {
                 for (AttributedCharacterIterator.Attribute a : attKeySet) {
                     if (a instanceof DateFormat.Field) {
-                        String value = formatted.substring(fit.getRunStart(), fit.getRunLimit());
+                        String value = formatted.substring(fit.getRunStart() - beginIndex, fit.getRunLimit() - beginIndex);
                         String type;
                         if (a == DateFormat.Field.YEAR) {
                             // DateFormat.Field.YEAR covers both "year" and "yearName"
@@ -1110,7 +1112,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
                     }
                 }
             } else {
-                String value = formatted.substring(fit.getRunStart(), fit.getRunLimit());
+                String value = formatted.substring(fit.getRunStart() - beginIndex, fit.getRunLimit() - beginIndex);
                 resultParts.add(makePart(context, realm, IntlUtil.LITERAL, value, source));
                 i = fit.getRunLimit();
             }
