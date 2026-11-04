@@ -49,6 +49,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
@@ -298,62 +299,89 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         }
 
         if (ctx.isOptionTemporal()) {
+            String resolvedHourCycle = hc;
             if (timeStyleOpt != null || dateStyleOpt != null) {
+                DateFormat styleFormat = dateFormat;
                 if (dateStyleOpt != null) {
-                    state.temporalPlainDateFormat = adjustDateTimeStyleFormat(dateFormat, "GyYuUrQqMLdFgEec", patternGenerator, javaLocale, hc);
-                    state.temporalPlainYearMonthFormat = adjustDateTimeStyleFormat(dateFormat, "GyYuUrQqML", patternGenerator, javaLocale, hc);
-                    state.temporalPlainMonthDayFormat = adjustDateTimeStyleFormat(dateFormat, "MLdFg", patternGenerator, javaLocale, hc);
+                    state.temporalPlainDateFormat = createLazyDateTimeStyleFormat(styleFormat, "GyYuUrQqMLdFgEec", patternGenerator, javaLocale, resolvedHourCycle);
+                    state.temporalPlainYearMonthFormat = createLazyDateTimeStyleFormat(styleFormat, "GyYuUrQqML", patternGenerator, javaLocale, resolvedHourCycle);
+                    state.temporalPlainMonthDayFormat = createLazyDateTimeStyleFormat(styleFormat, "MLdFg", patternGenerator, javaLocale, resolvedHourCycle);
                 }
                 if (timeStyleOpt != null) {
-                    state.temporalPlainTimeFormat = adjustDateTimeStyleFormat(dateFormat, "abBhHkKjJCmsSA", patternGenerator, javaLocale, hc);
+                    state.temporalPlainTimeFormat = createLazyDateTimeStyleFormat(styleFormat, "abBhHkKjJCmsSA", patternGenerator, javaLocale, resolvedHourCycle);
                 }
-                state.temporalPlainDateTimeFormat = adjustDateTimeStyleFormat(dateFormat, "GyYuUrQqMLdFgEecabBhHkKjJCmsSA", patternGenerator, javaLocale, hc);
-                state.temporalInstanceFormat = dateFormat;
+                state.temporalPlainDateTimeFormat = createLazyDateTimeStyleFormat(styleFormat, "GyYuUrQqMLdFgEecabBhHkKjJCmsSA", patternGenerator, javaLocale, resolvedHourCycle);
+                state.temporalInstanceFormat = new LazyDateFormat(() -> styleFormat, timeZone);
             } else {
-                state.temporalPlainDateFormat = getDateTimeFormat(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, null, null, null, null, null, -1, null, Required.DATE, Defaults.DATE, false,
-                                anyPresent, patternGenerator, javaLocale, null);
-                state.temporalPlainYearMonthFormat = getDateTimeFormat(null, eraOpt, yearOpt, monthOpt, null, null, null, null, null, null, -1, null, Required.YEAR_MONTH, Defaults.YEAR_MONTH, false,
-                                anyPresent, patternGenerator, javaLocale, null);
-                state.temporalPlainMonthDayFormat = getDateTimeFormat(null, null, null, monthOpt, dayOpt, null, null, null, null, null, -1, null, Required.MONTH_DAY, Defaults.MONTH_DAY, false,
-                                anyPresent, patternGenerator, javaLocale, null);
-                state.temporalPlainTimeFormat = getDateTimeFormat(null, null, null, null, null, dayPeriodOpt, hourOpt, hc, minuteOpt, secondOpt, fractionalSecondDigitsOpt, null, Required.TIME,
-                                Defaults.TIME, false, anyPresent, patternGenerator, javaLocale, null);
-                state.temporalPlainDateTimeFormat = getDateTimeFormat(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, dayPeriodOpt, hourOpt, hc, minuteOpt, secondOpt, fractionalSecondDigitsOpt,
-                                null, Required.ANY, Defaults.ALL, false, anyPresent, patternGenerator, javaLocale, null);
-                state.temporalInstanceFormat = getDateTimeFormat(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, dayPeriodOpt, hourOpt, hc, minuteOpt, secondOpt, fractionalSecondDigitsOpt, tzNameOpt,
-                                Required.ANY, (toLocaleStringTimeZone == null) ? Defaults.ALL : Defaults.ZONED_DATE_TIME, true, anyPresent, patternGenerator, javaLocale, null);
+                state.temporalPlainDateFormat = createLazyDateTimeFormat(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, null, null, null, null, null, -1, Required.DATE, Defaults.DATE,
+                                anyPresent, patternGenerator, javaLocale);
+                state.temporalPlainYearMonthFormat = createLazyDateTimeFormat(null, eraOpt, yearOpt, monthOpt, null, null, null, null, null, null, -1, Required.YEAR_MONTH, Defaults.YEAR_MONTH,
+                                anyPresent, patternGenerator, javaLocale);
+                state.temporalPlainMonthDayFormat = createLazyDateTimeFormat(null, null, null, monthOpt, dayOpt, null, null, null, null, null, -1, Required.MONTH_DAY, Defaults.MONTH_DAY,
+                                anyPresent, patternGenerator, javaLocale);
+                state.temporalPlainTimeFormat = createLazyDateTimeFormat(null, null, null, null, null, dayPeriodOpt, hourOpt, resolvedHourCycle, minuteOpt, secondOpt, fractionalSecondDigitsOpt,
+                                Required.TIME, Defaults.TIME, anyPresent, patternGenerator, javaLocale);
+                state.temporalPlainDateTimeFormat = createLazyDateTimeFormat(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, dayPeriodOpt, hourOpt, resolvedHourCycle, minuteOpt, secondOpt,
+                                fractionalSecondDigitsOpt, Required.ANY, Defaults.ALL, anyPresent, patternGenerator, javaLocale);
+                Defaults instantDefaults = (toLocaleStringTimeZone == null) ? Defaults.ALL : Defaults.ZONED_DATE_TIME;
+                state.temporalInstanceFormat = new LazyDateFormat(
+                                () -> getDateTimeFormat(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, dayPeriodOpt, hourOpt, resolvedHourCycle, minuteOpt, secondOpt, fractionalSecondDigitsOpt,
+                                                tzNameOpt, Required.ANY, instantDefaults, true, anyPresent, patternGenerator, javaLocale, null),
+                                timeZone);
             }
         }
 
         String pattern = ((SimpleDateFormat) dateFormat).toPattern();
-        String skeleton = patternGenerator.getSkeleton(pattern);
         if (!Objects.equals(state.hourCycle, hourCycleFromPattern(pattern))) {
+            String skeleton = patternGenerator.getSkeleton(pattern);
             skeleton = replaceHourCycle(skeleton, hc);
             String bestPattern = patternGenerator.getBestPattern(skeleton, DateTimePatternGenerator.MATCH_HOUR_FIELD_LENGTH);
             dateFormat = new SimpleDateFormat(replaceHourCycle(bestPattern, hc), javaLocale);
         }
 
-        state.dateFormat = dateFormat;
-        state.dateIntervalFormat = intervalFormatFrom(dateFormat, javaLocale, hc);
+        state.dateFormat = new LazyDateFormat(dateFormat, timeZone);
+        state.javaLocale = javaLocale;
+        state.resolvedHourCycle = hc;
 
         if (state.calendar == null) {
-            state.calendar = IntlUtil.normalizeCAType(Calendar.getInstance(javaLocale).getType());
+            state.calendar = IntlUtil.normalizeCAType(dateFormat.getCalendar().getType());
         }
 
         if (tzNameOpt != null && !tzNameOpt.isEmpty()) {
             state.timeZoneName = tzNameOpt;
         }
 
-        configureDateFormat(state.dateFormat, timeZone);
-        configureDateFormat(state.temporalInstanceFormat, timeZone);
-        configureDateFormat(state.temporalPlainDateFormat, TimeZone.GMT_ZONE);
-        configureDateFormat(state.temporalPlainYearMonthFormat, TimeZone.GMT_ZONE);
-        configureDateFormat(state.temporalPlainMonthDayFormat, TimeZone.GMT_ZONE);
-        configureDateFormat(state.temporalPlainDateTimeFormat, TimeZone.GMT_ZONE);
-        configureDateFormat(state.temporalPlainTimeFormat, TimeZone.GMT_ZONE);
+        configureDateFormat(dateFormat, timeZone);
 
         state.timeZone = timeZoneId;
         state.initialized = true;
+    }
+
+    private static LazyDateFormat createLazyDateTimeStyleFormat(DateFormat dateFormat, String allowed, DateTimePatternGenerator patternGenerator, Locale javaLocale, String hc) {
+        return new LazyDateFormat(() -> adjustDateTimeStyleFormat(dateFormat, allowed, patternGenerator, javaLocale, hc), TimeZone.GMT_ZONE);
+    }
+
+    private static LazyDateFormat createLazyDateTimeFormat(
+                    String weekday,
+                    String era,
+                    String year,
+                    String month,
+                    String day,
+                    String dayPeriod,
+                    String hour,
+                    String hc,
+                    String minute,
+                    String second,
+                    int fractionalSecondDigits,
+                    Required required,
+                    Defaults defaults,
+                    boolean anyPresent,
+                    DateTimePatternGenerator patternGenerator,
+                    Locale javaLocale) {
+        return new LazyDateFormat(
+                        () -> getDateTimeFormat(weekday, era, year, month, day, dayPeriod, hour, hc, minute, second, fractionalSecondDigits, null, required, defaults, false,
+                                        anyPresent, patternGenerator, javaLocale, null),
+                        TimeZone.GMT_ZONE);
     }
 
     private static void configureDateFormat(DateFormat dateFormat, TimeZone timeZone) {
@@ -669,11 +697,13 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
     }
 
     private static boolean isValidCAType(Locale locale, String calendar) {
-        assert Objects.equals(calendar, IntlUtil.normalizeCAType(calendar));
-        String[] validValues = Calendar.getKeywordValuesForLocale("ca", ULocale.forLocale(locale), false);
-        for (String validValue : validValues) {
-            if (IntlUtil.normalizeCAType(validValue).equals(calendar)) {
-                return true;
+        if (calendar != null) {
+            assert Objects.equals(calendar, IntlUtil.normalizeCAType(calendar));
+            String[] validValues = Calendar.getKeywordValuesForLocale("ca", ULocale.forLocale(locale), false);
+            for (String validValue : validValues) {
+                if (IntlUtil.normalizeCAType(validValue).equals(calendar)) {
+                    return true;
+                }
             }
         }
         return false;
@@ -884,8 +914,8 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
     }
 
     private static boolean containsOneOf(String suspect, String containees) {
-        for (int c : containees.getBytes()) {
-            if (suspect.indexOf(c) > -1) {
+        for (int i = 0; i < containees.length(); i++) {
+            if (suspect.indexOf(containees.charAt(i)) > -1) {
                 return true;
             }
         }
@@ -901,15 +931,15 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
 
     @TruffleBoundary
     public static TruffleString format(JSDateTimeFormatObject numberFormatObj, Object n) {
-        Pair<DateFormat, Double> pair = handleDateTimeValue(numberFormatObj, n);
-        String formatted = pair.getFirst().format(pair.getSecond());
+        Pair<LazyDateFormat, Double> pair = handleDateTimeValue(numberFormatObj, n);
+        String formatted = pair.getFirst().get().format(pair.getSecond());
         formatted = maybeReplaceNarrowSpaces(formatted);
         return Strings.fromJavaString(formatted);
     }
 
-    private static Pair<DateFormat, Double> handleDateTimeValue(JSDateTimeFormatObject dateTimeFormat, Object x) {
+    private static Pair<LazyDateFormat, Double> handleDateTimeValue(JSDateTimeFormatObject dateTimeFormat, Object x) {
         InternalState state = dateTimeFormat.getInternalState();
-        DateFormat format;
+        LazyDateFormat format;
         double epochMs;
         if (x instanceof JSTemporalPlainDateObject date) {
             format = state.temporalPlainDateFormat;
@@ -933,7 +963,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
             format = state.dateFormat;
             epochMs = handleDateTimeOthers(x);
         }
-        if (format == null) {
+        if (format == null || format.get() == null) {
             throw Errors.createTypeErrorIncompatibleReceiver(x);
         }
         return new Pair<>(format, epochMs);
@@ -1044,28 +1074,33 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
 
     @TruffleBoundary
     public static JSDynamicObject formatToParts(JSContext context, JSRealm realm, JSDateTimeFormatObject numberFormatObj, Object n, String source) {
-        Pair<DateFormat, Double> pair = handleDateTimeValue(numberFormatObj, n);
-        DateFormat dateFormat = pair.getFirst();
+        Pair<LazyDateFormat, Double> pair = handleDateTimeValue(numberFormatObj, n);
+        DateFormat dateFormat = pair.getFirst().get();
         double x = pair.getSecond();
 
-        String yearPattern = yearRelatedSubpattern(dateFormat);
         int yearPatternIndex = 0;
 
         List<Object> resultParts = new ArrayList<>();
         AttributedCharacterIterator fit = dateFormat.formatToCharacterIterator(x);
-        String formatted = dateFormat.format(x);
-        int i = fit.getBeginIndex();
-        while (i < fit.getEndIndex()) {
+        int beginIndex = fit.getBeginIndex();
+        int endIndex = fit.getEndIndex();
+        StringBuilder formatted = new StringBuilder(endIndex - beginIndex);
+        for (int j = beginIndex; j < endIndex; j++) {
+            formatted.append(fit.setIndex(j));
+        }
+        int i = beginIndex;
+        while (i < endIndex) {
             fit.setIndex(i);
             Map<AttributedCharacterIterator.Attribute, Object> attributes = fit.getAttributes();
             Set<AttributedCharacterIterator.Attribute> attKeySet = attributes.keySet();
             if (!attKeySet.isEmpty()) {
                 for (AttributedCharacterIterator.Attribute a : attKeySet) {
                     if (a instanceof DateFormat.Field) {
-                        String value = formatted.substring(fit.getRunStart(), fit.getRunLimit());
+                        String value = formatted.substring(fit.getRunStart() - beginIndex, fit.getRunLimit() - beginIndex);
                         String type;
                         if (a == DateFormat.Field.YEAR) {
                             // DateFormat.Field.YEAR covers both "year" and "yearName"
+                            String yearPattern = pair.getFirst().getYearRelatedSubpattern();
                             if (yearPatternIndex < yearPattern.length() && yearPattern.charAt(yearPatternIndex) == 'U') {
                                 type = IntlUtil.YEAR_NAME;
                             } else {
@@ -1084,7 +1119,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
                     }
                 }
             } else {
-                String value = formatted.substring(fit.getRunStart(), fit.getRunLimit());
+                String value = formatted.substring(fit.getRunStart() - beginIndex, fit.getRunLimit() - beginIndex);
                 resultParts.add(makePart(context, realm, IntlUtil.LITERAL, value, source));
                 i = fit.getRunLimit();
             }
@@ -1102,18 +1137,19 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
                 throw Errors.createTypeError("Ends of the range should have the same type");
             }
         }
-        Pair<DateFormat, Double> xFormatRecord = handleDateTimeValue(dateTimeFormat, x);
-        Pair<DateFormat, Double> yFormatRecord = handleDateTimeValue(dateTimeFormat, y);
+        Pair<LazyDateFormat, Double> xFormatRecord = handleDateTimeValue(dateTimeFormat, x);
+        Pair<LazyDateFormat, Double> yFormatRecord = handleDateTimeValue(dateTimeFormat, y);
         startDate = xFormatRecord.getSecond();
         endDate = yFormatRecord.getSecond();
-        DateFormat dateFormat = xFormatRecord.getFirst();
+        LazyDateFormat format = xFormatRecord.getFirst();
+        DateFormat dateFormat = format.get();
         DateIntervalFormat intervalFormat;
         if (x instanceof Double) {
             assert (y instanceof Double);
-            intervalFormat = state.dateIntervalFormat;
+            intervalFormat = format.getDateIntervalFormat(state.javaLocale, state.resolvedHourCycle);
         } else {
             assert isTemporalObject(x) && isTemporalObject(y);
-            intervalFormat = intervalFormatFrom(dateFormat, dateFormat.getCalendar().getLocale(ULocale.ACTUAL_LOCALE).toLocale(), state.hourCycle);
+            intervalFormat = format.getDateIntervalFormat(state.hourCycle);
         }
 
         Calendar calendar = dateFormat.getCalendar();
@@ -1186,7 +1222,6 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         }
 
         String formattedString = formattedRange.toString();
-        String digits = null;
 
         List<Object> parts = new ArrayList<>();
         int startRangeStart = 0;
@@ -1224,10 +1259,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
                 String type;
                 if (field == DateFormat.Field.YEAR) {
                     // DateFormat.Field.YEAR covers both "year" and "yearName"
-                    if (digits == null) {
-                        String numberingSystem = dateTimeFormat.getInternalState().numberingSystem;
-                        digits = NumberingSystem.getInstanceByName(numberingSystem).getDescription();
-                    }
+                    String digits = dateTimeFormat.getInternalState().getNumberingSystemDescription();
                     boolean year = (value.length() > 0) && (digits.indexOf(value.charAt(0)) != -1);
                     type = year ? IntlUtil.YEAR : IntlUtil.YEAR_NAME;
                 } else {
@@ -1278,23 +1310,75 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         return p;
     }
 
+    private static final class LazyDateFormat {
+        private Supplier<DateFormat> initializer;
+        private final TimeZone timeZone;
+        private DateFormat dateFormat;
+        private DateIntervalFormat dateIntervalFormat;
+        private String yearPattern;
+
+        private LazyDateFormat(DateFormat dateFormat, TimeZone timeZone) {
+            this.dateFormat = dateFormat;
+            this.timeZone = timeZone;
+        }
+
+        private LazyDateFormat(Supplier<DateFormat> initializer, TimeZone timeZone) {
+            this.initializer = initializer;
+            this.timeZone = timeZone;
+        }
+
+        private DateFormat get() {
+            if (initializer != null) {
+                DateFormat format = initializer.get();
+                configureDateFormat(format, timeZone);
+                dateFormat = format;
+                // A null formatter represents incompatible options and must also be cached.
+                initializer = null;
+            }
+            return dateFormat;
+        }
+
+        private String getYearRelatedSubpattern() {
+            if (yearPattern == null) {
+                yearPattern = yearRelatedSubpattern(get());
+            }
+            return yearPattern;
+        }
+
+        private DateIntervalFormat getDateIntervalFormat(String hc) {
+            if (dateIntervalFormat == null) {
+                DateFormat format = get();
+                return getDateIntervalFormat(format.getCalendar().getLocale(ULocale.ACTUAL_LOCALE).toLocale(), hc);
+            }
+            return dateIntervalFormat;
+        }
+
+        private DateIntervalFormat getDateIntervalFormat(Locale javaLocale, String hc) {
+            if (dateIntervalFormat == null) {
+                dateIntervalFormat = intervalFormatFrom(get(), javaLocale, hc);
+            }
+            return dateIntervalFormat;
+        }
+    }
+
     public static class InternalState {
 
         private boolean initialized = false;
-        private DateFormat dateFormat;
-        private DateFormat temporalInstanceFormat;
-        private DateFormat temporalPlainDateFormat;
-        private DateFormat temporalPlainYearMonthFormat;
-        private DateFormat temporalPlainMonthDayFormat;
-        private DateFormat temporalPlainDateTimeFormat;
-        private DateFormat temporalPlainTimeFormat;
-        private DateIntervalFormat dateIntervalFormat;
+        private LazyDateFormat dateFormat;
+        private LazyDateFormat temporalInstanceFormat;
+        private LazyDateFormat temporalPlainDateFormat;
+        private LazyDateFormat temporalPlainYearMonthFormat;
+        private LazyDateFormat temporalPlainMonthDayFormat;
+        private LazyDateFormat temporalPlainDateTimeFormat;
+        private LazyDateFormat temporalPlainTimeFormat;
 
         private JSDynamicObject boundFormatFunction = null;
 
+        private Locale javaLocale;
         private String locale;
         private String calendar;
         private String numberingSystem;
+        private String numberingSystemDescription;
 
         private String weekday;
         private String era;
@@ -1308,12 +1392,21 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         private int fractionalSecondDigits;
 
         private String hourCycle;
+        // Also set for date-only formats, whose resolved options omit hourCycle.
+        private String resolvedHourCycle;
 
         private String timeZoneName;
         private String timeZone;
 
         private String dateStyle;
         private String timeStyle;
+
+        private String getNumberingSystemDescription() {
+            if (numberingSystemDescription == null) {
+                numberingSystemDescription = NumberingSystem.getInstanceByName(numberingSystem).getDescription();
+            }
+            return numberingSystemDescription;
+        }
 
         JSObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
             JSObject result = JSOrdinary.create(context, realm);

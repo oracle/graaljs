@@ -526,8 +526,10 @@ public final class IntlUtil {
         return Set.of(result.toArray(new Locale[result.size()]));
     }
 
+    private static final LazyValue<Set<String>> AVAILABLE_NUMBERING_SYSTEMS = new LazyValue<>(() -> Set.of(NumberingSystem.getAvailableNames()));
+
     public static boolean isValidNumberingSystem(String numberingSystem) {
-        return Arrays.asList(NumberingSystem.getAvailableNames()).contains(numberingSystem);
+        return numberingSystem != null && AVAILABLE_NUMBERING_SYSTEMS.get().contains(numberingSystem);
     }
 
     public static String defaultNumberingSystemName(JSContext context, Locale locale) {
@@ -966,14 +968,18 @@ public final class IntlUtil {
 
     @TruffleBoundary
     public static String[] availableCalendars(ULocale locale, boolean commonlyUsed) {
+        return availableCalendars(locale, commonlyUsed, isIslamicCalendarSupported());
+    }
+
+    private static String[] availableCalendars(ULocale locale, boolean commonlyUsed, boolean includeIslamicCalendars) {
         String[] calendars = Calendar.getKeywordValuesForLocale(IntlUtil.CALENDAR, locale, commonlyUsed);
 
         int length = 0;
         for (String calendar : calendars) {
             // ICU4J returns "unknown" available calendar but it does not provide any useful data
             // for this calendar
-            if (!"unknown".equals(calendar) && (!"islamic".equals(calendar) && !"islamic-rgsa".equals(calendar) || isIslamicCalendarSupported())) {
-                calendars[length++] = IntlUtil.normalizeCAType(calendar);
+            if (!"unknown".equals(calendar) && (!"islamic".equals(calendar) && !"islamic-rgsa".equals(calendar) || includeIslamicCalendars)) {
+                calendars[length++] = IntlUtil.normalizeCAType(calendar, false);
             }
         }
         if (length != calendars.length) {
@@ -992,6 +998,12 @@ public final class IntlUtil {
         return calendars;
     }
 
+    private static final LazyValue<Set<String>> AVAILABLE_CALENDARS = new LazyValue<>(IntlUtil::initAvailableCalendars);
+
+    private static Set<String> initAvailableCalendars() {
+        return Set.copyOf(Arrays.asList(availableCalendars(ULocale.ROOT, false, true)));
+    }
+
     @TruffleBoundary
     public static String canonicalizeCalendar(String id) {
         return canonicalizeCalendar(id, true);
@@ -1000,10 +1012,12 @@ public final class IntlUtil {
     @TruffleBoundary
     public static String canonicalizeCalendar(String id, boolean throwForUnsupported) {
         // AvailableCalendars() in the spec contains aliases,
-        // but our availableCalendars() is normalized already
-        // => we must normalize before the search
+        // but our cached set is normalized already
+        // => we must normalize before the lookup
         String canonical = normalizeCAType(id.toLowerCase(Locale.ROOT), false);
-        if (Arrays.binarySearch(availableCalendars(), canonical) < 0) {
+        boolean supported = AVAILABLE_CALENDARS.get().contains(canonical) &&
+                        (isIslamicCalendarSupported() || (!"islamic".equals(canonical) && !"islamic-rgsa".equals(canonical)));
+        if (!supported) {
             if (throwForUnsupported) {
                 throw Errors.createRangeErrorInvalidCalendar(id);
             } else {
