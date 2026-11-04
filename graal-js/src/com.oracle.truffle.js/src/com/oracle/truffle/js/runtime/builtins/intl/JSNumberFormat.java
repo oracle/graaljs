@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -634,15 +634,17 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
 
     static List<JSObject> innerFormatToParts(JSContext context, JSRealm realm, AttributedCharacterIterator iterator, double value, String formattedValue, String unit, boolean stylePercent) {
         List<JSObject> resultParts = new ArrayList<>();
-        int i = iterator.getBeginIndex();
-        while (i < iterator.getEndIndex()) {
+        int beginIndex = iterator.getBeginIndex();
+        int endIndex = iterator.getEndIndex();
+        int i = beginIndex;
+        while (i < endIndex) {
             iterator.setIndex(i);
             Map<AttributedCharacterIterator.Attribute, Object> attributes = iterator.getAttributes();
             Set<AttributedCharacterIterator.Attribute> attKeySet = attributes.keySet();
             if (!attKeySet.isEmpty()) {
                 for (AttributedCharacterIterator.Attribute a : attKeySet) {
                     if (a instanceof NumberFormat.Field) {
-                        String run = formattedValue.substring(iterator.getRunStart(), iterator.getRunLimit());
+                        String run = formattedValue.substring(iterator.getRunStart() - beginIndex, iterator.getRunLimit() - beginIndex);
                         String type;
                         if (a == NumberFormat.Field.INTEGER) {
                             if (Double.isNaN(value)) {
@@ -668,7 +670,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
                     }
                 }
             } else {
-                String run = formattedValue.substring(iterator.getRunStart(), iterator.getRunLimit());
+                String run = formattedValue.substring(iterator.getRunStart() - beginIndex, iterator.getRunLimit() - beginIndex);
                 resultParts.add(IntlUtil.makePart(context, realm, IntlUtil.LITERAL, run, unit));
                 i = iterator.getRunLimit();
             }
