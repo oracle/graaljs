@@ -303,46 +303,26 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
             if (timeStyleOpt != null || dateStyleOpt != null) {
                 DateFormat styleFormat = dateFormat;
                 if (dateStyleOpt != null) {
-                    state.temporalPlainDateFormat = new LazyDateFormat(
-                                    () -> adjustDateTimeStyleFormat(styleFormat, "GyYuUrQqMLdFgEec", patternGenerator, javaLocale, resolvedHourCycle),
-                                    TimeZone.GMT_ZONE);
-                    state.temporalPlainYearMonthFormat = new LazyDateFormat(
-                                    () -> adjustDateTimeStyleFormat(styleFormat, "GyYuUrQqML", patternGenerator, javaLocale, resolvedHourCycle),
-                                    TimeZone.GMT_ZONE);
-                    state.temporalPlainMonthDayFormat = new LazyDateFormat(
-                                    () -> adjustDateTimeStyleFormat(styleFormat, "MLdFg", patternGenerator, javaLocale, resolvedHourCycle),
-                                    TimeZone.GMT_ZONE);
+                    state.temporalPlainDateFormat = createLazyDateTimeStyleFormat(styleFormat, "GyYuUrQqMLdFgEec", patternGenerator, javaLocale, resolvedHourCycle);
+                    state.temporalPlainYearMonthFormat = createLazyDateTimeStyleFormat(styleFormat, "GyYuUrQqML", patternGenerator, javaLocale, resolvedHourCycle);
+                    state.temporalPlainMonthDayFormat = createLazyDateTimeStyleFormat(styleFormat, "MLdFg", patternGenerator, javaLocale, resolvedHourCycle);
                 }
                 if (timeStyleOpt != null) {
-                    state.temporalPlainTimeFormat = new LazyDateFormat(
-                                    () -> adjustDateTimeStyleFormat(styleFormat, "abBhHkKjJCmsSA", patternGenerator, javaLocale, resolvedHourCycle),
-                                    TimeZone.GMT_ZONE);
+                    state.temporalPlainTimeFormat = createLazyDateTimeStyleFormat(styleFormat, "abBhHkKjJCmsSA", patternGenerator, javaLocale, resolvedHourCycle);
                 }
-                state.temporalPlainDateTimeFormat = new LazyDateFormat(
-                                () -> adjustDateTimeStyleFormat(styleFormat, "GyYuUrQqMLdFgEecabBhHkKjJCmsSA", patternGenerator, javaLocale, resolvedHourCycle),
-                                TimeZone.GMT_ZONE);
+                state.temporalPlainDateTimeFormat = createLazyDateTimeStyleFormat(styleFormat, "GyYuUrQqMLdFgEecabBhHkKjJCmsSA", patternGenerator, javaLocale, resolvedHourCycle);
                 state.temporalInstanceFormat = new LazyDateFormat(() -> styleFormat, timeZone);
             } else {
-                state.temporalPlainDateFormat = new LazyDateFormat(
-                                () -> getDateTimeFormat(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, null, null, null, null, null, -1, null, Required.DATE, Defaults.DATE, false,
-                                                anyPresent, patternGenerator, javaLocale, null),
-                                TimeZone.GMT_ZONE);
-                state.temporalPlainYearMonthFormat = new LazyDateFormat(
-                                () -> getDateTimeFormat(null, eraOpt, yearOpt, monthOpt, null, null, null, null, null, null, -1, null, Required.YEAR_MONTH, Defaults.YEAR_MONTH, false,
-                                                anyPresent, patternGenerator, javaLocale, null),
-                                TimeZone.GMT_ZONE);
-                state.temporalPlainMonthDayFormat = new LazyDateFormat(
-                                () -> getDateTimeFormat(null, null, null, monthOpt, dayOpt, null, null, null, null, null, -1, null, Required.MONTH_DAY, Defaults.MONTH_DAY, false,
-                                                anyPresent, patternGenerator, javaLocale, null),
-                                TimeZone.GMT_ZONE);
-                state.temporalPlainTimeFormat = new LazyDateFormat(
-                                () -> getDateTimeFormat(null, null, null, null, null, dayPeriodOpt, hourOpt, resolvedHourCycle, minuteOpt, secondOpt, fractionalSecondDigitsOpt, null, Required.TIME,
-                                                Defaults.TIME, false, anyPresent, patternGenerator, javaLocale, null),
-                                TimeZone.GMT_ZONE);
-                state.temporalPlainDateTimeFormat = new LazyDateFormat(
-                                () -> getDateTimeFormat(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, dayPeriodOpt, hourOpt, resolvedHourCycle, minuteOpt, secondOpt, fractionalSecondDigitsOpt,
-                                                null, Required.ANY, Defaults.ALL, false, anyPresent, patternGenerator, javaLocale, null),
-                                TimeZone.GMT_ZONE);
+                state.temporalPlainDateFormat = createLazyDateTimeFormat(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, null, null, null, null, null, -1, Required.DATE, Defaults.DATE,
+                                anyPresent, patternGenerator, javaLocale);
+                state.temporalPlainYearMonthFormat = createLazyDateTimeFormat(null, eraOpt, yearOpt, monthOpt, null, null, null, null, null, null, -1, Required.YEAR_MONTH, Defaults.YEAR_MONTH,
+                                anyPresent, patternGenerator, javaLocale);
+                state.temporalPlainMonthDayFormat = createLazyDateTimeFormat(null, null, null, monthOpt, dayOpt, null, null, null, null, null, -1, Required.MONTH_DAY, Defaults.MONTH_DAY,
+                                anyPresent, patternGenerator, javaLocale);
+                state.temporalPlainTimeFormat = createLazyDateTimeFormat(null, null, null, null, null, dayPeriodOpt, hourOpt, resolvedHourCycle, minuteOpt, secondOpt, fractionalSecondDigitsOpt,
+                                Required.TIME, Defaults.TIME, anyPresent, patternGenerator, javaLocale);
+                state.temporalPlainDateTimeFormat = createLazyDateTimeFormat(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, dayPeriodOpt, hourOpt, resolvedHourCycle, minuteOpt, secondOpt,
+                                fractionalSecondDigitsOpt, Required.ANY, Defaults.ALL, anyPresent, patternGenerator, javaLocale);
                 Defaults instantDefaults = (toLocaleStringTimeZone == null) ? Defaults.ALL : Defaults.ZONED_DATE_TIME;
                 state.temporalInstanceFormat = new LazyDateFormat(
                                 () -> getDateTimeFormat(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, dayPeriodOpt, hourOpt, resolvedHourCycle, minuteOpt, secondOpt, fractionalSecondDigitsOpt,
@@ -375,6 +355,33 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
 
         state.timeZone = timeZoneId;
         state.initialized = true;
+    }
+
+    private static LazyDateFormat createLazyDateTimeStyleFormat(DateFormat dateFormat, String allowed, DateTimePatternGenerator patternGenerator, Locale javaLocale, String hc) {
+        return new LazyDateFormat(() -> adjustDateTimeStyleFormat(dateFormat, allowed, patternGenerator, javaLocale, hc), TimeZone.GMT_ZONE);
+    }
+
+    private static LazyDateFormat createLazyDateTimeFormat(
+                    String weekday,
+                    String era,
+                    String year,
+                    String month,
+                    String day,
+                    String dayPeriod,
+                    String hour,
+                    String hc,
+                    String minute,
+                    String second,
+                    int fractionalSecondDigits,
+                    Required required,
+                    Defaults defaults,
+                    boolean anyPresent,
+                    DateTimePatternGenerator patternGenerator,
+                    Locale javaLocale) {
+        return new LazyDateFormat(
+                        () -> getDateTimeFormat(weekday, era, year, month, day, dayPeriod, hour, hc, minute, second, fractionalSecondDigits, null, required, defaults, false,
+                                        anyPresent, patternGenerator, javaLocale, null),
+                        TimeZone.GMT_ZONE);
     }
 
     private static void configureDateFormat(DateFormat dateFormat, TimeZone timeZone) {
