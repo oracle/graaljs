@@ -645,8 +645,9 @@ public abstract class JSAbstractArray extends JSNonProxy {
             return DefinePropertyUtil.reject(doThrow, LENGTH_PROPERTY_NOT_WRITABLE);
         }
 
+        boolean success;
         try {
-            setLength(thisObj, len, doThrow);
+            success = setLength(thisObj, len, doThrow);
         } finally {
             int newAttr = JSAttributes.fromConfigurableEnumerableWritable(newConfigurable, newEnumerable, newWritable);
             JSObjectUtil.changePropertyFlags(thisObj, LENGTH, newAttr);
@@ -656,7 +657,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
             setLengthNotWritable(thisObj);
         }
 
-        return true;
+        return success;
     }
 
     /**
