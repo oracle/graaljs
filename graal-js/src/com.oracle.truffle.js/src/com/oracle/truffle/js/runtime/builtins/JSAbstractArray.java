@@ -651,10 +651,9 @@ public abstract class JSAbstractArray extends JSNonProxy {
         } finally {
             int newAttr = JSAttributes.fromConfigurableEnumerableWritable(newConfigurable, newEnumerable, newWritable);
             JSObjectUtil.changePropertyFlags(thisObj, LENGTH, newAttr);
-        }
-
-        if (!newWritable) {
-            setLengthNotWritable(thisObj);
+            if (!newWritable) {
+                setLengthNotWritable(thisObj);
+            }
         }
 
         return success;

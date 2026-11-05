@@ -32,6 +32,18 @@ for (const createArray of arrayFactories) {
             const lengthDescriptor = Object.getOwnPropertyDescriptor(array, "length");
             assertSame(2, lengthDescriptor.value);
             assertSame(descriptor.writable !== false, lengthDescriptor.writable);
+            if (descriptor.writable === false) {
+                array[2] = 3;
+                assertSame(2, array.length);
+                assertFalse(Object.hasOwn(array, "2"));
+                assertThrows(function() {
+                    "use strict";
+                    array[2] = 3;
+                }, TypeError);
+                assertFalse(Reflect.set(array, "2", 3));
+                assertSame(2, array.length);
+                assertFalse(Object.hasOwn(array, "2"));
+            }
         }
     }
 }
