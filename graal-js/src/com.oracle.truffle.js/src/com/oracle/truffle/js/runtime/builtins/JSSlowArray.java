@@ -134,9 +134,6 @@ public final class JSSlowArray extends JSAbstractArray {
             }
         }
 
-        if (this.getLength(thisObj) <= index) {
-            this.setLength(thisObj, (index + 1), doThrow);
-        }
         ScriptArray arrayType = arrayGetArrayType(thisObj);
         if (arrayType.hasElement(thisObj, index) && !JSOrdinary.INSTANCE.hasOwnProperty(thisObj, name)) {
             // replace with a regular property first
@@ -156,6 +153,9 @@ public final class JSSlowArray extends JSAbstractArray {
         if (!succeeded) {
             JSContext context = JavaScriptLanguage.getCurrentLanguage().getJSContext();
             return DefinePropertyUtil.reject(doThrow, context.isOptionNashornCompatibilityMode() ? "cannot set property" : "Cannot redefine property");
+        }
+        if (this.getLength(thisObj) <= index) {
+            this.setLength(thisObj, (index + 1), doThrow);
         }
         return true;
     }
