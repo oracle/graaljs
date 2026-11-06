@@ -64,6 +64,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -155,6 +156,9 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
             TruffleLanguage.Env env = realm.getEnv();
             URI parentURL = getFullPath(referencingModule).toUri();
             URI resolution = esmResolve(specifier, parentURL, env);
+            if (resolution.isOpaque()) {
+                return loadModuleFromOpaqueURI(referencingModule, moduleRequest, resolution);
+            }
             Format format;
 
             // If resolved is a "file:" URL, then
@@ -196,6 +200,62 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
             log("IMPORT resolve ", specifier, " FAILED ", e.getMessage());
             throw Errors.createErrorFromException(e);
         }
+    }
+
+    private AbstractModuleRecord loadModuleFromOpaqueURI(ScriptOrModule referrer, ModuleRequest moduleRequest, URI moduleURI) throws IOException {
+        CanonicalModuleKey moduleKey = getOpaqueModuleKey(moduleURI, moduleRequest);
+        ModuleRequest filteredRequest = moduleRequest.withAttributes(moduleKey.importAttributes());
+        AbstractModuleRecord existingModule = lookupLoadedModule(moduleKey);
+        if (existingModule != null) {
+            return existingModule;
+        }
+
+        TruffleLanguage.Env env = realm.getEnv();
+        if (!env.isFileIOAllowed()) {
+            throw failUnsupportedURLScheme(moduleURI);
+        }
+        TruffleFile moduleFile;
+        try {
+            moduleFile = env.getPublicTruffleFile(moduleURI);
+        } catch (IllegalArgumentException | UnsupportedOperationException e) {
+            throw failUnsupportedURLScheme(moduleURI);
+        }
+        // Validate the mapped file and infer its format using the existing Node.js algorithm.
+        moduleFile = moduleFile.getAbsoluteFile();
+        if (moduleFile.toUri().isOpaque()) {
+            // Archive targets require archive-aware dependency and package resolution.
+            throw failUnsupportedURLScheme(moduleURI);
+        }
+        validateModuleFile(moduleFile, moduleURI.toString());
+        moduleFile = moduleFile.normalize();
+        if (esmFileFormat(moduleFile, env) == Format.CommonJS) {
+            return tryLoadingAsCommonjsModule(referrer, filteredRequest, moduleFile.getPath(), moduleKey);
+        }
+        // Preserve URI-based identity, as in DefaultESModuleLoader's custom file system loading.
+        return loadModuleFromFile(referrer, filteredRequest, moduleFile, moduleKey.canonicalPath());
+    }
+
+    private CanonicalModuleKey getOpaqueModuleKey(URI uri, ModuleRequest moduleRequest) {
+        Map<TruffleString, TruffleString> attributes = moduleRequest.attributes();
+        var supportedAttributes = realm.getContext().getSupportedImportAttributes();
+        if (!supportedAttributes.containsAll(attributes.keySet())) {
+            attributes = new HashMap<>(attributes);
+            attributes.keySet().retainAll(supportedAttributes);
+        }
+        return new CanonicalModuleKey(uri.toString(), attributes);
+    }
+
+    @Override
+    public AbstractModuleRecord addLoadedModule(ModuleRequest moduleRequest, AbstractModuleRecord moduleRecord) {
+        URI uri = asURI(moduleRequest.specifier().toJavaStringUncached());
+        if (uri != null && uri.isOpaque()) {
+            AbstractModuleRecord existingModule = lookupLoadedModule(getOpaqueModuleKey(uri, moduleRequest));
+            if (existingModule == moduleRecord) {
+                // Do not merge different opaque URI imports through their mapped source path.
+                return existingModule;
+            }
+        }
+        return super.addLoadedModule(moduleRequest, moduleRecord);
     }
 
     private AbstractModuleRecord loadCoreModuleReplacement(ScriptOrModule referencingModule, ModuleRequest moduleRequest, String moduleReplacementName) {
@@ -244,7 +304,10 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
     }
 
     private AbstractModuleRecord tryLoadingAsCommonjsModule(ScriptOrModule referencingModule, ModuleRequest moduleRequest, String specifier) {
-        CanonicalModuleKey moduleKey = new CanonicalModuleKey(specifier, Map.of());
+        return tryLoadingAsCommonjsModule(referencingModule, moduleRequest, specifier, new CanonicalModuleKey(specifier, Map.of()));
+    }
+
+    private AbstractModuleRecord tryLoadingAsCommonjsModule(ScriptOrModule referencingModule, ModuleRequest moduleRequest, String specifier, CanonicalModuleKey moduleKey) {
         AbstractModuleRecord existingModule = lookupLoadedModule(moduleKey);
         if (existingModule != null) {
             log("IMPORT resolve built-in from cache ", specifier);
@@ -365,16 +428,7 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
                 // 7.1.1 Throw an Invalid Module Specifier error.
                 throw fail(INVALID_MODULE_SPECIFIER, specifier);
             }
-            // 7.2 If the file at resolved is a directory, then
-            if (isDirectory(resolved, env)) {
-                // 7.2.1 Throw an Unsupported Directory Import error.
-                throw fail(UNSUPPORTED_DIRECTORY_IMPORT, specifier);
-            }
-            // 7.3 If the file at resolved does not exist, then
-            if (!fileExists(resolved, env)) {
-                // 7.3.1 Throw a Module Not Found error.
-                throw fail(MODULE_NOT_FOUND, specifier);
-            }
+            validateModuleFile(env.getPublicTruffleFile(resolved), specifier);
             // 7.4 Set resolved to the real path of resolved, maintaining the same URL querystring
             // and fragment components.
             resolved = resolved.normalize();
@@ -422,17 +476,26 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
     private Format esmFileFormat(URI url, TruffleLanguage.Env env) {
         // 1. Assert: url corresponds to an existing file.
         assert fileExists(url, env);
+        return esmFileFormat(url, url.getPath(), env);
+    }
+
+    private Format esmFileFormat(TruffleFile moduleFile, TruffleLanguage.Env env) {
+        assert CommonJSResolution.fileExists(moduleFile);
+        return esmFileFormat(moduleFile.toUri(), moduleFile.getPath(), env);
+    }
+
+    private Format esmFileFormat(URI url, String path, TruffleLanguage.Env env) {
         // 2. If url ends in ".mjs", Return "module".
-        if (url.getPath().endsWith(MJS_EXT)) {
+        if (path.endsWith(MJS_EXT)) {
             return Format.ESM;
         }
         // 3. If url ends in ".cjs", Return "module".
-        if (url.getPath().endsWith(CJS_EXT)) {
+        if (path.endsWith(CJS_EXT)) {
             // Note: we will try loading as CJS like Node.js does.
             return Format.CommonJS;
         }
         // 4. If url ends in ".mjs", Return "module".
-        if (url.getPath().endsWith(JSON_EXT)) {
+        if (path.endsWith(JSON_EXT)) {
             throw failMessage(UNSUPPORTED_JSON);
         }
         // - 5. If url ends in ".wasm", then
@@ -454,7 +517,7 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
             }
         }
         // 11. If url ends in ".js", then
-        if (url.getPath().endsWith(JS_EXT)) {
+        if (path.endsWith(JS_EXT)) {
             // 11.1 If packageType is not null, then
             if (packageType != null) {
                 // 11.1.1 Return packageType.
@@ -1044,8 +1107,15 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
         return Format.CommonJS;
     }
 
-    private static boolean isDirectory(URI resolved, TruffleLanguage.Env env) {
-        return env.getPublicTruffleFile(resolved).isDirectory();
+    private static void validateModuleFile(TruffleFile moduleFile, String specifier) {
+        // 7.2 If the file at resolved is a directory, throw an Unsupported Directory Import error.
+        if (moduleFile.isDirectory()) {
+            throw fail(UNSUPPORTED_DIRECTORY_IMPORT, specifier);
+        }
+        // 7.3 If the file at resolved does not exist, throw a Module Not Found error.
+        if (!CommonJSResolution.fileExists(moduleFile)) {
+            throw fail(MODULE_NOT_FOUND, specifier);
+        }
     }
 
     private static URI resolveRelativeToParent(String specifier, URI parentURL) {
