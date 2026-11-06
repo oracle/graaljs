@@ -707,6 +707,28 @@ public class CommonJSRequireTest {
     }
 
     @Test
+    public void unsupportedOpaqueUrl() throws IOException {
+        for (String specifier : new String[]{"myapp:module", "myapp:module.mjs"}) {
+            Source source = Source.newBuilder(ID, new File("opaque-url.mjs")).content("import '" + specifier + "';").build();
+            try (Context context = testContext(getDefaultOptions())) {
+                JSTest.assertThrows(() -> context.eval(source), exception -> {
+                    Assert.assertTrue(exception.getMessage(), exception.isGuestException());
+                    Assert.assertFalse(exception.getMessage(), exception.isInternalError());
+                    Assert.assertEquals("TypeError: Unsupported URL scheme: 'myapp:'", exception.getMessage());
+                });
+            }
+        }
+    }
+
+    @Test
+    public void unsupportedOpaqueUrlDynamicImport() throws IOException {
+        for (String specifier : new String[]{"myapp:module", "myapp:module.mjs"}) {
+            String src = "import('" + specifier + "').then(x => {throw 'unexpected'}).catch(console.log);";
+            runAndExpectOutput(src, "TypeError: Unsupported URL scheme: 'myapp:'\n");
+        }
+    }
+
+    @Test
     public void dynamicImportCommonJs() throws IOException {
         final String src = "import('with-package').then(x => {console.log(x.foo)}).catch(console.log);";
         runAndExpectOutput(src, "42\n");

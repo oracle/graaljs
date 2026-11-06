@@ -106,6 +106,7 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
     private static final String FAILED_BUILTIN = "Failed to load built-in ES module: '";
     private static final String INVALID_MODULE_SPECIFIER = "Invalid module specifier: '";
     private static final String UNSUPPORTED_FILE_EXTENSION = "Unsupported file extension: '";
+    private static final String UNSUPPORTED_URL_SCHEME = "Unsupported URL scheme: '";
     private static final String INVALID_PACKAGE_TARGET = "Invalid package export: '";
     private static final String PACKAGE_PATH_NOT_EXPORTED = "Package subpath is not defined by \"exports\" field: '";
     private static final String PACKAGE_IMPORT_NOT_DEFINED = "Packages imports do not define the specifier: '";
@@ -1008,7 +1009,7 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
     }
 
     private static boolean isFileURI(URI maybe) {
-        return maybe != null && maybe.getScheme().equals(FILE);
+        return maybe != null && FILE.equals(maybe.getScheme());
     }
 
     private static URI getPackageUrl(String packageSpecifier, TruffleFile parentURL) {
@@ -1031,8 +1032,12 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
     }
 
     private static Format getAssociatedDefaultFormat(URI resolved) {
-        assert resolved.getPath() != null;
-        if (resolved.getPath().endsWith(MJS_EXT)) {
+        String path = resolved.getPath();
+        if (path == null) {
+            // Opaque URLs have no hierarchical path and no supported default module format.
+            throw failUnsupportedURLScheme(resolved);
+        }
+        if (path.endsWith(MJS_EXT)) {
             return Format.ESM;
         }
         // By default, try loading as CJS if not .mjs
@@ -1053,6 +1058,10 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
             refPath = realm.getContextOptions().getRequireCwd();
         }
         return realm.getEnv().getPublicTruffleFile(refPath);
+    }
+
+    private static JSException failUnsupportedURLScheme(URI uri) {
+        return fail(UNSUPPORTED_URL_SCHEME, uri.getScheme() + ":");
     }
 
     @TruffleBoundary
