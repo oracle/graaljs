@@ -54,11 +54,13 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateDataPropertyNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.ObjectLiteralMemberNode;
 import com.oracle.truffle.js.nodes.access.PrivateBrandCheckNode;
 import com.oracle.truffle.js.nodes.access.PrivateFieldGetNode;
@@ -492,12 +494,18 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
         CompilerAsserts.neverPartOfCompilation();
         assert JSRuntime.isPropertyKey(name) : name;
         CallTarget getter = new JavaScriptRootNode(context.getLanguage()) {
+            private final BranchProfile errorBranch = BranchProfile.create();
+            @Child private IsObjectNode isObjectNode = IsObjectNode.create();
             @Child private PropertyGetNode propertyGetNode = PropertyGetNode.create(name, context);
 
             @Override
             public Object execute(VirtualFrame frame) {
                 Object[] args = frame.getArguments();
                 Object target = JSArguments.getUserArgumentCount(args) > 0 ? JSArguments.getUserArgument(args, 0) : Undefined.instance;
+                if (!isObjectNode.executeBoolean(target)) {
+                    errorBranch.enter();
+                    throw Errors.createTypeErrorNotAnObject(target, this);
+                }
                 return propertyGetNode.getValue(target);
             }
         }.getCallTarget();
@@ -509,12 +517,18 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
         CompilerAsserts.neverPartOfCompilation();
         assert JSRuntime.isPropertyKey(name) : name;
         CallTarget callTarget = new JavaScriptRootNode(context.getLanguage()) {
+            private final BranchProfile errorBranch = BranchProfile.create();
+            @Child private IsObjectNode isObjectNode = IsObjectNode.create();
             @Child private PropertySetNode propertySetNode = PropertySetNode.create(name, false, context, true);
 
             @Override
             public Object execute(VirtualFrame frame) {
                 Object[] args = frame.getArguments();
                 Object target = JSArguments.getUserArgumentCount(args) > 0 ? JSArguments.getUserArgument(args, 0) : Undefined.instance;
+                if (!isObjectNode.executeBoolean(target)) {
+                    errorBranch.enter();
+                    throw Errors.createTypeErrorNotAnObject(target, this);
+                }
                 Object newValue = JSArguments.getUserArgumentCount(args) > 1 ? JSArguments.getUserArgument(args, 1) : Undefined.instance;
                 propertySetNode.setValue(target, newValue);
                 return Undefined.instance;
@@ -596,6 +610,8 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     protected static JSFunctionData createGetterFromPropertyUncached(JSContext context) {
         CompilerAsserts.neverPartOfCompilation();
         CallTarget callTarget = new JavaScriptRootNode(context.getLanguage()) {
+            private final BranchProfile errorBranch = BranchProfile.create();
+            @Child private IsObjectNode isObjectNode = IsObjectNode.create();
             @Child private PropertyGetNode getElementRecord = PropertyGetNode.createGetHidden(ELEMENT_RECORD_KEY, context);
             @Child private ReadElementNode propertyGetNode = ReadElementNode.create(context);
 
@@ -603,6 +619,10 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
             public Object execute(VirtualFrame frame) {
                 Object[] args = frame.getArguments();
                 Object target = JSArguments.getUserArgumentCount(args) > 0 ? JSArguments.getUserArgument(args, 0) : Undefined.instance;
+                if (!isObjectNode.executeBoolean(target)) {
+                    errorBranch.enter();
+                    throw Errors.createTypeErrorNotAnObject(target, this);
+                }
                 Object function = JSFrameUtil.getFunctionObject(frame);
                 ClassElementDefinitionRecord record = (ClassElementDefinitionRecord) getElementRecord.getValue(function);
                 assert !record.isPrivate();
@@ -616,6 +636,8 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     protected static JSFunctionData createSetterFromPropertyUncached(JSContext context) {
         CompilerAsserts.neverPartOfCompilation();
         CallTarget callTarget = new JavaScriptRootNode(context.getLanguage()) {
+            private final BranchProfile errorBranch = BranchProfile.create();
+            @Child private IsObjectNode isObjectNode = IsObjectNode.create();
             @Child private PropertyGetNode getElementRecord = PropertyGetNode.createGetHidden(ELEMENT_RECORD_KEY, context);
             @Child private WriteElementNode propertySetNode = WriteElementNode.create(context, false);
 
@@ -623,6 +645,10 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
             public Object execute(VirtualFrame frame) {
                 Object[] args = frame.getArguments();
                 Object target = JSArguments.getUserArgumentCount(args) > 0 ? JSArguments.getUserArgument(args, 0) : Undefined.instance;
+                if (!isObjectNode.executeBoolean(target)) {
+                    errorBranch.enter();
+                    throw Errors.createTypeErrorNotAnObject(target, this);
+                }
                 Object function = JSFrameUtil.getFunctionObject(frame);
                 ClassElementDefinitionRecord record = (ClassElementDefinitionRecord) getElementRecord.getValue(function);
                 assert !record.isPrivate();

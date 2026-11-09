@@ -73,8 +73,8 @@ function f(value, context) { globalThis.context = context; }
 
 class C6 { @f static [Symbol('foo')] }
 
-assertSame(undefined, context.access.get('foo'));
-assertSame(undefined, context.access.set('foo'));
+assertThrows(() => context.access.get('foo'), TypeError);
+assertThrows(() => context.access.set('foo'), TypeError);
 
 
 //---------------------------------------------//

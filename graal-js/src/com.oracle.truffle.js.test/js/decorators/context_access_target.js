@@ -11,6 +11,8 @@
 
 load('../assert.js');
 
+const primitiveTargets = [undefined, null, false, true, 0, 1, NaN, 1n, '', 'foo', Symbol('target')];
+
 for (const isStatic of [false, true]) {
     for (const isPrivate of [false, true]) {
         const prefix = isStatic ? 'static ' : '';
@@ -48,6 +50,9 @@ for (const isStatic of [false, true]) {
                         assertSame(expected, get.call(receiver, target, 'ignored'));
                     }
                     assertThrows(() => get.call(target), TypeError);
+                    for (const primitive of primitiveTargets) {
+                        assertThrows(() => get(primitive), TypeError);
+                    }
                     if (isPrivate) {
                         assertThrows(() => get.call(target, {}), TypeError);
                     }
@@ -64,11 +69,73 @@ for (const isStatic of [false, true]) {
                     assertSame(undefined, set(target));
                     assertSame(undefined, kind === 'setter' ? target.value : target.read());
                     assertThrows(() => set.call(target), TypeError);
+                    for (const primitive of primitiveTargets) {
+                        assertThrows(() => set(primitive, 213), TypeError);
+                    }
                     if (isPrivate) {
                         assertThrows(() => set.call(target, {}, 213), TypeError);
+                    }
+                }
+                if (!isPrivate) {
+                    // Primitive targets must be rejected before invoking prototype accessors.
+                    let accessorCalls = 0;
+                    const prototypes = [Boolean.prototype, Number.prototype, BigInt.prototype, String.prototype, Symbol.prototype];
+                    for (const prototype of prototypes) {
+                        Object.defineProperty(prototype, key, {
+                            configurable: true,
+                            get() { accessorCalls++; return 42; },
+                            set(v) { accessorCalls++; }
+                        });
+                    }
+                    try {
+                        for (const primitive of primitiveTargets) {
+                            if (get !== undefined) {
+                                assertThrows(() => get(primitive), TypeError);
+                            }
+                            if (set !== undefined) {
+                                assertThrows(() => set(primitive, 213), TypeError);
+                            }
+                        }
+                        assertSame(0, accessorCalls);
+                    } finally {
+                        for (const prototype of prototypes) {
+                            delete prototype[key];
+                        }
+                    }
+
+                    // Boxed primitives are objects and remain valid targets.
+                    for (const boxed of [Object(false), Object(1), Object(1n), Object('foo'), Object(Symbol())]) {
+                        Object.defineProperty(boxed, key, {value: 42, writable: true});
+                        if (get !== undefined) {
+                            assertSame(42, get(boxed));
+                        }
+                        if (set !== undefined) {
+                            assertSame(undefined, set(boxed, 213));
+                            assertSame(213, boxed[key]);
+                        }
                     }
                 }
             }
         }
     }
+}
+
+// Foreign objects remain valid targets in both cached and generic access functions.
+const ProxyObject = Java.type('org.graalvm.polyglot.proxy.ProxyObject');
+const LinkedHashMap = Java.type('java.util.LinkedHashMap');
+let foreignAccess;
+function decorateForeign(value, context) {
+    foreignAccess = context.access;
+}
+function createForeignClass(key) {
+    return class { @decorateForeign [key]; };
+}
+for (const key of ['a', 'b', 'c', 'd', 'e']) {
+    createForeignClass(key);
+    const members = new LinkedHashMap();
+    members.put(key, 42);
+    const target = ProxyObject.fromMap(members);
+    assertSame(42, foreignAccess.get(target));
+    assertSame(undefined, foreignAccess.set(target, 213));
+    assertSame(213, foreignAccess.get(target));
 }
