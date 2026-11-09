@@ -475,12 +475,10 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
      */
     private Format esmFileFormat(URI url, TruffleLanguage.Env env) {
         // 1. Assert: url corresponds to an existing file.
-        assert fileExists(url, env);
         return esmFileFormat(url, url.getPath(), env);
     }
 
     private Format esmFileFormat(TruffleFile moduleFile, TruffleLanguage.Env env) {
-        assert CommonJSResolution.fileExists(moduleFile);
         return esmFileFormat(moduleFile.toUri(), moduleFile.getPath(), env);
     }
 
