@@ -639,7 +639,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
             private final BranchProfile errorBranch = BranchProfile.create();
             @Child private IsObjectNode isObjectNode = IsObjectNode.create();
             @Child private PropertyGetNode getElementRecord = PropertyGetNode.createGetHidden(ELEMENT_RECORD_KEY, context);
-            @Child private WriteElementNode propertySetNode = WriteElementNode.create(context, false);
+            @Child private WriteElementNode propertySetNode = WriteElementNode.create(context, true);
 
             @Override
             public Object execute(VirtualFrame frame) {

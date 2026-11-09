@@ -74,6 +74,21 @@ for (const isStatic of [false, true]) {
                     }
                     if (isPrivate) {
                         assertThrows(() => set.call(target, {}, 213), TypeError);
+                    } else {
+                        const readOnly = Object.defineProperty({}, key, {value: 42});
+                        assertThrows(() => set(readOnly, 213), TypeError);
+                        assertSame(42, readOnly[key]);
+
+                        const getterOnly = Object.defineProperty({}, key, {get() { return 42; }});
+                        assertThrows(() => set(getterOnly, 213), TypeError);
+                        assertSame(42, getterOnly[key]);
+
+                        const nonExtensible = Object.preventExtensions({});
+                        assertThrows(() => set(nonExtensible, 213), TypeError);
+                        assertFalse(Object.hasOwn(nonExtensible, key));
+
+                        const rejectingProxy = new Proxy({}, {set() { return false; }});
+                        assertThrows(() => set(rejectingProxy, 213), TypeError);
                     }
                 }
                 if (!isPrivate) {
