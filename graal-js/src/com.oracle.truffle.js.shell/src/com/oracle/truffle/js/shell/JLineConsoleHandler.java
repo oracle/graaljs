@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,7 +61,7 @@ public class JLineConsoleHandler implements ConsoleHandler {
     private final String prompt;
 
     public JLineConsoleHandler(InputStream inStream, OutputStream outStream, String prompt) throws IOException {
-        this.terminal = TerminalBuilder.builder().jna(false).streams(inStream, outStream).system(true).build();
+        this.terminal = TerminalBuilder.builder().streams(inStream, outStream).system(true).build();
         this.history = new DefaultHistory();
         this.prompt = prompt;
 
