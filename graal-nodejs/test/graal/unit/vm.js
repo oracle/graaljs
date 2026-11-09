@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -96,6 +96,15 @@ describe('vm', function () {
             vm.compileFunction('return varInContext', [], { parsingContext: vm.createContext({varInContext: 'abc'}) })(),
             'abc'
         );
+    });
+    it('should restore the current realm after execution is terminated', function () {
+        var context = vm.createContext({});
+        assert.throws(function () {
+            vm.runInContext('while (true) {}', context, {timeout: 20});
+        }, {
+            code: 'ERR_SCRIPT_EXECUTION_TIMEOUT'
+        });
+        assert.strictEqual(typeof setTimeout, 'function');
     });
     it('should have correct globalThis', function () {
         var sandbox = {};

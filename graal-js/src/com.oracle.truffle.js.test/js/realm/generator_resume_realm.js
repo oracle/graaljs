@@ -16,7 +16,7 @@
  * @option v8-realm-builtin=true
  */
 
-load('./assert.js');
+load('../assert.js');
 
 const methodRealm = Realm.createAllowCrossRealmAccess();
 const generatorRealm = Realm.createAllowCrossRealmAccess();
@@ -111,3 +111,8 @@ throwing.next();
 const bodyError = thrownValue(() => methods.next.call(throwing));
 assertSame(generatorGlobal.Error.prototype, Object.getPrototypeOf(bodyError));
 assertCompleted(methods.next.call(throwing), undefined);
+
+const recursivelyDelegating = Realm.eval(generatorRealm, '(function* recurse() { yield* recurse(); })')();
+const overflow = thrownValue(() => methods.next.call(recursivelyDelegating));
+assertSame(generatorGlobal.RangeError.prototype, Object.getPrototypeOf(overflow));
+assertCompleted(methods.next.call(recursivelyDelegating), undefined);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,14 +46,13 @@ import java.util.List;
 import java.util.Map;
 
 import com.oracle.js.parser.ir.Module.ModuleRequest;
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeUtil;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
@@ -311,13 +310,11 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         @Specialization
         protected Object dumpFunctionTree(Object functionObj) {
             if (JSFunction.isJSFunction(functionObj)) {
-                CallTarget target = JSFunction.getCallTarget((JSFunctionObject) functionObj);
-                if (target instanceof RootCallTarget) {
-                    NodeUtil.printTree(getRealm().getOutputWriter(), ((RootCallTarget) target).getRootNode());
-                    return Undefined.instance;
-                } else {
+                RootNode rootNode = JSFunction.getFunctionRootNode((JSFunctionObject) functionObj);
+                if (rootNode == null) {
                     throw Errors.shouldNotReachHere();
                 }
+                NodeUtil.printTree(getRealm().getOutputWriter(), rootNode);
             }
             return Undefined.instance;
         }
@@ -403,11 +400,8 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         @TruffleBoundary
         @Specialization
         protected Object printSourceAttribution(JSFunctionObject function) {
-            CallTarget callTarget = JSFunction.getCallTarget(function);
-            if (callTarget instanceof RootCallTarget) {
-                return Strings.fromJavaString(NodeUtil.printSourceAttributionTree(((RootCallTarget) callTarget).getRootNode()));
-            }
-            return Undefined.instance;
+            RootNode rootNode = JSFunction.getFunctionRootNode(function);
+            return rootNode == null ? Undefined.instance : Strings.fromJavaString(NodeUtil.printSourceAttributionTree(rootNode));
         }
 
         @TruffleBoundary
@@ -538,6 +532,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
             TruffleString name = JSRuntime.toString(nameObj);
             JSDynamicObject modulesSourceMap = (JSDynamicObject) modulesSourceMapObj;
             Evaluator evaluator = getContext().getEvaluator();
+            JSRealm realm = getRealm();
             JSModuleLoader moduleLoader = new JSModuleLoader() {
                 private final Map<TruffleString, JSModuleRecord> moduleMap = new HashMap<>();
 
@@ -553,11 +548,10 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                 @Override
                 public JSModuleRecord resolveImportedModule(ScriptOrModule referencingModule, ModuleRequest moduleRequest) {
                     return moduleMap.computeIfAbsent(moduleRequest.specifier(),
-                                    (key) -> new JSModuleRecord(evaluator.envParseModule(JSRealm.get(null), resolveModuleSource(referencingModule, key)), this));
+                                    (key) -> new JSModuleRecord(evaluator.envParseModule(realm, resolveModuleSource(referencingModule, key)), this));
                 }
             };
             AbstractModuleRecord module = moduleLoader.resolveImportedModule(null, ModuleRequest.create(name));
-            JSRealm realm = getRealm();
             module.loadRequestedModulesSync(realm, Undefined.instance);
             module.link(realm);
             return module.evaluate(realm);

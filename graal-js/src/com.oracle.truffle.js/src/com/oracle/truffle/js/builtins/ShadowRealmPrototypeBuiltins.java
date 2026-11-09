@@ -74,6 +74,7 @@ import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
+import com.oracle.truffle.js.nodes.function.AbstractFunctionRootNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -91,7 +92,6 @@ import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JavaScriptRealmBoundaryRootNode;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -359,7 +359,7 @@ public final class ShadowRealmPrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         private static JSFunctionData createExportGetterImpl(JSContext context) {
-            final class ExportGetterRootNode extends JavaScriptRealmBoundaryRootNode {
+            final class ExportGetterRootNode extends AbstractFunctionRootNode {
                 @Child private JavaScriptNode argumentNode = AccessIndexedArgumentNode.create(0);
                 @Child private PropertyGetNode getExportNameString = PropertyGetNode.createGetHidden(EXPORT_NAME_STRING, context);
                 @Child private JSHasPropertyNode hasOwnProperty = JSHasPropertyNode.create(true);
@@ -371,7 +371,7 @@ public final class ShadowRealmPrototypeBuiltins extends JSBuiltinsContainer.Swit
                 }
 
                 @Override
-                public Object executeInRealm(VirtualFrame frame) {
+                public Object executeBody(VirtualFrame frame) {
                     JSFunctionObject functionObject = JSFrameUtil.getFunctionObject(frame);
                     TruffleString exportNameString = (TruffleString) getExportNameString.getValue(functionObject);
                     Object exports = argumentNode.execute(frame);

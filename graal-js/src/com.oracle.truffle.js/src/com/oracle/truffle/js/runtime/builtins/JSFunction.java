@@ -52,6 +52,7 @@ import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -201,6 +202,18 @@ public final class JSFunction extends JSNonProxy {
         return getFunctionData(obj).getCallTarget();
     }
 
+    /**
+     * Returns the guest function body root rather than an internal call-target wrapper, if any.
+     */
+    public static RootNode getFunctionRootNode(JSFunctionObject obj) {
+        RootNode rootNode = getFunctionData(obj).getRootNode();
+        if (rootNode != null) {
+            return rootNode;
+        }
+        CallTarget callTarget = getCallTarget(obj);
+        return callTarget instanceof RootCallTarget rootCallTarget ? rootCallTarget.getRootNode() : null;
+    }
+
     public static MaterializedFrame getEnclosingFrame(JSFunctionObject obj) {
         return obj.getEnclosingFrame();
     }
@@ -289,21 +302,121 @@ public final class JSFunction extends JSNonProxy {
     }
 
     public static Object call(JSFunctionObject functionObject, Object thisObject, Object[] argumentValues) {
-        assert thisObject != null;
         Object[] arguments = JSArguments.create(thisObject, functionObject, argumentValues);
-        return getCallTarget(functionObject).call(arguments);
+        CallTarget callTarget = getCallTarget(functionObject);
+        return callTarget(callTarget, arguments, null, functionObject.getFunctionData().callTargetNeedsRealmTransition());
     }
 
     public static Object call(Object[] jsArguments) {
-        assert JSFunction.isJSFunction(JSArguments.getFunctionObject(jsArguments));
-        assert JSArguments.getThisObject(jsArguments) != null;
-        return getCallTarget((JSFunctionObject) JSArguments.getFunctionObject(jsArguments)).call(jsArguments);
+        JSFunctionObject functionObject = (JSFunctionObject) JSArguments.getFunctionObject(jsArguments);
+        CallTarget callTarget = getCallTarget(functionObject);
+        return callTarget(callTarget, jsArguments, null, functionObject.getFunctionData().callTargetNeedsRealmTransition());
+    }
+
+    /**
+     * Calls a known non-bound function without checking the realm-transition policy.
+     */
+    public static Object callInFunctionRealm(JSFunctionObject functionObject, Object thisObject, Object[] argumentValues) {
+        Object[] arguments = JSArguments.create(thisObject, functionObject, argumentValues);
+        return callTargetInFunctionRealm(getCallTarget(functionObject), arguments, null);
+    }
+
+    public static Object callInFunctionRealm(Object[] jsArguments) {
+        JSFunctionObject functionObject = (JSFunctionObject) JSArguments.getFunctionObject(jsArguments);
+        return callTargetInFunctionRealm(getCallTarget(functionObject), jsArguments, null);
+    }
+
+    /**
+     * Constructs using a known built-in constructor whose outer target executes in its realm.
+     */
+    public static Object constructInFunctionRealm(JSFunctionObject functionObject, Object[] argumentValues) {
+        assert functionObject.getFunctionData().constructTargetNeedsRealmTransition();
+        Object[] arguments = JSArguments.create(CONSTRUCT, functionObject, argumentValues);
+        return callTargetInFunctionRealm(getConstructTarget(functionObject), arguments, null);
     }
 
     public static Object construct(JSFunctionObject functionObject, Object[] argumentValues) {
         assert isConstructor(functionObject);
         Object[] arguments = JSArguments.create(CONSTRUCT, functionObject, argumentValues);
-        return getConstructTarget(functionObject).call(arguments);
+        CallTarget callTarget = getConstructTarget(functionObject);
+        return callTarget(callTarget, arguments, null, functionObject.getFunctionData().constructTargetNeedsRealmTransition());
+    }
+
+    public static Object callTargetInFunctionRealm(CallTarget callTarget, Object[] arguments, Node node) {
+        return callTarget(callTarget, arguments, node, true);
+    }
+
+    private static Object callTarget(CallTarget callTarget, Object[] arguments, Node node, boolean needsRealmTransition) {
+        JSRealm previousRealm = needsRealmTransition ? enterFunctionRealm(node, arguments) : null;
+        try {
+            return callTarget.call(arguments);
+        } finally {
+            leaveFunctionRealm(node, previousRealm);
+        }
+    }
+
+    public static Object callIndirectInFunctionRealm(CallTarget callTarget, IndirectCallNode callNode, Object[] arguments) {
+        return callIndirect(callTarget, callNode, arguments, true);
+    }
+
+    public static Object callIndirect(CallTarget callTarget, IndirectCallNode callNode, Object[] arguments, boolean needsRealmTransition) {
+        JSRealm previousRealm = needsRealmTransition ? enterFunctionRealm(callNode, arguments) : null;
+        try {
+            return callNode.call(callTarget, arguments);
+        } finally {
+            leaveFunctionRealm(callNode, previousRealm);
+        }
+    }
+
+    public static Object callDirectInFunctionRealm(DirectCallNode callNode, Object[] arguments) {
+        JSRealm previousRealm = enterFunctionRealm(callNode, arguments);
+        try {
+            return callNode.call(arguments);
+        } finally {
+            leaveFunctionRealm(callNode, previousRealm);
+        }
+    }
+
+    /**
+     * Enters the function realm, returning the previous realm or {@code null} if no transition was
+     * needed.
+     */
+    public static JSRealm enterFunctionRealm(Node node, JSFunctionObject functionObject) {
+        assert functionObject.getFunctionData().callTargetNeedsRealmTransition();
+        if (!JSContext.get(node).neverCreatedChildRealms()) {
+            return enterFunctionRealmImpl(node, functionObject);
+        }
+        return null;
+    }
+
+    /**
+     * Enters the function realm, returning the previous realm or {@code null} if no transition was
+     * needed. Extracts the function object from the call arguments only when child realms have been
+     * created.
+     */
+    public static JSRealm enterFunctionRealm(Node node, Object[] arguments) {
+        assert ((JSFunctionObject) JSArguments.getFunctionObject(arguments)).getFunctionData().callTargetNeedsRealmTransition();
+        if (!JSContext.get(node).neverCreatedChildRealms()) {
+            return enterFunctionRealmImpl(node, (JSFunctionObject) JSArguments.getFunctionObject(arguments));
+        }
+        return null;
+    }
+
+    private static JSRealm enterFunctionRealmImpl(Node node, JSFunctionObject functionObject) {
+        JSRealm functionRealm = functionObject.getRealm();
+        if (JSRealm.get(node) != functionRealm) {
+            return JSRealm.getMain(node).enterRealm(node, functionRealm);
+        }
+        return null;
+    }
+
+    /**
+     * Restores the realm returned by either {@code enterFunctionRealm} overload.
+     */
+    public static void leaveFunctionRealm(Node node, JSRealm previousRealm) {
+        if (previousRealm != null) {
+            JSRealm.getMain(node).leaveRealm(node, previousRealm);
+        }
     }
 
     @TruffleBoundary
@@ -505,8 +618,11 @@ public final class JSFunction extends JSNonProxy {
             Object[] argumentValues = JSArguments.extractUserArguments(originalArguments);
             Object[] arguments = prependBoundArguments(boundArguments, argumentValues);
             if (jsFunctionProfile.profile(JSFunction.isJSFunction(boundTargetFunction))) {
-                Object[] newArguments = JSArguments.create(boundThis, boundTargetFunction, arguments);
-                return callNode.call(JSFunction.getFunctionData((JSFunctionObject) boundTargetFunction).getCallTarget(initProfile), newArguments);
+                JSFunctionObject targetFunction = (JSFunctionObject) boundTargetFunction;
+                Object[] newArguments = JSArguments.create(boundThis, targetFunction, arguments);
+                JSFunctionData targetFunctionData = JSFunction.getFunctionData(targetFunction);
+                CallTarget target = targetFunctionData.getCallTarget(initProfile);
+                return callIndirect(target, callNode, newArguments, targetFunctionData.callTargetNeedsRealmTransition());
             } else {
                 return JSRuntime.call(boundTargetFunction, boundThis, arguments);
             }
@@ -535,8 +651,11 @@ public final class JSFunction extends JSNonProxy {
             Object[] arguments = prependBoundArguments(boundArguments, argumentValues);
             Object originalThis = JSArguments.getThisObject(originalArguments);
             if (jsFunctionProfile.profile(JSFunction.isJSFunction(boundTargetFunction))) {
-                Object[] newArguments = JSArguments.create(originalThis, boundTargetFunction, arguments);
-                return callNode.call(JSFunction.getFunctionData((JSFunctionObject) boundTargetFunction).getConstructTarget(initProfile), newArguments);
+                JSFunctionObject targetFunction = (JSFunctionObject) boundTargetFunction;
+                Object[] newArguments = JSArguments.create(originalThis, targetFunction, arguments);
+                JSFunctionData targetFunctionData = JSFunction.getFunctionData(targetFunction);
+                CallTarget target = targetFunctionData.getConstructTarget(initProfile);
+                return callIndirect(target, callNode, newArguments, targetFunctionData.constructTargetNeedsRealmTransition());
             } else {
                 return JSRuntime.construct(boundTargetFunction, arguments);
             }
@@ -558,12 +677,15 @@ public final class JSFunction extends JSNonProxy {
             Object[] arguments = prependBoundArguments(boundArguments, argumentValues);
             Object originalThis = JSArguments.getThisObject(originalArguments);
             if (jsFunctionProfile.profile(JSFunction.isJSFunction(boundTargetFunction))) {
+                JSFunctionObject targetFunction = (JSFunctionObject) boundTargetFunction;
                 Object newTarget = JSArguments.getNewTarget(originalArguments);
                 if (newTarget == boundFunction) {
-                    newTarget = boundTargetFunction;
+                    newTarget = targetFunction;
                 }
-                Object[] newArguments = JSArguments.createWithNewTarget(originalThis, boundTargetFunction, newTarget, arguments);
-                return callNode.call(JSFunction.getFunctionData((JSFunctionObject) boundTargetFunction).getConstructNewTarget(initProfile), newArguments);
+                Object[] newArguments = JSArguments.createWithNewTarget(originalThis, targetFunction, newTarget, arguments);
+                JSFunctionData targetFunctionData = JSFunction.getFunctionData(targetFunction);
+                CallTarget target = targetFunctionData.getConstructNewTarget(initProfile);
+                return callIndirect(target, callNode, newArguments, targetFunctionData.constructTargetNeedsRealmTransition());
             } else {
                 return JSRuntime.construct(boundTargetFunction, arguments);
             }

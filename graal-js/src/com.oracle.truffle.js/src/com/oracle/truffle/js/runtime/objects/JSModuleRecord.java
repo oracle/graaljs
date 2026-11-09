@@ -265,10 +265,11 @@ public class JSModuleRecord extends CyclicModuleRecord {
 
         // Initialize the environment by executing the module function.
         // It will automatically yield when the module is linked.
-        var moduleFunction = JSFunction.create(realm, this.getFunctionData());
+        JSFunctionData functionData = this.getFunctionData();
+        var moduleFunction = JSFunction.create(realm, functionData);
         Object[] arguments = JSArguments.create(Undefined.instance, moduleFunction, this);
         // The [[Construct]] target of a module is used to initialize the environment.
-        JSFunction.getConstructTarget(moduleFunction).call(arguments);
+        JSFunction.callTargetInFunctionRealm(functionData.getConstructTarget(), arguments, null);
     }
 
     @Override
@@ -279,10 +280,10 @@ public class JSModuleRecord extends CyclicModuleRecord {
         try {
             if (!this.hasTLA()) {
                 assert capability == null;
-                return JSFunction.call(JSArguments.create(Undefined.instance, moduleFunction, this));
+                return JSFunction.callInFunctionRealm(JSArguments.create(Undefined.instance, moduleFunction, this));
             } else {
                 assert capability != null;
-                return JSFunction.call(JSArguments.create(Undefined.instance, moduleFunction, this, capability));
+                return JSFunction.callInFunctionRealm(JSArguments.create(Undefined.instance, moduleFunction, this, capability));
             }
         } finally {
             agent.asyncContextSwap(previousContextMapping);

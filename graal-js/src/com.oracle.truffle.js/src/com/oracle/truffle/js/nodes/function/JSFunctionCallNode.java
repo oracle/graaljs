@@ -133,7 +133,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
     @NeverDefault
     public static JSFunctionCallNode createCall() {
-        return create(false);
+        return create(false, false);
     }
 
     @NeverDefault
@@ -369,7 +369,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             }
         }
         if (obsoleteNode == null) {
-            JSFunctionCacheNode directCall = createCallableNode(functionObj, functionData, isNew(flags), isNewTarget(flags), true);
+            JSFunctionCacheNode directCall = createCallableNode(functionObj, functionData, flags, true);
             return insertAtFront(directCall, head);
         } else {
             if (JSConfig.TraceFunctionCache) {
@@ -379,21 +379,21 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             if (obsoleteNode instanceof FunctionInstanceCacheNode) {
                 DirectCallNode callNode = ((FunctionInstanceCacheNode) obsoleteNode).callNode;
                 if (functionData.isBound()) {
-                    newNode = new BoundFunctionDataCacheNode(functionData, callNode);
+                    newNode = new BoundFunctionDataCacheNode(functionData, callNode, flags);
                 } else if (functionObj instanceof JSFunctionObject.Unbound) {
-                    newNode = new UnboundFunctionDataCacheNode(functionData, callNode);
+                    newNode = new UnboundFunctionDataCacheNode(functionData, callNode, flags);
                 } else {
-                    newNode = new AnyFunctionDataCacheNode(functionData, callNode);
+                    newNode = new AnyFunctionDataCacheNode(functionData, callNode, flags);
                 }
             } else {
-                newNode = createCallableNode(functionObj, functionData, isNew(flags), isNewTarget(flags), false);
+                newNode = createCallableNode(functionObj, functionData, flags, false);
             }
             return replaceCached(newNode, head, obsoleteNode, previousNode);
         }
     }
 
     private JSFunctionCacheNode specializeDirectCallShared(JSFunctionObject functionObj, JSFunctionData functionData, AbstractCacheNode head) {
-        final JSFunctionCacheNode directCall = createCallableNode(functionObj, functionData, isNew(flags), isNewTarget(flags), false);
+        final JSFunctionCacheNode directCall = createCallableNode(functionObj, functionData, flags, false);
         return insertAtFront(directCall, head);
     }
 
@@ -429,7 +429,8 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             int skippedArgs = isNewTarget(flags) ? 1 : 0;
             newNode = new ForeignInstantiateNode(skippedArgs, userArgumentCount - skippedArgs);
         } else if (getPropertyKey() instanceof TruffleString propertyName) {
-            // Named calls may switch between foreign receivers and JS receivers with foreign methods.
+            // Named calls may switch between foreign receivers and JS receivers with foreign
+            // methods.
             newNode = new ForeignInvokeNode(propertyName, userArgumentCount);
         } else {
             newNode = new ForeignExecuteNode(userArgumentCount);
@@ -935,32 +936,39 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
     }
 
-    protected static JSFunctionCacheNode createCallableNode(JSFunctionObject function, JSFunctionData functionData, boolean isNew, boolean isNewTarget, boolean cacheOnInstance) {
-        CallTarget callTarget = getCallTarget(functionData, isNew, isNewTarget);
+    protected static JSFunctionCacheNode createCallableNode(JSFunctionObject function, JSFunctionData functionData, byte flags, boolean cacheOnInstance) {
+        CallTarget callTarget = getCallTarget(functionData, isNew(flags), isNewTarget(flags));
         assert callTarget != null;
         if (function instanceof JSFunctionObject.Bound boundFunction && isBoundFunctionNestingDepthWithinLimits(boundFunction)) {
             if (cacheOnInstance) {
-                return new BoundFunctionInstanceCallNode(boundFunction, isNew, isNewTarget);
+                return new BoundFunctionInstanceCallNode(boundFunction, flags);
             } else {
-                return new DynamicBoundFunctionCallNode(isNew, isNewTarget, functionData);
+                return new DynamicBoundFunctionCallNode(flags, functionData);
             }
         } else {
-            JSFunctionCacheNode node = tryInlineBuiltinFunctionCall(function, functionData, callTarget, cacheOnInstance);
+            JSFunctionCacheNode node = tryInlineBuiltinFunctionCall(function, functionData, callTarget, flags, cacheOnInstance);
             if (node != null) {
                 return node;
             }
 
             if (cacheOnInstance) {
-                return new FunctionInstanceCacheNode(function, callTarget);
+                return new FunctionInstanceCacheNode(function, callTarget, flags);
             } else if (function instanceof JSFunctionObject.Bound) {
-                // used in the case of a deeply nested bound function
-                return new BoundFunctionDataCacheNode(functionData, callTarget);
+                // used in the case of a deeply nested bound function; the bound root delegates to
+                // the target through a realm-aware call.
+                return new BoundFunctionDataCacheNode(functionData, callTarget, flags);
             } else if (function instanceof JSFunctionObject.Unbound) {
-                return new UnboundFunctionDataCacheNode(functionData, callTarget);
+                return new UnboundFunctionDataCacheNode(functionData, callTarget, flags);
             } else {
-                return new AnyFunctionDataCacheNode(functionData, callTarget);
+                return new AnyFunctionDataCacheNode(functionData, callTarget, flags);
             }
         }
+    }
+
+    private static boolean needsFunctionRealm(JSFunctionData functionData, byte flags) {
+        return isNew(flags) || isNewTarget(flags)
+                        ? functionData.constructTargetNeedsRealmTransition()
+                        : functionData.callTargetNeedsRealmTransition();
     }
 
     private static boolean isBoundFunctionNestingDepthWithinLimits(JSFunctionObject.Bound function) {
@@ -986,7 +994,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
     }
 
-    private static JSFunctionCacheNode tryInlineBuiltinFunctionCall(JSFunctionObject function, JSFunctionData functionData, CallTarget callTarget, boolean cacheOnInstance) {
+    private static JSFunctionCacheNode tryInlineBuiltinFunctionCall(JSFunctionObject function, JSFunctionData functionData, CallTarget callTarget, byte flags, boolean cacheOnInstance) {
         if (!JSConfig.InlineTrivialBuiltins) {
             return null;
         }
@@ -999,15 +1007,15 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                     JSBuiltinNode.Inlined inlined = builtinNode.tryCreateInlined();
                     if (inlined != null) {
                         if (cacheOnInstance) {
-                            return new InlinedBuiltinFunctionInstanceCacheNode(function, callTarget, inlined);
+                            return new InlinedBuiltinFunctionInstanceCacheNode(function, callTarget, inlined, flags);
                         } else {
-                            return new InlinedBuiltinFunctionDataCacheNode(functionData, callTarget, inlined);
+                            return new InlinedBuiltinFunctionDataCacheNode(functionData, callTarget, inlined, flags);
                         }
                     } else if (builtinNode.isCallerSensitive()) {
                         if (cacheOnInstance) {
-                            return new CallerSensitiveBuiltinFunctionInstanceCacheNode(function, functionData, callTarget);
+                            return new CallerSensitiveBuiltinFunctionInstanceCacheNode(function, functionData, callTarget, flags);
                         } else {
-                            return new CallerSensitiveBuiltinFunctionDataCacheNode(functionData, callTarget);
+                            return new CallerSensitiveBuiltinFunctionDataCacheNode(functionData, callTarget, flags);
                         }
                     }
                 }
@@ -1020,8 +1028,8 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
         private final JSFunctionObject functionObj;
 
-        FunctionInstanceCacheNode(JSFunctionObject functionObj, CallTarget callTarget) {
-            super(callTarget);
+        FunctionInstanceCacheNode(JSFunctionObject functionObj, CallTarget callTarget, byte flags) {
+            super(callTarget, flags);
             this.functionObj = functionObj;
         }
 
@@ -1044,14 +1052,14 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     private static final class UnboundFunctionDataCacheNode extends DirectJSFunctionCacheNode {
         private final JSFunctionData functionData;
 
-        UnboundFunctionDataCacheNode(JSFunctionData functionData, CallTarget callTarget) {
-            super(callTarget);
+        UnboundFunctionDataCacheNode(JSFunctionData functionData, CallTarget callTarget, byte flags) {
+            super(callTarget, flags);
             this.functionData = functionData;
             assert !functionData.isBound();
         }
 
-        UnboundFunctionDataCacheNode(JSFunctionData functionData, DirectCallNode directCallNode) {
-            super(directCallNode);
+        UnboundFunctionDataCacheNode(JSFunctionData functionData, DirectCallNode directCallNode, byte flags) {
+            super(directCallNode, flags);
             this.functionData = functionData;
         }
 
@@ -1069,14 +1077,14 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     private static final class BoundFunctionDataCacheNode extends DirectJSFunctionCacheNode {
         private final JSFunctionData functionData;
 
-        BoundFunctionDataCacheNode(JSFunctionData functionData, CallTarget callTarget) {
-            super(callTarget);
+        BoundFunctionDataCacheNode(JSFunctionData functionData, CallTarget callTarget, byte flags) {
+            super(callTarget, flags);
             this.functionData = functionData;
             assert functionData.isBound();
         }
 
-        BoundFunctionDataCacheNode(JSFunctionData functionData, DirectCallNode directCallNode) {
-            super(directCallNode);
+        BoundFunctionDataCacheNode(JSFunctionData functionData, DirectCallNode directCallNode, byte flags) {
+            super(directCallNode, flags);
             this.functionData = functionData;
         }
 
@@ -1094,13 +1102,13 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     private static final class AnyFunctionDataCacheNode extends DirectJSFunctionCacheNode {
         private final JSFunctionData functionData;
 
-        AnyFunctionDataCacheNode(JSFunctionData functionData, CallTarget callTarget) {
-            super(callTarget);
+        AnyFunctionDataCacheNode(JSFunctionData functionData, CallTarget callTarget, byte flags) {
+            super(callTarget, flags);
             this.functionData = functionData;
         }
 
-        AnyFunctionDataCacheNode(JSFunctionData functionData, DirectCallNode directCallNode) {
-            super(directCallNode);
+        AnyFunctionDataCacheNode(JSFunctionData functionData, DirectCallNode directCallNode, byte flags) {
+            super(directCallNode, flags);
             this.functionData = functionData;
         }
 
@@ -1131,8 +1139,23 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     }
 
     private abstract static class JSFunctionCacheNode extends AbstractCacheNode {
-        JSFunctionCacheNode() {
+        private final byte flags;
+
+        JSFunctionCacheNode(byte flags) {
+            this.flags = flags;
         }
+
+        @Override
+        public final Object executeCall(Object[] arguments) {
+            JSRealm previousRealm = needsFunctionRealm(getFunctionData(), flags) ? JSFunction.enterFunctionRealm(this, arguments) : null;
+            try {
+                return executeCallInRealm(arguments);
+            } finally {
+                JSFunction.leaveFunctionRealm(this, previousRealm);
+            }
+        }
+
+        protected abstract Object executeCallInRealm(Object[] arguments);
 
         protected boolean isInstanceCache() {
             return false;
@@ -1151,7 +1174,10 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         private final boolean useDynamicThis;
         private final boolean isNewTarget;
 
-        BoundFunctionInstanceCallNode(JSFunctionObject.Bound function, boolean isNew, boolean isNewTarget) {
+        BoundFunctionInstanceCallNode(JSFunctionObject.Bound function, byte flags) {
+            super(flags);
+            boolean isNew = isNew(flags);
+            this.isNewTarget = isNewTarget(flags);
             this.boundFunctionObj = function;
             Object lastReceiver;
             Object lastFunction = function;
@@ -1178,10 +1204,9 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 this.useDynamicThis = false;
                 this.boundThis = lastReceiver;
             }
-            this.isNewTarget = isNewTarget;
             if (JSFunction.isJSFunction(lastFunction)) {
                 JSFunctionObject lastJSFunction = (JSFunctionObject) lastFunction;
-                this.boundNode = createCallableNode(lastJSFunction, JSFunction.getFunctionData(lastJSFunction), isNew, isNewTarget, true);
+                this.boundNode = createCallableNode(lastJSFunction, JSFunction.getFunctionData(lastJSFunction), flags, true);
             } else if (JSProxy.isJSProxy(lastFunction)) {
                 assert JSRuntime.isCallableProxy((JSDynamicObject) lastFunction);
                 this.boundNode = new JSProxyCallCacheNode(isNew, isNewTarget, function.getJSContext());
@@ -1198,7 +1223,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
 
         @Override
-        public Object executeCall(Object[] arguments) {
+        protected Object executeCallInRealm(Object[] arguments) {
             assert checkTargetFunction(arguments);
             return boundNode.executeCall(bindExtraArguments(arguments));
         }
@@ -1256,16 +1281,17 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         private final boolean isNewTarget;
         private final JSFunctionData boundFunctionData;
 
-        DynamicBoundFunctionCallNode(boolean isNew, boolean isNewTarget, JSFunctionData boundFunctionData) {
-            super();
+        DynamicBoundFunctionCallNode(byte flags, JSFunctionData boundFunctionData) {
+            super(flags);
+            boolean isNew = isNew(flags);
+            this.isNewTarget = isNewTarget(flags);
             this.useDynamicThis = (isNew || isNewTarget);
-            this.isNewTarget = isNewTarget;
             this.boundFunctionData = boundFunctionData;
             this.boundTargetCallNode = JSFunctionCallNode.create(isNew, isNewTarget);
         }
 
         @Override
-        public Object executeCall(Object[] arguments) {
+        protected Object executeCallInRealm(Object[] arguments) {
             return boundTargetCallNode.executeCall(bindExtraArguments(arguments));
         }
 
@@ -1305,7 +1331,8 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
         @Child DirectCallNode callNode;
 
-        DirectJSFunctionCacheNode(CallTarget callTarget) {
+        DirectJSFunctionCacheNode(CallTarget callTarget, byte flags) {
+            super(flags);
             this.callNode = Truffle.getRuntime().createDirectCallNode(callTarget);
 
             if (callTarget instanceof RootCallTarget) {
@@ -1320,12 +1347,13 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             }
         }
 
-        DirectJSFunctionCacheNode(DirectCallNode callNode) {
+        DirectJSFunctionCacheNode(DirectCallNode callNode, byte flags) {
+            super(flags);
             this.callNode = callNode;
         }
 
         @Override
-        public final Object executeCall(Object[] arguments) {
+        protected final Object executeCallInRealm(Object[] arguments) {
             return callNode.call(arguments);
         }
     }
@@ -1335,13 +1363,14 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         @Child private JSBuiltinNode.Inlined builtinNode;
         @Child private DirectCallNode callNode;
 
-        InlinedBuiltinCallNode(CallTarget callTarget, JSBuiltinNode.Inlined builtinNode) {
+        InlinedBuiltinCallNode(CallTarget callTarget, JSBuiltinNode.Inlined builtinNode, byte flags) {
+            super(flags);
             this.callTarget = callTarget;
             this.builtinNode = builtinNode;
         }
 
         @Override
-        public Object executeCall(Object[] arguments) {
+        protected Object executeCallInRealm(Object[] arguments) {
             if (callNode != null) {
                 return callNode.call(arguments);
             }
@@ -1361,8 +1390,8 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     private static final class InlinedBuiltinFunctionInstanceCacheNode extends InlinedBuiltinCallNode {
         private final JSFunctionObject functionObj;
 
-        InlinedBuiltinFunctionInstanceCacheNode(JSFunctionObject functionObj, CallTarget callTarget, JSBuiltinNode.Inlined builtinNode) {
-            super(callTarget, builtinNode);
+        InlinedBuiltinFunctionInstanceCacheNode(JSFunctionObject functionObj, CallTarget callTarget, JSBuiltinNode.Inlined builtinNode, byte flags) {
+            super(callTarget, builtinNode, flags);
             this.functionObj = functionObj;
         }
 
@@ -1385,8 +1414,8 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     private static final class InlinedBuiltinFunctionDataCacheNode extends InlinedBuiltinCallNode {
         private final JSFunctionData functionData;
 
-        InlinedBuiltinFunctionDataCacheNode(JSFunctionData functionData, CallTarget callTarget, JSBuiltinNode.Inlined builtinNode) {
-            super(callTarget, builtinNode);
+        InlinedBuiltinFunctionDataCacheNode(JSFunctionData functionData, CallTarget callTarget, JSBuiltinNode.Inlined builtinNode, byte flags) {
+            super(callTarget, builtinNode, flags);
             this.functionData = functionData;
         }
 
@@ -1405,13 +1434,14 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         @Child private DirectCallNode callNode;
         protected final JSFunctionData functionData;
 
-        CallerSensitiveBuiltinCallNode(JSFunctionData functionData, CallTarget callTarget) {
+        CallerSensitiveBuiltinCallNode(JSFunctionData functionData, CallTarget callTarget, byte flags) {
+            super(flags);
             this.functionData = functionData;
             this.callNode = Truffle.getRuntime().createDirectCallNode(callTarget);
         }
 
         @Override
-        public Object executeCall(Object[] arguments) {
+        protected Object executeCallInRealm(Object[] arguments) {
             JSRealm realm = getRealm();
             JavaScriptBaseNode prev = realm.getCallNode();
             try {
@@ -1431,8 +1461,8 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     private static final class CallerSensitiveBuiltinFunctionInstanceCacheNode extends CallerSensitiveBuiltinCallNode {
         private final JSFunctionObject functionObj;
 
-        CallerSensitiveBuiltinFunctionInstanceCacheNode(JSFunctionObject functionObj, JSFunctionData functionData, CallTarget callTarget) {
-            super(functionData, callTarget);
+        CallerSensitiveBuiltinFunctionInstanceCacheNode(JSFunctionObject functionObj, JSFunctionData functionData, CallTarget callTarget, byte flags) {
+            super(functionData, callTarget, flags);
             this.functionObj = functionObj;
         }
 
@@ -1449,8 +1479,8 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
     private static final class CallerSensitiveBuiltinFunctionDataCacheNode extends CallerSensitiveBuiltinCallNode {
 
-        CallerSensitiveBuiltinFunctionDataCacheNode(JSFunctionData functionData, CallTarget callTarget) {
-            super(functionData, callTarget);
+        CallerSensitiveBuiltinFunctionDataCacheNode(JSFunctionData functionData, CallTarget callTarget, byte flags) {
+            super(functionData, callTarget, flags);
         }
 
         @Override
@@ -1679,13 +1709,15 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             Object function = JSArguments.getFunctionObject(arguments);
             JSFunctionObject functionObject = (JSFunctionObject) function;
             JSFunctionData functionData = JSFunction.getFunctionData(functionObject);
+            CallTarget callTarget;
             if (isNewTarget(flags)) {
-                return indirectCallNode.call(functionData.getConstructNewTarget(initBranch), arguments);
+                callTarget = functionData.getConstructNewTarget(initBranch);
             } else if (isNew(flags)) {
-                return indirectCallNode.call(functionData.getConstructTarget(initBranch), arguments);
+                callTarget = functionData.getConstructTarget(initBranch);
             } else {
-                return indirectCallNode.call(functionData.getCallTarget(initBranch), arguments);
+                callTarget = functionData.getCallTarget(initBranch);
             }
+            return JSFunction.callIndirect(callTarget, indirectCallNode, arguments, needsFunctionRealm(functionData, flags));
         }
 
         @Override

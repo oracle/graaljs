@@ -64,6 +64,7 @@ import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
+import com.oracle.truffle.js.nodes.function.AbstractFunctionRootNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
@@ -73,7 +74,6 @@ import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JavaScriptRealmBoundaryRootNode;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -292,7 +292,7 @@ public class ImportCallNode extends JavaScriptNode {
      * Handles ContinueDynamicImport with normal module completion.
      */
     private static JSFunctionData createContinueDynamicImportHandlerImpl(JSContext context) {
-        class ContinueDynamicImportRootNode extends JavaScriptRealmBoundaryRootNode {
+        class ContinueDynamicImportRootNode extends AbstractFunctionRootNode {
             @Child protected JavaScriptNode payloadArgument = AccessIndexedArgumentNode.create(0);
             @Child protected JavaScriptNode moduleRecordArgument = AccessIndexedArgumentNode.create(1);
 
@@ -305,7 +305,7 @@ public class ImportCallNode extends JavaScriptNode {
             }
 
             @Override
-            public Object executeInRealm(VirtualFrame frame) {
+            public Object executeBody(VirtualFrame frame) {
                 ContinueDynamicImportPayload payload = (ContinueDynamicImportPayload) payloadArgument.execute(frame);
                 var module = (AbstractModuleRecord) moduleRecordArgument.execute(frame);
                 JSRealm realm = getRealm();
@@ -338,7 +338,7 @@ public class ImportCallNode extends JavaScriptNode {
     }
 
     private static JSFunctionData createLinkAndEvaluateImpl(JSContext context) {
-        class LinkAndEvaluateRootNode extends JavaScriptRealmBoundaryRootNode {
+        class LinkAndEvaluateRootNode extends AbstractFunctionRootNode {
 
             @Child private PropertyGetNode getCaptures = PropertyGetNode.createGetHidden(LINK_AND_EVALUATE_KEY, context);
             @Child private PropertySetNode setCaptures = PropertySetNode.createSetHidden(LINK_AND_EVALUATE_KEY, context);
@@ -357,7 +357,7 @@ public class ImportCallNode extends JavaScriptNode {
             }
 
             @Override
-            protected Object executeInRealm(VirtualFrame frame) {
+            protected Object executeBody(VirtualFrame frame) {
                 JSFunctionObject thisFunction = JSFrameUtil.getFunctionObject(frame);
                 LinkAndEvaluateArgs captures = (LinkAndEvaluateArgs) getCaptures.getValue(thisFunction);
                 AbstractModuleRecord moduleRecord = captures.moduleRecord;

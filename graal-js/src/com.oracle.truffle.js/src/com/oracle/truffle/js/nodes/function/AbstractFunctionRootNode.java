@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,13 +40,19 @@
  */
 package com.oracle.truffle.js.nodes.function;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.runtime.JavaScriptRealmBoundaryRootNode;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 
-public abstract class AbstractFunctionRootNode extends JavaScriptRealmBoundaryRootNode {
+/**
+ * A function root executed in the function realm established by its caller.
+ */
+public abstract class AbstractFunctionRootNode extends JavaScriptRootNode {
 
     protected final ScriptOrModule activeScriptOrModule;
 
@@ -55,6 +61,26 @@ public abstract class AbstractFunctionRootNode extends JavaScriptRealmBoundaryRo
         super(lang, sourceSection, frameDescriptor);
         this.activeScriptOrModule = activeScriptOrModule;
     }
+
+    protected AbstractFunctionRootNode(JavaScriptLanguage lang, SourceSection sourceSection) {
+        this(lang, sourceSection, null, null);
+    }
+
+    protected AbstractFunctionRootNode(JavaScriptLanguage lang) {
+        this(lang, null);
+    }
+
+    @Override
+    public final Object execute(VirtualFrame frame) {
+        try {
+            return executeBody(frame);
+        } catch (StackOverflowError ex) {
+            CompilerDirectives.transferToInterpreter();
+            throw Errors.createRangeErrorStackOverflow(ex, this);
+        }
+    }
+
+    protected abstract Object executeBody(VirtualFrame frame);
 
     public final ScriptOrModule getActiveScriptOrModule() {
         return activeScriptOrModule;

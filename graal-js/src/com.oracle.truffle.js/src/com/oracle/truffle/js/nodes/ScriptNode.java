@@ -100,7 +100,7 @@ public final class ScriptNode {
 
     public Object runEval(IndirectCallNode callNode, JSRealm realm, Object thisObj, MaterializedFrame materializedFrame) {
         JSFunctionObject functionObj = createFunction(realm, materializedFrame);
-        return callNode.call(callTarget, JSArguments.createZeroArg(thisObj, functionObj));
+        return JSFunction.callIndirectInFunctionRealm(callTarget, callNode, JSArguments.createZeroArg(thisObj, functionObj));
     }
 
     public Object runEval(IndirectCallNode callNode, JSRealm realm) {
@@ -108,7 +108,7 @@ public final class ScriptNode {
     }
 
     public Object run(Object[] args) {
-        return callTarget.call(args);
+        return JSFunction.callTargetInFunctionRealm(callTarget, args, null);
     }
 
     public RootNode getRootNode() {

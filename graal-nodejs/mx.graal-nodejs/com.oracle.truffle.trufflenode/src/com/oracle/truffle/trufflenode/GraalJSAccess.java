@@ -1475,7 +1475,7 @@ public final class GraalJSAccess {
                             ContextData.FunctionKey.ArrayBufferGetContents, GraalJSAccess::createInteropBufferGetContents));
             realmEmbedderData.setArrayBufferGetContentsFunction(function);
         }
-        return JSFunction.call(JSArguments.createOneArg(Undefined.instance, function, interopBuffer));
+        return JSFunction.callInFunctionRealm(JSArguments.createOneArg(Undefined.instance, function, interopBuffer));
     }
 
     private static JSFunctionData createInteropBufferGetContents(JSContext context) {
@@ -2415,7 +2415,7 @@ public final class GraalJSAccess {
             try {
                 CallTarget target = realm.getEnv().parsePublic(source, args);
                 JSFunctionObject script = (JSFunctionObject) target.call();
-                function = anyExtension ? JSFunction.call(script, Undefined.instance, extensions) : script;
+                function = anyExtension ? JSFunction.callInFunctionRealm(script, Undefined.instance, extensions) : script;
             } finally {
                 mainRealm.leaveRealm(null, prevRealm);
             }
@@ -3973,7 +3973,7 @@ public final class GraalJSAccess {
     @SuppressWarnings("cast")
     public Object jsonStringify(Object context, Object object, Object gap) {
         JSFunctionObject stringify = ((JSRealm) context).lookupFunction(JSONBuiltins.BUILTINS, STRINGIFY);
-        return (TruffleString) JSFunction.call(stringify, Undefined.instance, new Object[]{
+        return (TruffleString) JSFunction.callInFunctionRealm(stringify, Undefined.instance, new Object[]{
                         object,
                         Undefined.instance, // replacer
                         (gap == null) ? Undefined.instance : gap
@@ -3989,8 +3989,8 @@ public final class GraalJSAccess {
     }
 
     public Object promiseResolverNew(Object context) {
-        JSDynamicObject resolverFactory = getResolverFactory(context);
-        return JSFunction.call(JSArguments.create(Undefined.instance, resolverFactory, RESOLVER_RESOLVE, RESOLVER_REJECT));
+        JSFunctionObject resolverFactory = getResolverFactory(context);
+        return JSFunction.callInFunctionRealm(JSArguments.create(Undefined.instance, resolverFactory, RESOLVER_RESOLVE, RESOLVER_REJECT));
     }
 
     public Object promiseThen(Object promise, Object onFulfilled, Object onRejected) {
@@ -4002,9 +4002,9 @@ public final class GraalJSAccess {
         ((JSPromiseObject) promise).setIsHandled(true);
     }
 
-    private JSDynamicObject getResolverFactory(Object realm) {
+    private JSFunctionObject getResolverFactory(Object realm) {
         RealmData data = getRealmEmbedderData(realm);
-        JSDynamicObject resolverFactory = data.getResolverFactory();
+        JSFunctionObject resolverFactory = data.getResolverFactory();
         if (resolverFactory == null) {
             resolverFactory = createResolverFactory((JSRealm) realm);
             data.setResolverFactory(resolverFactory);
@@ -4012,7 +4012,7 @@ public final class GraalJSAccess {
         return resolverFactory;
     }
 
-    private JSDynamicObject createResolverFactory(JSRealm realm) {
+    private JSFunctionObject createResolverFactory(JSRealm realm) {
         JSContext context = realm.getContext();
         JSParser parser = (JSParser) context.getEvaluator();
         String code = "(function(resolveKey, rejectKey) {\n" +
@@ -4026,7 +4026,7 @@ public final class GraalJSAccess {
                         "    return promise;\n" +
                         "})";
         ScriptNode scriptNode = parser.parseScript(context, code);
-        return (JSDynamicObject) scriptNode.run(realm);
+        return (JSFunctionObject) scriptNode.run(realm);
     }
 
     public boolean promiseResolverResolve(Object resolver, Object value) {

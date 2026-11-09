@@ -218,7 +218,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization
         public Object doLocale(JSLocaleObject localeObject) {
             String maximizedLocale = localeObject.getInternalState().maximize();
-            return JSFunction.construct(getRealm().getLocaleConstructor(), new Object[]{Strings.fromJavaString(maximizedLocale)});
+            return JSFunction.constructInFunctionRealm(getRealm().getLocaleConstructor(), new Object[]{Strings.fromJavaString(maximizedLocale)});
         }
 
         @Specialization(guards = "!isJSLocale(bummer)")
@@ -236,7 +236,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization
         public Object doLocale(JSLocaleObject localeObject) {
             String minimizedLocale = localeObject.getInternalState().minimize();
-            return JSFunction.construct(getRealm().getLocaleConstructor(), new Object[]{Strings.fromJavaString(minimizedLocale)});
+            return JSFunction.constructInFunctionRealm(getRealm().getLocaleConstructor(), new Object[]{Strings.fromJavaString(minimizedLocale)});
         }
 
         @Specialization(guards = "!isJSLocale(bummer)")
