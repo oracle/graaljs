@@ -38,11 +38,68 @@ assertSame('loop', loop());
 assertThrows(() => { using x = resource('throw'); throw new TypeError('boom'); }, TypeError);
 assertSame('body,nested,early,early,none,arrow,gen,loop,loop,throw', disposed.join(','));
 
-async function awaitUsing() {
-    await using x = { async [Symbol.asyncDispose]() { await null; disposed.push('async'); } };
-    return 'async';
+// Ordinary try/finally and generator abrupt completions must keep their semantics.
+function ordinaryFinally() { try { return 41; } finally { disposed.push('finally'); } }
+assertSame(41, ordinaryFinally());
+function* yieldingFinally() { try { return 42; } finally { yield 'first'; yield 'second'; } }
+const yielding = yieldingFinally();
+assertSame('first', yielding.next().value);
+assertSame('second', yielding.next().value);
+assertSame(42, yielding.next().value);
+const closed = gen();
+closed.next();
+assertSame('closed', closed.return('closed').value);
+const thrown = gen();
+thrown.next();
+assertThrows(() => thrown.throw(new RangeError('generator')), RangeError);
+
+const loopDisposals = [];
+for (const i of [0, 1, 2]) {
+    using x = { [Symbol.dispose]() { loopDisposals.push(i); } };
+    if (i === 0) continue;
+    break;
 }
-awaitUsing().then((value) => {
-    assertSame('async', value);
-    assertSame('async', disposed[disposed.length - 1]);
-});
+assertSame('0,1', loopDisposals.join(','));
+
+async function asyncCases() {
+    let resumed = 0;
+    async function awaitUsing(value) {
+        await using first = { async [Symbol.asyncDispose]() { await null; resumed++; await null; resumed++; } };
+        await using second = { async [Symbol.asyncDispose]() { await null; resumed++; } };
+        return value;
+    }
+    const object = {};
+    for (const value of ['async', undefined, null, false, 0, object]) {
+        assertSame(value, await awaitUsing(value));
+    }
+    assertSame(18, resumed);
+
+    const bodyError = new TypeError('body');
+    const disposeError = new RangeError('dispose');
+    async function rejectedDisposal() {
+        await using x = { async [Symbol.asyncDispose]() { await null; throw disposeError; } };
+        return 99;
+    }
+    let caught;
+    try { await rejectedDisposal(); } catch (error) { caught = error; }
+    assertSame(disposeError, caught);
+
+    async function bothThrow() {
+        await using x = { async [Symbol.asyncDispose]() { await null; throw disposeError; } };
+        throw bodyError;
+    }
+    caught = undefined;
+    try { await bothThrow(); } catch (error) { caught = error; }
+    assertTrue(caught instanceof SuppressedError);
+    assertSame(disposeError, caught.error);
+    assertSame(bodyError, caught.suppressed);
+
+    async function bodyThrows() {
+        await using x = { async [Symbol.asyncDispose]() { await null; } };
+        throw bodyError;
+    }
+    caught = undefined;
+    try { await bodyThrows(); } catch (error) { caught = error; }
+    assertSame(bodyError, caught);
+}
+asyncCases();
