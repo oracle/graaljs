@@ -435,10 +435,10 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
         }
         return resolved;
     }
-    /*
-     * PACKAGE_IMPORTS_RESOLVE(specifier, parentURL, conditions)
-     */
 
+    /**
+     * PACKAGE_IMPORTS_RESOLVE(specifier, parentURL, conditions).
+     */
     private URI packageImportsResolve(String specifier, URI parentURL, List<String> conditions, TruffleLanguage.Env env) {
         // 1. Assert: specifier begins with "#" (it is always called with a specifier that begins
         // with "#").
