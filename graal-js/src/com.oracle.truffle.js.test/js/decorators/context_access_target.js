@@ -40,6 +40,7 @@ for (const isStatic of [false, true]) {
                 const target = isStatic ? Class : new Class();
                 const {get, set} = access;
                 if (get !== undefined) {
+                    assertSame('', get.name);
                     assertSame(1, get.length);
                     const expected = target.read();
                     assertSame(expected, get(target));
@@ -52,6 +53,7 @@ for (const isStatic of [false, true]) {
                     }
                 }
                 if (set !== undefined) {
+                    assertSame('', set.name);
                     assertSame(2, set.length);
                     assertSame(undefined, set(target, 211));
                     for (const receiver of [undefined, null, {}, 42]) {

@@ -501,7 +501,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
                 return propertyGetNode.getValue(target);
             }
         }.getCallTarget();
-        return JSFunctionData.createCallOnly(context, getter, 1, Strings.GET);
+        return JSFunctionData.createCallOnly(context, getter, 1, Strings.EMPTY_STRING);
     }
 
     @NeverDefault
@@ -520,7 +520,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
                 return Undefined.instance;
             }
         }.getCallTarget();
-        return JSFunctionData.createCallOnly(context, callTarget, 2, Strings.SET);
+        return JSFunctionData.createCallOnly(context, callTarget, 2, Strings.EMPTY_STRING);
     }
 
     @NeverDefault
@@ -535,7 +535,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
                 return privateFieldGet.execute(frame);
             }
         };
-        return JSFunctionData.createCallOnly(context, getter.getCallTarget(), 1, Strings.GET);
+        return JSFunctionData.createCallOnly(context, getter.getCallTarget(), 1, Strings.EMPTY_STRING);
     }
 
     @NeverDefault
@@ -552,7 +552,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
                 return Undefined.instance;
             }
         };
-        return JSFunctionData.createCallOnly(context, setter.getCallTarget(), 2, Strings.SET);
+        return JSFunctionData.createCallOnly(context, setter.getCallTarget(), 2, Strings.EMPTY_STRING);
     }
 
     @NeverDefault
@@ -568,7 +568,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
                 return privateGetNode.execute(frame);
             }
         }.getCallTarget();
-        return JSFunctionData.createCallOnly(context, callTarget, 1, Strings.GET);
+        return JSFunctionData.createCallOnly(context, callTarget, 1, Strings.EMPTY_STRING);
     }
 
     @NeverDefault
@@ -585,7 +585,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
                 return Undefined.instance;
             }
         }.getCallTarget();
-        return JSFunctionData.createCallOnly(context, callTarget, 2, Strings.SET);
+        return JSFunctionData.createCallOnly(context, callTarget, 2, Strings.EMPTY_STRING);
     }
 
     //
@@ -609,7 +609,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
                 return propertyGetNode.executeWithTargetAndIndex(target, record.getKey());
             }
         }.getCallTarget();
-        return JSFunctionData.createCallOnly(context, callTarget, 1, Strings.GET);
+        return JSFunctionData.createCallOnly(context, callTarget, 1, Strings.EMPTY_STRING);
     }
 
     @NeverDefault
@@ -631,6 +631,6 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
                 return Undefined.instance;
             }
         }.getCallTarget();
-        return JSFunctionData.createCallOnly(context, callTarget, 2, Strings.SET);
+        return JSFunctionData.createCallOnly(context, callTarget, 2, Strings.EMPTY_STRING);
     }
 }
