@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
@@ -44,6 +44,6 @@ assertThrows(() => {
     function f(value, context) { set = context.access.set }
     var C = class { @f static x }
     Object.freeze(C)
-    set.call(C, 42)
+    set(C, 42)
 
 }, TypeError, 'Cannot assign to read only property');

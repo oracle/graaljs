@@ -70,7 +70,6 @@ import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.arguments.AccessFunctionNode;
 import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
-import com.oracle.truffle.js.nodes.arguments.AccessThisNode;
 import com.oracle.truffle.js.nodes.function.ClassElementDefinitionRecord;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -497,11 +496,12 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
 
             @Override
             public Object execute(VirtualFrame frame) {
-                Object thiz = JSFrameUtil.getThisObj(frame);
-                return propertyGetNode.getValue(thiz);
+                Object[] args = frame.getArguments();
+                Object target = JSArguments.getUserArgumentCount(args) > 0 ? JSArguments.getUserArgument(args, 0) : Undefined.instance;
+                return propertyGetNode.getValue(target);
             }
         }.getCallTarget();
-        return JSFunctionData.createCallOnly(context, getter, 0, Strings.GET);
+        return JSFunctionData.createCallOnly(context, getter, 1, Strings.GET);
     }
 
     @NeverDefault
@@ -513,21 +513,21 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
 
             @Override
             public Object execute(VirtualFrame frame) {
-                Object thiz = JSFrameUtil.getThisObj(frame);
                 Object[] args = frame.getArguments();
-                Object newValue = JSArguments.getUserArgumentCount(args) > 0 ? JSArguments.getUserArgument(args, 0) : Undefined.instance;
-                propertySetNode.setValue(thiz, newValue);
+                Object target = JSArguments.getUserArgumentCount(args) > 0 ? JSArguments.getUserArgument(args, 0) : Undefined.instance;
+                Object newValue = JSArguments.getUserArgumentCount(args) > 1 ? JSArguments.getUserArgument(args, 1) : Undefined.instance;
+                propertySetNode.setValue(target, newValue);
                 return Undefined.instance;
             }
         }.getCallTarget();
-        return JSFunctionData.createCallOnly(context, callTarget, 1, Strings.SET);
+        return JSFunctionData.createCallOnly(context, callTarget, 2, Strings.SET);
     }
 
     @NeverDefault
     protected static JSFunctionData createPrivateFieldGetter(JSContext context, TruffleString privateName) {
         CompilerAsserts.neverPartOfCompilation();
         JavaScriptRootNode getter = new JavaScriptRootNode(context.getLanguage()) {
-            @Child private PrivateFieldGetNode privateFieldGet = PrivateFieldGetNode.create(AccessThisNode.create(),
+            @Child private PrivateFieldGetNode privateFieldGet = PrivateFieldGetNode.create(AccessIndexedArgumentNode.create(0),
                             PropertyNode.createGetHidden(context, AccessFunctionNode.create(), BACKING_STORAGE_KEY), context, privateName);
 
             @Override
@@ -535,16 +535,16 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
                 return privateFieldGet.execute(frame);
             }
         };
-        return JSFunctionData.createCallOnly(context, getter.getCallTarget(), 0, Strings.GET);
+        return JSFunctionData.createCallOnly(context, getter.getCallTarget(), 1, Strings.GET);
     }
 
     @NeverDefault
     protected static JSFunctionData createPrivateFieldSetter(JSContext context, TruffleString privateName) {
         CompilerAsserts.neverPartOfCompilation();
         JavaScriptRootNode setter = new JavaScriptRootNode(context.getLanguage()) {
-            @Child private PrivateFieldSetNode privateFieldSet = PrivateFieldSetNode.create(AccessThisNode.create(),
+            @Child private PrivateFieldSetNode privateFieldSet = PrivateFieldSetNode.create(AccessIndexedArgumentNode.create(0),
                             PropertyNode.createGetHidden(context, AccessFunctionNode.create(), BACKING_STORAGE_KEY),
-                            AccessIndexedArgumentNode.create(0), context, privateName);
+                            AccessIndexedArgumentNode.create(1), context, privateName);
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -552,7 +552,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
                 return Undefined.instance;
             }
         };
-        return JSFunctionData.createCallOnly(context, setter.getCallTarget(), 1, Strings.SET);
+        return JSFunctionData.createCallOnly(context, setter.getCallTarget(), 2, Strings.SET);
     }
 
     @NeverDefault
@@ -560,7 +560,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
         CompilerAsserts.neverPartOfCompilation();
         CallTarget callTarget = new JavaScriptRootNode(context.getLanguage()) {
             @Child private PrivateFieldGetNode privateGetNode = PrivateFieldGetNode.create(
-                            PrivateBrandCheckNode.create(AccessThisNode.create(), new DecoratorPrivateBrandNode(context)),
+                            PrivateBrandCheckNode.create(AccessIndexedArgumentNode.create(0), new DecoratorPrivateBrandNode(context)),
                             new DecoratorPrivateMemberNode(context), context, privateName);
 
             @Override
@@ -568,7 +568,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
                 return privateGetNode.execute(frame);
             }
         }.getCallTarget();
-        return JSFunctionData.createCallOnly(context, callTarget, 0, Strings.GET);
+        return JSFunctionData.createCallOnly(context, callTarget, 1, Strings.GET);
     }
 
     @NeverDefault
@@ -576,8 +576,8 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
         CompilerAsserts.neverPartOfCompilation();
         CallTarget callTarget = new JavaScriptRootNode(context.getLanguage()) {
             @Child private PrivateFieldSetNode privateSetNode = PrivateFieldSetNode.create(
-                            PrivateBrandCheckNode.create(AccessThisNode.create(), new DecoratorPrivateBrandNode(context)),
-                            new DecoratorPrivateMemberNode(context), AccessIndexedArgumentNode.create(0), context, privateName);
+                            PrivateBrandCheckNode.create(AccessIndexedArgumentNode.create(0), new DecoratorPrivateBrandNode(context)),
+                            new DecoratorPrivateMemberNode(context), AccessIndexedArgumentNode.create(1), context, privateName);
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -585,7 +585,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
                 return Undefined.instance;
             }
         }.getCallTarget();
-        return JSFunctionData.createCallOnly(context, callTarget, 1, Strings.SET);
+        return JSFunctionData.createCallOnly(context, callTarget, 2, Strings.SET);
     }
 
     //
@@ -601,14 +601,15 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
 
             @Override
             public Object execute(VirtualFrame frame) {
-                Object thiz = JSFrameUtil.getThisObj(frame);
+                Object[] args = frame.getArguments();
+                Object target = JSArguments.getUserArgumentCount(args) > 0 ? JSArguments.getUserArgument(args, 0) : Undefined.instance;
                 Object function = JSFrameUtil.getFunctionObject(frame);
                 ClassElementDefinitionRecord record = (ClassElementDefinitionRecord) getElementRecord.getValue(function);
                 assert !record.isPrivate();
-                return propertyGetNode.executeWithTargetAndIndex(thiz, record.getKey());
+                return propertyGetNode.executeWithTargetAndIndex(target, record.getKey());
             }
         }.getCallTarget();
-        return JSFunctionData.createCallOnly(context, callTarget, 0, Strings.GET);
+        return JSFunctionData.createCallOnly(context, callTarget, 1, Strings.GET);
     }
 
     @NeverDefault
@@ -620,16 +621,16 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
 
             @Override
             public Object execute(VirtualFrame frame) {
-                Object thiz = JSFrameUtil.getThisObj(frame);
+                Object[] args = frame.getArguments();
+                Object target = JSArguments.getUserArgumentCount(args) > 0 ? JSArguments.getUserArgument(args, 0) : Undefined.instance;
                 Object function = JSFrameUtil.getFunctionObject(frame);
                 ClassElementDefinitionRecord record = (ClassElementDefinitionRecord) getElementRecord.getValue(function);
                 assert !record.isPrivate();
-                Object[] args = frame.getArguments();
-                Object newValue = JSArguments.getUserArgumentCount(args) > 0 ? JSArguments.getUserArgument(args, 0) : Undefined.instance;
-                propertySetNode.executeWithTargetAndIndexAndValue(thiz, record.getKey(), newValue);
+                Object newValue = JSArguments.getUserArgumentCount(args) > 1 ? JSArguments.getUserArgument(args, 1) : Undefined.instance;
+                propertySetNode.executeWithTargetAndIndexAndValue(target, record.getKey(), newValue);
                 return Undefined.instance;
             }
         }.getCallTarget();
-        return JSFunctionData.createCallOnly(context, callTarget, 1, Strings.SET);
+        return JSFunctionData.createCallOnly(context, callTarget, 2, Strings.SET);
     }
 }

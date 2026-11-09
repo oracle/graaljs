@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
@@ -91,8 +91,8 @@ assertSame(42, ticks);
 //---------------------------------------------//
 function globalLeak(value, context) { ticks++; globalThis.context = context; }
 var C2 = (class { @globalLeak static accessor #x = 42 })
-context.access.get.call(C2);
-context.access.set.call(C2, 211);
+context.access.get(C2);
+context.access.set(C2, 211);
 assertSame(43, ticks);
 
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
@@ -46,8 +46,8 @@ function decorate(inner, context) {
                     // get and set do not work yet since the accessor's private state is not initialized yet
                     assertThrows(() => innerGet.call(this), TypeError);
                     assertThrows(() => innerSet.call(this, 'whatever'), TypeError);
-                    assertThrows(() => context.access.get.call(this), TypeError);
-                    assertThrows(() => context.access.set.call(this, 'whatever'), TypeError);
+                    assertThrows(() => context.access.get(this), TypeError);
+                    assertThrows(() => context.access.set(this, 'whatever'), TypeError);
                     return v * 4;
                 }
             };
