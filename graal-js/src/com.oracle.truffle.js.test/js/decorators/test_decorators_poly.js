@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
@@ -50,10 +50,10 @@ for (let i=0; i<10; i++) {
         @foo static #m() {};
         static ['#m'] = 42;
     }
-    assertSame('function', typeof getter.call(C1));
+    assertSame('function', typeof getter(C1));
 
     assertThrows(() => {
-        getter.call({});
+        getter({});
     }, TypeError);
 }
 assertSame(60, ticks);
@@ -65,10 +65,10 @@ for (let i=0; i<10; i++) {
         @foo #m() {};
         ['#m'] = 42;
     }
-    assertSame('function', typeof getter.call(new C2()));
+    assertSame('function', typeof getter(new C2()));
 
     assertThrows(() => {
-        getter.call({});
+        getter({});
     }, TypeError);
 }
 assertSame(70, ticks);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
@@ -38,7 +38,7 @@ class Container {
     create(Class) {
         let instance = new Class();
         for (const { injectionKey, set } of INJECTIONS.get(Class) || []) {
-            set.call(instance, this.lookup(injectionKey));
+            set(instance, this.lookup(injectionKey));
         }
         return instance;
     }

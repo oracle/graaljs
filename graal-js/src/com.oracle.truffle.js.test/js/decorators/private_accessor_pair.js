@@ -81,14 +81,14 @@ for (const isStatic of [false, true]) {
             }
 
             if (decorateGetter) {
-                assertSame(target.read(), contexts.getter.access.get.call(target));
-                assertThrows(() => contexts.getter.access.get.call({}), TypeError);
+                assertSame(target.read(), contexts.getter.access.get(target));
+                assertThrows(() => contexts.getter.access.get({}), TypeError);
             }
             if (decorateSetter) {
-                contexts.setter.access.set.call(target, 5);
+                contexts.setter.access.set(target, 5);
                 assertSame(10, target.value);
                 assertSame(10 + (decorateGetter ? 1 : 0), target.read());
-                assertThrows(() => contexts.setter.access.set.call({}, 5), TypeError);
+                assertThrows(() => contexts.setter.access.set({}, 5), TypeError);
             }
         }
     }

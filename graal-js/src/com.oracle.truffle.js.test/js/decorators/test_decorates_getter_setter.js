@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
@@ -90,4 +90,4 @@ let C1 = class { @leakGetDecorator static x; }
 
 delete C1.x;
 
-assertSame(undefined, leakGetter.call(C1));
+assertSame(undefined, leakGetter(C1));

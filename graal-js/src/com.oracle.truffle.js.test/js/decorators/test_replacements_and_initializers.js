@@ -214,25 +214,25 @@ class PrivateDecorated {
 const privateInstance = new PrivateDecorated();
 assertTrue(privateInstance.fieldInitializer);
 assertSame(1, privateInstance.field);
-assertSame(1, privateContexts.field.access.get.call(privateInstance));
-privateContexts.field.access.set.call(privateInstance, 5);
+assertSame(1, privateContexts.field.access.get(privateInstance));
+privateContexts.field.access.set(privateInstance, 5);
 assertSame(5, privateInstance.field);
 assertSame(11, privateInstance.method);
-assertSame(11, privateContexts.method.access.get.call(privateInstance).call(privateInstance));
+assertSame(11, privateContexts.method.access.get(privateInstance).call(privateInstance));
 assertSame(4, privateInstance.auto);
 privateInstance.auto = 5;
 assertSame(11, privateInstance.auto);
-assertSame(11, privateContexts.auto.access.get.call(privateInstance));
-privateContexts.auto.access.set.call(privateInstance, 7);
+assertSame(11, privateContexts.auto.access.get(privateInstance));
+privateContexts.auto.access.set(privateInstance, 7);
 assertSame(15, privateInstance.auto);
 assertTrue(PrivateDecorated.staticFieldInitializer);
-assertSame(3, privateContexts.staticField.access.get.call(PrivateDecorated));
-privateContexts.staticField.access.set.call(PrivateDecorated, 4);
+assertSame(3, privateContexts.staticField.access.get(PrivateDecorated));
+privateContexts.staticField.access.set(PrivateDecorated, 4);
 assertSame(4, PrivateDecorated.staticField);
 
 let privateAccessError;
 try {
-    privateContexts.field.access.get.call({});
+    privateContexts.field.access.get({});
 } catch (error) {
     privateAccessError = error;
 }
@@ -241,7 +241,7 @@ assertFalse(privateAccessError.message.includes('BackingStorageKey'));
 
 let privateMethodAccessError;
 try {
-    privateContexts.method.access.get.call({});
+    privateContexts.method.access.get({});
 } catch (error) {
     privateMethodAccessError = error;
 }
@@ -249,7 +249,7 @@ assertSame('Receiver must be an instance of class', privateMethodAccessError.mes
 
 let privateAutoAccessorError;
 try {
-    privateContexts.auto.access.get.call({});
+    privateContexts.auto.access.get({});
 } catch (error) {
     privateAutoAccessorError = error;
 }
@@ -275,7 +275,7 @@ class StaticAutoDecorated {
 assertSame(4, StaticAutoDecorated.auto);
 StaticAutoDecorated.auto = 5;
 assertSame(11, StaticAutoDecorated.auto);
-assertSame(11, staticAutoContext.access.get.call(StaticAutoDecorated));
-staticAutoContext.access.set.call(StaticAutoDecorated, 7);
+assertSame(11, staticAutoContext.access.get(StaticAutoDecorated));
+staticAutoContext.access.set(StaticAutoDecorated, 7);
 assertSame(15, StaticAutoDecorated.auto);
-assertThrows(() => staticAutoContext.access.get.call({}), TypeError);
+assertThrows(() => staticAutoContext.access.get({}), TypeError);
