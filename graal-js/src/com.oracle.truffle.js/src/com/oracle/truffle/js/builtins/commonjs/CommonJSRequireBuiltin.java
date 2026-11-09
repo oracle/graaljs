@@ -264,7 +264,7 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
             try {
                 debugStackPush(moduleIdentifier);
                 log("executing '", filenameBuiltin, "' for '", moduleIdentifier, "'");
-                JSFunction.callInFunctionRealm(JSArguments.create(moduleExecutableFunction, moduleExecutableFunction, exportsBuiltin, requireBuiltin, moduleBuiltin, filenameBuiltin,
+                JSFunction.callInFunctionRealm(JSArguments.create(exportsBuiltin, moduleExecutableFunction, exportsBuiltin, requireBuiltin, moduleBuiltin, filenameBuiltin,
                                 Strings.fromJavaString(dirnameBuiltin), env));
                 JSObject.set(moduleBuiltin, Strings.LOADED_PROPERTY_NAME, true);
                 log("done '", moduleIdentifier, "'");
