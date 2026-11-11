@@ -126,7 +126,7 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
                     @Cached(value = "createBrandAddNode(brand)", neverDefault = false) @Shared PrivateFieldAddNode privateBrandAddNode,
                     @Cached("createFieldNodes(fields, context)") InitializeFieldOrAccessorNode[] fieldNodes,
                     @Cached("createCall()") @Shared JSFunctionCallNode callInit) {
-        privateBrandAdd(target, constructor, fields, initializers, brand, privateBrandAddNode);
+        privateBrandAdd(target, constructor, brand, privateBrandAddNode);
 
         executeInitializers(target, initializers, callInit);
 
@@ -142,7 +142,7 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
     protected static Object withInitializers(Object target, Object constructor, @SuppressWarnings("unused") Object fields, Object[] initializers, Object brand,
                     @Cached(value = "createBrandAddNode(brand)", neverDefault = false) @Shared PrivateFieldAddNode privateBrandAddNode,
                     @Cached("createCall()") @Shared JSFunctionCallNode callInit) {
-        privateBrandAdd(target, constructor, fields, initializers, brand, privateBrandAddNode);
+        privateBrandAdd(target, constructor, brand, privateBrandAddNode);
         executeInitializers(target, initializers, callInit);
         return target;
     }
@@ -153,16 +153,13 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
         }
     }
 
-    @Specialization
-    protected static Object privateBrandAdd(Object target, Object constructor, @SuppressWarnings("unused") Object fields, @SuppressWarnings("unused") Object initializers, Object brand,
-                    @Cached(value = "createBrandAddNode(brand)", neverDefault = false) @Shared PrivateFieldAddNode privateBrandAddNode) {
+    private static void privateBrandAdd(Object target, Object constructor, Object brand, PrivateFieldAddNode privateBrandAddNode) {
         // If constructor.[[PrivateBrand]] is not undefined,
         // Perform ? PrivateBrandAdd(O, constructor.[[PrivateBrand]]).
         assert (privateBrandAddNode != null) == (brand != Undefined.instance);
         if (privateBrandAddNode != null) {
             privateBrandAddNode.execute(target, brand, constructor);
         }
-        return target;
     }
 
     @Override
