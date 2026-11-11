@@ -5,6 +5,9 @@ The main focus is on user-observable behavior of the engine.
 Changelog may include unreleased versions.
 See [release calendar](https://www.graalvm.org/release-calendar/) for release dates.
 
+## Version 25.6
+* Updated Node.js to version 24.22.3.
+
 ## Version 25.5.5
 * Added `js.foreign-object-prototype=specialized-only` mode to make generic foreign objects inherit directly from `Object.prototype`, improving compatibility with `Object.getPrototypeOf(foreign) === Object.prototype` checks. Specialized foreign prototypes and the existing `true` (default) and `false` modes are unchanged.
 * Updated Node.js to version 24.22.1.
