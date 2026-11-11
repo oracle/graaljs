@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -125,8 +125,8 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
     protected static Object withFields(Object target, Object constructor, ClassElementDefinitionRecord[] fields, Object[] initializers, Object brand,
                     @Cached(value = "createBrandAddNode(brand)", neverDefault = false) @Shared PrivateFieldAddNode privateBrandAddNode,
                     @Cached("createFieldNodes(fields, context)") InitializeFieldOrAccessorNode[] fieldNodes,
-                    @Cached("createCall()") JSFunctionCallNode callInit) {
-        privateBrandAdd(target, constructor, fields, initializers, brand, privateBrandAddNode);
+                    @Cached("createCall()") @Shared JSFunctionCallNode callInit) {
+        privateBrandAdd(target, constructor, brand, privateBrandAddNode);
 
         executeInitializers(target, initializers, callInit);
 
@@ -138,22 +138,28 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
         return target;
     }
 
+    @Specialization(guards = "isUndefined(fields)")
+    protected static Object withInitializers(Object target, Object constructor, @SuppressWarnings("unused") Object fields, Object[] initializers, Object brand,
+                    @Cached(value = "createBrandAddNode(brand)", neverDefault = false) @Shared PrivateFieldAddNode privateBrandAddNode,
+                    @Cached("createCall()") @Shared JSFunctionCallNode callInit) {
+        privateBrandAdd(target, constructor, brand, privateBrandAddNode);
+        executeInitializers(target, initializers, callInit);
+        return target;
+    }
+
     private static void executeInitializers(Object target, Object[] initializers, JSFunctionCallNode callInit) {
         for (Object initializer : initializers) {
             callInit.executeCall(JSArguments.createZeroArg(target, initializer));
         }
     }
 
-    @Specialization
-    protected static Object privateBrandAdd(Object target, Object constructor, @SuppressWarnings("unused") Object fields, @SuppressWarnings("unused") Object initializers, Object brand,
-                    @Cached(value = "createBrandAddNode(brand)", neverDefault = false) @Shared PrivateFieldAddNode privateBrandAddNode) {
+    private static void privateBrandAdd(Object target, Object constructor, Object brand, PrivateFieldAddNode privateBrandAddNode) {
         // If constructor.[[PrivateBrand]] is not undefined,
         // Perform ? PrivateBrandAdd(O, constructor.[[PrivateBrand]]).
         assert (privateBrandAddNode != null) == (brand != Undefined.instance);
         if (privateBrandAddNode != null) {
             privateBrandAddNode.execute(target, brand, constructor);
         }
-        return target;
     }
 
     @Override

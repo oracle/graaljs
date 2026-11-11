@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -244,10 +244,20 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
 
     /**
      * Returns true if the class has any instance elements that need to be initialized in the
-     * constructor (i.e. fields, accessors, or private methods).
+     * constructor (i.e. fields, auto-accessors, private methods, or decorated instance elements).
      */
     public boolean needsInitializeInstanceElements() {
-        return hasInstanceFieldsOrAccessors() || hasPrivateInstanceMethods();
+        if (hasInstanceFieldsOrAccessors() || hasPrivateInstanceMethods()) {
+            return true;
+        }
+        if (hasClassElementDecorators()) {
+            for (ClassElement element : classElements) {
+                if (!element.isStatic() && element.getDecorators() != null) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     public boolean isAnonymous() {
