@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -125,7 +125,7 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
     protected static Object withFields(Object target, Object constructor, ClassElementDefinitionRecord[] fields, Object[] initializers, Object brand,
                     @Cached(value = "createBrandAddNode(brand)", neverDefault = false) @Shared PrivateFieldAddNode privateBrandAddNode,
                     @Cached("createFieldNodes(fields, context)") InitializeFieldOrAccessorNode[] fieldNodes,
-                    @Cached("createCall()") JSFunctionCallNode callInit) {
+                    @Cached("createCall()") @Shared JSFunctionCallNode callInit) {
         privateBrandAdd(target, constructor, fields, initializers, brand, privateBrandAddNode);
 
         executeInitializers(target, initializers, callInit);
@@ -135,6 +135,15 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
         for (int i = 0; i < size; i++) {
             fieldNodes[i].defineField(target, fields[i]);
         }
+        return target;
+    }
+
+    @Specialization(guards = "isUndefined(fields)")
+    protected static Object withInitializers(Object target, Object constructor, @SuppressWarnings("unused") Object fields, Object[] initializers, Object brand,
+                    @Cached(value = "createBrandAddNode(brand)", neverDefault = false) @Shared PrivateFieldAddNode privateBrandAddNode,
+                    @Cached("createCall()") @Shared JSFunctionCallNode callInit) {
+        privateBrandAdd(target, constructor, fields, initializers, brand, privateBrandAddNode);
+        executeInitializers(target, initializers, callInit);
         return target;
     }
 
