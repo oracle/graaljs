@@ -1778,6 +1778,7 @@ inline void SecureContext::Reset() {
   ctx_.reset();
   cert_.reset();
   issuer_.reset();
+  has_own_ca_ = false;
 }
 
 SecureContext::~SecureContext() {
@@ -2144,6 +2145,7 @@ void SecureContext::SetCACert(const BIOPointer& bio) {
              X509_STORE_add_cert(GetCertStoreOwnedByThisSecureContext(), x509));
     CHECK_EQ(1, SSL_CTX_add_client_CA(ctx_.get(), x509));
   }
+  has_own_ca_ = true;
 }
 
 void SecureContext::AddCACert(const FunctionCallbackInfo<Value>& args) {
@@ -2401,8 +2403,11 @@ void SecureContext::SetSessionIdContext(
       reinterpret_cast<const unsigned char*>(*sessionIdContext);
   unsigned int sid_ctx_len = sessionIdContext.length();
 
-  if (SSL_CTX_set_session_id_context(sc->ctx_.get(), sid_ctx, sid_ctx_len) == 1)
+  int ok = SSL_CTX_set_session_id_context(sc->ctx_.get(), sid_ctx, sid_ctx_len);
+  if (ok == 1) {
+    sc->session_id_context_.assign(*sessionIdContext, sid_ctx_len);
     return;
+  }
 
   Local<String> message;
 
