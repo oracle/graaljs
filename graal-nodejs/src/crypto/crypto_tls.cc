@@ -20,7 +20,9 @@
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "crypto/crypto_tls.h"
+#include <algorithm>
 #include <cstdio>
+#include <span>
 #include "async_wrap-inl.h"
 #include "crypto/crypto_bio.h"
 #include "crypto/crypto_common.h"
@@ -99,7 +101,50 @@ SSL_SESSION* GetSessionCallback(
     int* copy) {
   TLSWrap* w = static_cast<TLSWrap*>(SSL_get_app_data(s));
   *copy = 0;
+  if (w->is_resumption_disabled()) return nullptr;
   return w->ReleaseSession();
+}
+
+// The server name is handled in EarlyClientHelloCallback, so this only
+// acknowledges it, which also has the TLS library store it in new sessions.
+int AcknowledgeServerName(SSL* s, int* ad, void* arg) {
+  return SSL_TLSEXT_ERR_OK;
+}
+
+// Reads a 16-bit length prefixed vector from the front of data. Returns
+// nothing if the length does not fit within data.
+std::optional<std::span<const uint8_t>> ReadVector16(
+    std::span<const uint8_t> data) {
+  if (data.size() < 2) return std::nullopt;
+  const size_t len = (static_cast<size_t>(data[0]) << 8) | data[1];
+  if (data.size() < 2 + len) return std::nullopt;
+  return data.subspan(2, len);
+}
+
+// The host name from the server_name extension, empty if the client sent
+// none. Nothing at all if it sent one that cannot be used, in which case the
+// handshake should fail.
+std::optional<std::string_view> ServerName(
+    std::optional<std::span<const uint8_t>> ext) {
+  if (!ext.has_value()) return std::string_view();
+  // RFC 6066: a 16-bit list length, then one entry of an 8-bit name type,
+  // a 16-bit name length and that many name bytes. The constraints applied
+  // here are the ones the TLS stack's own parser applies: exactly one
+  // entry, of type host_name, of a sane length and free of NULs.
+  auto list = ReadVector16(*ext);
+  if (!list.has_value() || list->size() < 3) return std::nullopt;
+  if ((*list)[0] != TLSEXT_NAMETYPE_host_name) return std::nullopt;
+  auto name = ReadVector16(list->subspan(1));
+  if (!name.has_value()) return std::nullopt;
+  if (name->size() + 3 != list->size()) return std::nullopt;
+  if (name->empty() || name->size() > TLSEXT_MAXLEN_host_name) {
+    return std::nullopt;
+  }
+  if (std::find(name->begin(), name->end(), 0) != name->end()) {
+    return std::nullopt;
+  }
+  return std::string_view(reinterpret_cast<const char*>(name->data()),
+                          name->size());
 }
 
 // The TLS library invokes this before version negotiation and before session
@@ -108,10 +153,22 @@ SSL_SESSION* GetSessionCallback(
 #ifdef OPENSSL_IS_BORINGSSL
 ssl_select_cert_result_t EarlyClientHelloCallback(const SSL_CLIENT_HELLO* ch) {
   TLSWrap* w = static_cast<TLSWrap*>(SSL_get_app_data(ch->ssl));
-  if (!w->should_suspend_for_client_hello()) return ssl_select_cert_success;
 
   const uint8_t* ext;
   size_t ext_len;
+  std::optional<std::span<const uint8_t>> sni;
+  if (SSL_early_callback_ctx_extension_get(
+          ch, TLSEXT_TYPE_server_name, &ext, &ext_len)) {
+    sni.emplace(ext, ext_len);
+  }
+  auto servername = ServerName(sni);
+  // If we can't parse the hello SNI, reject it explicitly:
+  if (!servername.has_value()) return ssl_select_cert_error;
+
+  if (!w->PinServerName(*servername)) return ssl_select_cert_error;
+
+  if (!w->should_suspend_for_client_hello()) return ssl_select_cert_success;
+
   bool has_ticket = SSL_early_callback_ctx_extension_get(
                         ch, TLSEXT_TYPE_session_ticket, &ext, &ext_len) &&
                     ext_len > 0;
@@ -123,13 +180,31 @@ ssl_select_cert_result_t EarlyClientHelloCallback(const SSL_CLIENT_HELLO* ch) {
 #else
 int EarlyClientHelloCallback(SSL* s, int* al, void* arg) {
   TLSWrap* w = static_cast<TLSWrap*>(SSL_get_app_data(s));
+
+  const unsigned char* ext;
+  size_t ext_len;
+  std::optional<std::span<const uint8_t>> sni;
+  if (SSL_client_hello_get0_ext(s, TLSEXT_TYPE_server_name, &ext, &ext_len) ==
+      1) {
+    sni.emplace(ext, ext_len);
+  }
+  auto servername = ServerName(sni);
+  // If we can't parse the hello SNI, reject it explicitly:
+  if (!servername.has_value()) {
+    *al = SSL_AD_DECODE_ERROR;
+    return SSL_CLIENT_HELLO_ERROR;
+  }
+
+  if (!w->PinServerName(*servername)) {
+    *al = SSL_AD_ILLEGAL_PARAMETER;
+    return SSL_CLIENT_HELLO_ERROR;
+  }
+
   if (!w->should_suspend_for_client_hello()) return SSL_CLIENT_HELLO_SUCCESS;
 
   const unsigned char* session_id;
   size_t session_id_len = SSL_client_hello_get0_session_id(s, &session_id);
 
-  const unsigned char* ext;
-  size_t ext_len;
   bool has_ticket = SSL_client_hello_get0_ext(
                         s, TLSEXT_TYPE_session_ticket, &ext, &ext_len) == 1 &&
                     ext_len > 0;
@@ -584,8 +659,7 @@ void TLSWrap::InitSSL() {
   //   https://github.com/openssl/openssl/issues/7199#issuecomment-420670544
   SSL_set_info_callback(ssl_.get(), SSLInfoCallback);
 
-  if (is_server())
-    sc_->SetSelectSNIContextCallback(SelectSNIContextCallback);
+  if (is_server()) sc_->SetSelectSNIContextCallback(AcknowledgeServerName);
 
   ConfigureSecureContext(sc_.get());
 
@@ -1143,7 +1217,11 @@ int TLSWrap::DoWrite(WriteWrap* w,
   // WriteWrap was accepted by the stream, or that we call Done() on it.
   if (length == 0) {
     Debug(this, "Empty write");
-    ClearOut();
+    // When the write comes from JS running inside Cycle(), for example from a
+    // stream listener in ClearOut(), the cycle reads and encrypts any pending
+    // data once that JS returns. Reading here would hand the next record to
+    // the listener while it is still processing the current one.
+    if (cycle_depth_ == 0) ClearOut();
     if (BIO_pending(enc_out_) == 0) {
       Debug(this, "No pending encrypted output, writing to underlying stream");
       CHECK(!current_empty_write_);
@@ -1517,39 +1595,60 @@ void TLSWrap::SetServername(const FunctionCallbackInfo<Value>& args) {
   SSL_set_tlsext_host_name(wrap->ssl_.get(), *servername);
 }
 
-int TLSWrap::SelectSNIContextCallback(SSL* s, int* ad, void* arg) {
-  TLSWrap* p = static_cast<TLSWrap*>(SSL_get_app_data(s));
-  Environment* env = p->env();
-  HandleScope handle_scope(env->isolate());
-  Context::Scope context_scope(env->context());
+// The connection's server name is fixed by its first ClientHello: later ones (a
+// renegotiation, or the second of a HelloRetryRequest) must ask for exactly the
+// same, as the connection's secure context was chosen for it.
+bool TLSWrap::PinServerName(std::string_view servername) {
+  if (flags_.servername_pinned) {
+    if (servername == servername_) return true;
+    Debug(this,
+          "ClientHello asked for server name '%s', connection pinned to '%s'",
+          servername,
+          servername_);
+    return false;
+  }
+  flags_.servername_pinned = true;
+  servername_ = servername;
 
-  auto servername = SSLPointer::GetServerName(s);
-  if (!servername.has_value() ||
-      !Set(env, p->GetOwner(), env->servername_string(), servername.value()))
-    return SSL_TLSEXT_ERR_NOACK;
-
-  Local<Value> ctx = p->object()->Get(env->context(), env->sni_context_string())
-      .FromMaybe(Local<Value>());
-
-  if (ctx.IsEmpty() || !ctx->IsObject()) [[unlikely]]
-    return SSL_TLSEXT_ERR_NOACK;
-
-  if (!env->secure_context_constructor_template()->HasInstance(ctx)) {
-    // Failure: incorrect SNI context object
-    Local<Value> err = Exception::TypeError(env->sni_context_err_string());
-    p->MakeCallback(env->onerror_string(), 1, &err);
-    return SSL_TLSEXT_ERR_NOACK;
+  if (!servername.empty()) {
+    HandleScope handle_scope(env()->isolate());
+    Context::Scope context_scope(env()->context());
+    if (!Set(env(), GetOwner(), env()->servername_string(), servername_)) {
+      return false;
+    }
   }
 
-  SecureContext* sc = Unwrap<SecureContext>(ctx.As<Object>());
-  CHECK_NOT_NULL(sc);
-  p->sni_context_ = BaseObjectPtr<SecureContext>(sc);
+  // Session resumption must only be allowed for sessions with exactly the same
+  // SNI. We use the SNI to derive the session id context, so no handshake can
+  // resume from a mismatched SNI value. Mismatches fall back to full
+  // handshakes:
+  return BindSessionsToServerName(servername);
+}
 
-  ConfigureSecureContext(sc);
-  CHECK_EQ(SSL_set_SSL_CTX(p->ssl_.get(), sc->ctx().get()), sc->ctx().get());
-  p->SetCACerts(sc);
+bool TLSWrap::BindSessionsToServerName(std::string_view servername) {
+  // If we have no session id context and we need to verify peers, we reject
+  // all resumption since we can't do so securely.
+  if (sc_->session_id_context().empty()) {
+    if (SSL_get_verify_mode(ssl_.get()) & SSL_VERIFY_PEER) {
+      SSL_set_options(ssl_.get(), SSL_OP_NO_TICKET);
+      flags_.resumption_disabled = true;
+    }
+    return true;
+  }
 
-  return SSL_TLSEXT_ERR_OK;
+  // Server names can't contain NULs, so a NUL keeps the parts apart.
+  std::string input = sc_->session_id_context();
+  input += '\0';
+  input += servername;
+  // Hash this to guarantee the value fits in 32 bytes while keeping
+  // values distinct:
+  auto digest = ncrypto::hashDigest(
+      {reinterpret_cast<const unsigned char*>(input.data()), input.size()},
+      ncrypto::Digest::SHA256);
+  return digest && SSL_set_session_id_context(
+                       ssl_.get(),
+                       static_cast<const unsigned char*>(digest.get()),
+                       digest.size()) == 1;
 }
 
 int TLSWrap::SetCACerts(SecureContext* sc) {
@@ -1710,6 +1809,7 @@ void TLSWrap::MemoryInfo(MemoryTracker* tracker) const {
   tracker->TrackField("ocsp_response", ocsp_response_);
   tracker->TrackField("sni_context", sni_context_);
   tracker->TrackField("error", error_);
+  tracker->TrackField("servername", servername_);
   if (pending_cleartext_input_)
     tracker->TrackField("pending_cleartext_input", pending_cleartext_input_);
   if (enc_in_ != nullptr)
@@ -1738,11 +1838,19 @@ void TLSWrap::CertCbDone(const FunctionCallbackInfo<Value>& args) {
     // Store the SNI context for later use.
     w->sni_context_ = BaseObjectPtr<SecureContext>(sc);
 
-    if (w->ssl_.setSniContext(w->sni_context_->ctx()) && !w->SetCACerts(sc)) {
-      // Not clear why sometimes we throw error, and sometimes we call
-      // onerror(). Both cause .destroy(), but onerror does a bit more.
-      unsigned long err = ERR_get_error();  // NOLINT(runtime/int)
-      return ThrowCryptoError(env, err, "CertCbDone");
+    // An SNI context without a certificate keeps the default context's
+    // certificate, but a `ca` it configured must still replace the default
+    // trust store for client certificates. A context with neither keeps the
+    // default context's trust store.
+    const bool has_cert = SSL_CTX_get0_certificate(sc->ctx().get()) != nullptr;
+    if (has_cert || sc->has_own_ca()) {
+      if ((has_cert && !w->ssl_.setSniContext(w->sni_context_->ctx())) ||
+          !w->SetCACerts(sc)) {
+        // Not clear why sometimes we throw error, and sometimes we call
+        // onerror(). Both cause .destroy(), but onerror does a bit more.
+        unsigned long err = ERR_get_error();  // NOLINT(runtime/int)
+        return ThrowCryptoError(env, err, "CertCbDone");
+      }
     }
     // setSniContext copies the cert via SSL_use_certificate which does not
     // carry over pre-compressed certificate data (comp_cert). If the new

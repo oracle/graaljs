@@ -512,7 +512,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 ================================================================================
 
-Node.js 24.22.1
+Node.js 24.22.3
 
 Node.js is licensed for use as follows:
 
