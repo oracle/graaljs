@@ -118,19 +118,19 @@ permalink: /
               <div class="language__example-subtitle truffle__example-subtitle">
                 <h4>1. Add GraalJS as a dependency from <a href="https://central.sonatype.com/artifact/org.graalvm.polyglot/js" target="_blank">Maven Central</a></h4>
               </div>
-              <pre><code class="xml">
-  &lt;dependency&gt;
-    &lt;groupId&gt;org.graalvm.polyglot&lt;/groupId&gt;
-    &lt;artifactId&gt;polyglot&lt;/artifactId&gt;
-    &lt;version&gt;25.3.4.1&lt;/version&gt;
-  &lt;/dependency&gt;
-  &lt;dependency&gt;
-    &lt;groupId>org.graalvm.polyglot&lt;/groupId&gt;
-    &lt;artifactId&gt;js&lt;/artifactId&gt;
-    &lt;version>25.3.4.1&lt;/version&gt;
-    &lt;type&gt;pom&lt;/type&gt;
-  &lt;/dependency&gt;
-                </code></pre>
+              {%- highlight xml -%}
+<dependency>
+  <groupId>org.graalvm.polyglot</groupId>
+  <artifactId>polyglot</artifactId>
+  <version>{{ site.language_version }}</version>
+</dependency>
+<dependency>
+  <groupId>org.graalvm.polyglot</groupId>
+  <artifactId>js</artifactId>
+  <version>{{ site.language_version }}</version>
+  <type>pom</type>
+</dependency>
+              {%- endhighlight -%}
             </div>
           </div>
           <div class="languages__example-box truffles__example-box">
@@ -142,10 +142,10 @@ permalink: /
                 <h4>or
                 </h4>
               </div>
-              <pre><code class="groovy">
-  implementation("org.graalvm.polyglot:polyglot:25.3.4.1")
-  implementation("org.graalvm.polyglot:js:25.3.4.1")
-                </code></pre>
+              {%- highlight groovy -%}
+implementation("org.graalvm.polyglot:polyglot:{{ site.language_version }}")
+implementation("org.graalvm.polyglot:js:{{ site.language_version }}")
+              {%- endhighlight -%}
             </div>
           </div>
           <div class="languages__example-box truffles__example-box">
@@ -156,13 +156,13 @@ permalink: /
               <div class="language__example-subtitle truffle__example-subtitle">
                 <h4>2. Embed JavaScript code in Java</h4>
               </div>
-              <pre><code class="java">
+                {%- highlight java -%}
   import org.graalvm.polyglot.Context;
 
   try (Context context = Context.create()) {
       context.eval("js", "console.log('Hello from GraalJS!')");
   }
-                </code></pre>
+                {%- endhighlight -%}
             </div>
           </div>
         </div>
