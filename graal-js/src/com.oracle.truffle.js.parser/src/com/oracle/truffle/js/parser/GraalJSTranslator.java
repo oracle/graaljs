@@ -1392,7 +1392,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     tagBody(blockNode, block);
 
                     if (moduleAsyncUsingScope) {
-                        blockNode = wrapUsingScope(blockNode, true, usingScopeInfo.capabilityVar, usingScopeInfo.errorVar);
+                        blockNode = wrapUsingScope(blockNode, true, usingScopeInfo.capabilityVar, usingScopeInfo.errorVar, true, true);
                         usingScopeWrapped = true;
                     }
 
@@ -1439,7 +1439,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             }
 
             if (usingScopeInfo != null && !usingScopeWrapped) {
-                blockNode = wrapUsingScope(blockNode, usingScopeInfo.async, usingScopeInfo.capabilityVar, usingScopeInfo.errorVar);
+                blockNode = wrapUsingScope(blockNode, usingScopeInfo.async, usingScopeInfo.capabilityVar, usingScopeInfo.errorVar, block.isTerminal(),
+                                block.isFunctionBody() || block.isExpressionBlock() || block.isParameterBlock());
             }
 
             result = blockEnv.wrapBlockScope(blockNode);
@@ -2147,7 +2148,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return statement;
     }
 
-    private JavaScriptNode wrapUsingScope(JavaScriptNode blockBody, boolean async, VarRef capabilityVar, VarRef errorVar) {
+    private JavaScriptNode wrapUsingScope(JavaScriptNode blockBody, boolean async, VarRef capabilityVar, VarRef errorVar, boolean terminal, boolean expressionBlock) {
         JavaScriptNode catchBlock = factory.createThrow(context, errorVar.createReadNode());
         JavaScriptNode tryCatch = factory.createTryCatch(context, blockBody, catchBlock, errorVar.createWriteNode(null), null, null, null);
         JavaScriptNode finallyBlock;
@@ -2160,10 +2161,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         } else {
             finallyBlock = factory.createDisposeResources(capabilityVar.createReadNode(), errorVar.createReadNode());
         }
-        return createBlock(
+        // The block's value is the body's: a function body yields its return value here.
+        return createBlock(new JavaScriptNode[]{
                         capabilityVar.createWriteNode(factory.createDisposeCapability()),
                         errorVar.createWriteNode(factory.createConstant(null)),
-                        factory.createTryFinally(tryCatch, wrapSaveAndRestoreCompletionValue(wrapClearCompletionValue(finallyBlock))));
+                        factory.createTryFinally(tryCatch, wrapSaveAndRestoreCompletionValue(wrapClearCompletionValue(finallyBlock)))}, terminal, expressionBlock);
     }
 
     @Override
@@ -2286,7 +2288,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 VarRef capabilityVar = environment.createTempVar();
                 VarRef errorVar = environment.createTempVar();
                 JavaScriptNode registerNode = factory.createRegisterDisposableResource(context, capabilityVar.createReadNode(), nextValueVarInner.createReadNode(), async);
-                iterationBody = wrapUsingScope(createBlock(nextBindingInit, registerNode, body), async, capabilityVar, errorVar);
+                iterationBody = wrapUsingScope(createBlock(nextBindingInit, registerNode, body), async, capabilityVar, errorVar, false, false);
             } else {
                 iterationBody = createBlock(nextBindingInit, body);
             }
