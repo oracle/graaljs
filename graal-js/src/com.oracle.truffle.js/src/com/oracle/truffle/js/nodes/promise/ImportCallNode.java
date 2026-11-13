@@ -99,10 +99,10 @@ public class ImportCallNode extends JavaScriptNode {
 
     private final ImportPhase phase;
     @Child private JavaScriptNode argRefNode;
+    @Child private JavaScriptNode optionsRefNode;
     private final ScriptOrModule activeScriptOrModule;
     @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
     @Child private JSToStringNode toStringNode;
-    @Child private JavaScriptNode optionsRefNode;
 
     // lazily initialized
     @Child private JSFunctionCallNode callRejectNode;

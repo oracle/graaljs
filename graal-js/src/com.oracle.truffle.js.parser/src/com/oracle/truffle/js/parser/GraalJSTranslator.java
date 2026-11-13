@@ -160,6 +160,7 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionExpressionNode;
 import com.oracle.truffle.js.nodes.function.JSNewNode;
 import com.oracle.truffle.js.nodes.function.SpreadArgumentNode;
+import com.oracle.truffle.js.nodes.promise.ImportCallNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.nodes.unary.TypeOfNode;
 import com.oracle.truffle.js.nodes.unary.VoidNode;
@@ -832,7 +833,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                         node instanceof ArrayLiteralNode || node instanceof ObjectLiteralNode ||
                         node instanceof com.oracle.truffle.js.nodes.access.PropertyNode || node instanceof GlobalPropertyNode || node instanceof ReadElementNode ||
                         node instanceof WritePropertyNode || node instanceof WriteElementNode ||
-                        node instanceof JSFunctionCallNode || node instanceof JSNewNode;
+                        node instanceof JSFunctionCallNode || node instanceof JSNewNode || node instanceof ImportCallNode;
     }
 
     private static boolean isStatelessExpression(Node child) {
