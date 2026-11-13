@@ -1,6 +1,8 @@
 baseurl: "/javascript"
 url: "https://graalvm.org"
 github: "oracle/graaljs"
+language_version: 25.5.5.0.3
+name: GraalJS
 
 plugins:
   - jekyll-relative-links
