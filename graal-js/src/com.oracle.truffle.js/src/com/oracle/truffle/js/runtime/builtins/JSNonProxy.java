@@ -586,12 +586,15 @@ public abstract class JSNonProxy extends JSClass {
         }
 
         int newFlags = objectFlags | JSShape.NOT_EXTENSIBLE_FLAG | extraFlags;
-        // add sealed/frozen flags if properties already have appropriate attributes.
-        if ((newFlags & JSShape.SEALED_FLAG) == 0 && testSealedProperties(thisObj)) {
-            newFlags |= JSShape.SEALED_FLAG;
-        }
-        if ((newFlags & JSShape.SEALED_FLAG) != 0 && (newFlags & JSShape.FROZEN_FLAG) == 0 && testFrozenProperties(thisObj)) {
-            newFlags |= JSShape.FROZEN_FLAG;
+        // Infer sealed/frozen flags from shape properties only for ordinary own-property semantics.
+        // Exotic objects may have additional properties, such as strategy-backed array elements.
+        if (JSShape.usesOrdinaryGetOwnProperty(thisObj.getShape())) {
+            if ((newFlags & JSShape.SEALED_FLAG) == 0 && testSealedProperties(thisObj)) {
+                newFlags |= JSShape.SEALED_FLAG;
+            }
+            if ((newFlags & JSShape.SEALED_FLAG) != 0 && (newFlags & JSShape.FROZEN_FLAG) == 0 && testFrozenProperties(thisObj)) {
+                newFlags |= JSShape.FROZEN_FLAG;
+            }
         }
         if (newFlags != objectFlags) {
             JSDynamicObject.setObjectFlags(thisObj, newFlags);

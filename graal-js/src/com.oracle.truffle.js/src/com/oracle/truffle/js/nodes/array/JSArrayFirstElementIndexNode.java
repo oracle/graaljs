@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -119,6 +119,9 @@ public abstract class JSArrayFirstElementIndexNode extends JSArrayElementIndexNo
     private long holesArrayImpl(JSDynamicObject object, long length, ScriptArray array,
                     Node node, JSArrayNextElementIndexNode nextElementIndexNode, InlinedConditionProfile isZero) {
         long firstIndex = array.firstElementIndex(object);
+        if (!array.hasElement(object, firstIndex)) {
+            firstIndex = JSRuntime.MAX_SAFE_INTEGER_LONG;
+        }
         if (isZero.profile(node, firstIndex == 0)) {
             return firstIndex;
         }

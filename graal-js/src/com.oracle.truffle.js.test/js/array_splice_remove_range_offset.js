@@ -6,8 +6,8 @@
  */
 
 /**
- * Tests splice removal across the index offset after the backing store grows to the left.
- * Covers contiguous and holes arrays and checks that subsequent writes do not expose stale elements.
+ * splice removal must relocate elements correctly with nonzero backing-store offsets,
+ * including shifted arrays near the signed-int length limit, without exposing stale elements.
  */
 
 load("./assert.js");
@@ -44,6 +44,36 @@ for (const values of [[11, 22, 33], [1.5, 2.5, 3.5], ["a", "b", "c"], [{}, {}, {
                 const nextIndex = array.length + 5;
                 array[nextIndex] = values[0];
                 remaining.push({index: nextIndex, value: values[0]});
+                checkElements(array, remaining);
+            }
+        }
+    }
+}
+
+const maxLength = 0x7fffffff;
+for (const values of [[11, 22, 33], [1.5, 2.5, 3.5], ["a", "b", "c"], [{}, {}, {}]]) {
+    for (const shifts of [2, 4]) {
+        for (const holes of [false, true]) {
+            for (const [start, end] of [[0, maxLength - 1], [1, maxLength - 1], [0, maxLength - 3], [maxLength - 4, maxLength - 2], [0, maxLength]]) {
+                const array = [];
+                for (let i = 0; i < 7; i++) {
+                    array.push(values[i % values.length]);
+                }
+                for (let i = 0; i < shifts; i++) {
+                    array.shift();
+                }
+                if (holes) {
+                    delete array[1];
+                }
+                const entries = Object.keys(array).map(index => ({index: Number(index), value: array[index]}));
+                array.length = maxLength;
+                const count = end - start;
+                const removed = array.splice(start, count);
+
+                assertSame(count, removed.length);
+                checkElements(removed, entries.filter(entry => start <= entry.index && entry.index < end).map(entry => ({index: entry.index - start, value: entry.value})));
+                assertSame(maxLength - count, array.length);
+                const remaining = entries.filter(entry => entry.index < start || entry.index >= end).map(entry => ({index: entry.index < start ? entry.index : entry.index - count, value: entry.value}));
                 checkElements(array, remaining);
             }
         }

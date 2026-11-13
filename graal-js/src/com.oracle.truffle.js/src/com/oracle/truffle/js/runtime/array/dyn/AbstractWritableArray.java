@@ -115,13 +115,13 @@ public abstract class AbstractWritableArray extends DynamicArray {
      */
     @Override
     public final boolean isInBoundsFast(JSDynamicObject object, long index) {
-        return firstElementIndex(object) <= index && index <= lastElementIndex(object);
+        return firstElementIndex(object) <= index && index < lastElementIndex(object) + 1;
     }
 
     protected abstract int prepareInBoundsFast(JSDynamicObject object, long index);
 
-    public final boolean isInBounds(JSDynamicObject object, int index) {
-        return isSupported(object, index) && rangeCheck(object, index);
+    public final boolean isInBounds(JSDynamicObject object, long index) {
+        return isSupported(object, index) && rangeCheck(object, (int) index);
     }
 
     protected abstract int prepareInBounds(JSDynamicObject object, int index, Node node, SetSupportedProfileAccess profile);
@@ -284,7 +284,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
         if (profile.updateStatePrepend(node, internalIndex < offset)) {
             arraySetUsedLength(object, used + 1);
             setArrayOffset(object, offset - 1);
-        } else if (profile.updateStateAppend(node, internalIndex >= offset + used)) {
+        } else if (profile.updateStateAppend(node, internalIndex >= (long) offset + used)) {
             arraySetUsedLength(object, used + 1);
             long length = arrayGetLength(object);
             long calcLength = getIndexOffset(object) + offset + used + 1;
@@ -300,7 +300,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
         int size;
         if (profile.updateStatePrepend(node, internalIndex < offset)) {
             size = -(offset - internalIndex);
-        } else if (profile.updateStateAppend(node, internalIndex >= offset + used)) {
+        } else if (profile.updateStateAppend(node, internalIndex >= (long) offset + used)) {
             if (used == 0) {
                 // empty array, array offset should match the new element
                 offset = internalIndex;
@@ -499,9 +499,13 @@ public abstract class AbstractWritableArray extends DynamicArray {
             arraySetLength(object, length);
             arraySetHoleCount(object, 0);
             arraySetArray(object, ScriptArray.EMPTY_OBJECT_ARRAY);
-            return ConstantEmptyArray.createConstantEmptyArray();
+            return ConstantEmptyArray.createConstantEmptyArray(integrityLevel);
         } else if (profile.lengthLess(node, length < length(object))) {
             setLengthLess(object, length, node, profile);
+            if (profile.emptyUsedRange(node, getUsedLength(object) == 0)) {
+                arraySetArray(object, ScriptArray.EMPTY_OBJECT_ARRAY);
+                return ConstantEmptyArray.createConstantEmptyArray(integrityLevel);
+            }
         } else {
             arraySetLength(object, length);
         }
@@ -530,7 +534,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
             if (isHolesType()) {
                 arraySetHoleCount(object, 0);
             }
-            setIndexOffset(object, length - 1);
+            setIndexOffset(object, 0);
             setArrayOffset(object, 0);
             long arrayCapacity = getArrayCapacity(object);
             clearUnusedArea(object, 0, (int) arrayCapacity, 0, node, profile);
@@ -613,6 +617,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
         long nextNonHoles = nextElementIndexHoles(object, index);
         if (nextNonHoles == JSRuntime.MAX_SAFE_INTEGER_LONG) {
             // there are no more elements in this Object
+            setIndexOffset(object, 0);
             setArrayOffset(object, 0);
             arraySetUsedLength(object, 0);
             arraySetHoleCount(object, 0);
@@ -664,6 +669,9 @@ public abstract class AbstractWritableArray extends DynamicArray {
     public abstract Object allocateArray(int length);
 
     ScriptArray addRangeImplContiguous(JSDynamicObject object, long offset, int size) {
+        if (length(object) + size > Integer.MAX_VALUE) {
+            return toSparse(object, offset, null).addRangeImpl(object, offset, size);
+        }
         long indexOffset = getIndexOffset(object);
         int arrayOffset = getArrayOffset(object);
         if (offset <= indexOffset + arrayOffset) {
@@ -673,13 +681,14 @@ public abstract class AbstractWritableArray extends DynamicArray {
             Object array = getArrayObject(object);
             int usedLength = getUsedLength(object);
             int arrayLength = getArrayLength(array);
+            long effectiveOffset = offset - indexOffset;
             if (arrayOffset + usedLength + size <= arrayLength) {
                 int lastIndex = (arrayOffset + usedLength);
-                int effectiveOffset = (int) (offset - indexOffset);
-                int copySize = (lastIndex - effectiveOffset);
+                long copySize = lastIndex - effectiveOffset;
                 if (copySize > 0) {
-                    System.arraycopy(array, effectiveOffset, array, (effectiveOffset + size), copySize);
-                    fillWithHoles(array, effectiveOffset, effectiveOffset + size);
+                    int insertionOffset = (int) effectiveOffset;
+                    System.arraycopy(array, insertionOffset, array, insertionOffset + size, (int) copySize);
+                    fillWithHoles(array, insertionOffset, insertionOffset + size);
                     if (isHolesType()) {
                         arraySetHoleCount(object, arrayGetHoleCount(object) + size);
                     }
@@ -687,26 +696,27 @@ public abstract class AbstractWritableArray extends DynamicArray {
                 }
                 return this;
             } else {
-                return addRangeGrow(object, array, arrayLength, usedLength, lengthInt(object), (int) (offset - indexOffset), size, arrayOffset, indexOffset);
+                return addRangeGrow(object, array, arrayLength, usedLength, lengthInt(object), effectiveOffset, size, arrayOffset, indexOffset);
             }
         }
     }
 
-    private ScriptArray addRangeGrow(JSDynamicObject object, Object array, int arrayLength, int usedLength, int length, int offset, int size, int arrayOffset, long indexOffset) {
+    private ScriptArray addRangeGrow(JSDynamicObject object, Object array, int arrayLength, int usedLength, int length, long offset, int size, int arrayOffset, long indexOffset) {
         Object newArray = allocateArray(nextPower(arrayLength + size));
         if (offset >= arrayOffset + usedLength) {
             System.arraycopy(array, arrayOffset, newArray, arrayOffset, usedLength);
             fillWithHoles(newArray, arrayOffset + usedLength, arrayOffset + usedLength + size);
             return ensureHolesArray(object, length + size, newArray, indexOffset, arrayOffset, usedLength + size, arrayGetHoleCount(object) + size);
         } else {
-            System.arraycopy(array, arrayOffset, newArray, arrayOffset, offset - arrayOffset);
-            int toCopy = (arrayOffset + usedLength) - offset;
-            System.arraycopy(array, offset, newArray, offset + size, toCopy);
+            int insertionOffset = (int) offset;
+            System.arraycopy(array, arrayOffset, newArray, arrayOffset, insertionOffset - arrayOffset);
+            int toCopy = (arrayOffset + usedLength) - insertionOffset;
+            System.arraycopy(array, insertionOffset, newArray, insertionOffset + size, toCopy);
             arraySetLength(object, length + size);
             arraySetArray(object, newArray);
             arraySetUsedLength(object, usedLength + size);
             if (isHolesType()) {
-                fillWithHoles(newArray, offset, offset + size);
+                fillWithHoles(newArray, insertionOffset, insertionOffset + size);
                 arraySetHoleCount(object, arrayGetHoleCount(object) + size);
             }
             return this;
@@ -722,6 +732,9 @@ public abstract class AbstractWritableArray extends DynamicArray {
     }
 
     ScriptArray addRangeImplZeroBased(JSDynamicObject object, long offset, int size) {
+        if (length(object) + size > Integer.MAX_VALUE) {
+            return toSparse(object, offset, null).addRangeImpl(object, offset, size);
+        }
         int iOffset = (int) offset;
         Object array = getArrayObject(object);
         int arrayLength = getArrayLength(array);
@@ -747,13 +760,13 @@ public abstract class AbstractWritableArray extends DynamicArray {
         long indexOffset = getIndexOffset(object);
         int arrayOffset = getArrayOffset(object);
 
-        int startIntl = (int) (start - indexOffset);
-        int endIntl = (int) (end - indexOffset);
+        long startIntl = start - indexOffset;
+        long endIntl = end - indexOffset;
 
-        int usedStartIntl = Math.max(arrayOffset, startIntl);
-        int usedEndIntl = Math.min(arrayOffset + usedLength, endIntl);
+        int usedStartIntl = (int) Math.min(arrayOffset + usedLength, Math.max(arrayOffset, startIntl));
+        int usedEndIntl = (int) Math.min(arrayOffset + usedLength, Math.max(arrayOffset, endIntl));
 
-        int usedDelta = Math.max(0, usedEndIntl - usedStartIntl);
+        int usedDelta = usedEndIntl - usedStartIntl;
         int newUsedLength = usedLength - usedDelta;
         if (usedDelta > 0) {
             arraySetUsedLength(object, newUsedLength);
@@ -770,30 +783,30 @@ public abstract class AbstractWritableArray extends DynamicArray {
 
         int arrayOffsetNew = arrayOffset;
         if (startIntl < 0) {
-            int indexOffsetDelta = endIntl - startIntl;
+            long indexOffsetDelta = endIntl - startIntl;
             long indexOffsetNew = Math.max(0, indexOffset - indexOffsetDelta);
 
             if (endIntl > 0) {
-                int length = usedLength + arrayOffset - endIntl;
+                long length = usedLength + arrayOffset - endIntl;
                 if (length > 0) {
-                    moveRangePrepared(object, endIntl, 0, length);
+                    moveRangePrepared(object, (int) endIntl, 0, (int) length);
                 }
                 indexOffsetNew = start;
                 // The remaining elements moved towards zero, including any unused prefix.
-                arrayOffsetNew = Math.max(0, arrayOffset - endIntl);
+                arrayOffsetNew = (int) Math.max(0, arrayOffset - endIntl);
                 setArrayOffset(object, arrayOffsetNew);
             }
 
             setIndexOffset(object, indexOffsetNew);
         } else {
             if (startIntl < arrayOffset) {
-                arrayOffsetNew = Math.max(startIntl, arrayOffset - (endIntl - startIntl));
+                arrayOffsetNew = (int) Math.max(startIntl, arrayOffset - (endIntl - startIntl));
                 setArrayOffset(object, arrayOffsetNew);
             }
 
-            int length = usedLength + arrayOffset - endIntl;
+            long length = usedLength + arrayOffset - endIntl;
             if (length > 0) {
-                moveRangePrepared(object, endIntl, startIntl, length);
+                moveRangePrepared(object, (int) endIntl, (int) startIntl, (int) length);
             }
         }
 
@@ -815,16 +828,11 @@ public abstract class AbstractWritableArray extends DynamicArray {
         long indexOffset = getIndexOffset(object);
         int arrayOffset = getArrayOffset(object);
 
-        int startIntl = (int) (start - indexOffset);
-        int endIntl = (int) (end - indexOffset);
-
-        if (endIntl > 0) {
-            int actualStartIntl = Math.max(arrayOffset, startIntl);
-            int actualEndIntl = Math.min(arrayOffset + usedLength, endIntl);
-            for (int i = actualStartIntl; i < actualEndIntl; i++) {
-                if (isHolePrepared(object, i)) {
-                    incrementHolesCount(object, -1);
-                }
+        int actualStartIntl = (int) Math.min(arrayOffset + usedLength, Math.max(arrayOffset, start - indexOffset));
+        int actualEndIntl = (int) Math.min(arrayOffset + usedLength, Math.max(arrayOffset, end - indexOffset));
+        for (int i = actualStartIntl; i < actualEndIntl; i++) {
+            if (isHolePrepared(object, i)) {
+                incrementHolesCount(object, -1);
             }
         }
 

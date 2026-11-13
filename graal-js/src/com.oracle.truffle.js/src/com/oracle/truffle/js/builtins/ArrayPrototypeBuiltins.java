@@ -1967,7 +1967,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                             @Bind Node node,
                             @Cached @Shared GetPrototypeNode getPrototypeNode,
                             @Cached @Shared InlinedConditionProfile arrayElementwise) {
-                if (arrayElementwise.profile(node, parent.mustUseElementwise(array, len, cachedArrayType.cast(arrayType), getPrototypeNode))) {
+                if (arrayElementwise.profile(node, parent.mustUseElementwise(array, len, len - actualDeleteCount + itemCount, cachedArrayType.cast(arrayType), getPrototypeNode))) {
                     parent.spliceJSArrayElementwise(array, len, actualStart, actualDeleteCount, itemCount);
                 } else {
                     parent.spliceJSArrayBlockwise(array, actualStart, actualDeleteCount, itemCount, cachedArrayType.cast(arrayType));
@@ -1979,7 +1979,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                             @Bind Node node,
                             @Cached @Shared GetPrototypeNode getPrototypeNode,
                             @Cached @Shared InlinedConditionProfile arrayElementwise) {
-                if (arrayElementwise.profile(node, parent.mustUseElementwise(array, len, arrayType, getPrototypeNode))) {
+                if (arrayElementwise.profile(node, parent.mustUseElementwise(array, len, len - actualDeleteCount + itemCount, arrayType, getPrototypeNode))) {
                     parent.spliceJSArrayElementwise(array, len, actualStart, actualDeleteCount, itemCount);
                 } else {
                     parent.spliceJSArrayBlockwise(array, actualStart, actualDeleteCount, itemCount, arrayType);
@@ -1987,8 +1987,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        final boolean mustUseElementwise(JSDynamicObject obj, long expectedLength, ScriptArray array, GetPrototypeNode getPrototypeNode) {
-            return array.isLengthNotWritable() ||
+        final boolean mustUseElementwise(JSDynamicObject obj, long expectedLength, long newLength, ScriptArray array, GetPrototypeNode getPrototypeNode) {
+            return newLength > JSRuntime.MAX_ARRAY_LENGTH || array.isLengthNotWritable() || !array.isExtensible() ||
                             getPrototypeNode.execute(obj) != getRealm().getArrayPrototype() ||
                             !getContext().getArrayPrototypeNoElementsAssumption().isValid() ||
                             (!getContext().getFastArrayAssumption().isValid() && JSSlowArray.isJSSlowArray(obj)) ||

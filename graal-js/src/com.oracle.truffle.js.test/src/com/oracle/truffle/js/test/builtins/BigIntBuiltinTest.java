@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -80,6 +80,42 @@ public class BigIntBuiltinTest {
     public void testTypedArrayTypes() {
         testIntl("var a = new BigInt64Array(4); a[0] = 42n; a[0];", "Missing space after");
         testIntl("var a = new BigUint64Array(4); a[0] = 42n; a[0];", "Missing space after");
+    }
+
+    /**
+     * Float16Array availability must depend on the ECMAScript version, not on BigInt or buffer storage options.
+     */
+    @Test
+    public void testFloat16ArrayIndependentOfBigInt() {
+        for (int version : new int[]{2018, 2024, 2025}) {
+            for (boolean bigInt : new boolean[]{false, true}) {
+                for (boolean direct : new boolean[]{false, true}) {
+                    try (Context context = JSTest.newContextBuilder().//
+                                    option(JSContextOptions.ECMASCRIPT_VERSION_NAME, String.valueOf(version)).//
+                                    option(JSContextOptions.BIGINT_NAME, String.valueOf(bigInt)).//
+                                    option(JSContextOptions.DIRECT_BYTE_BUFFER_NAME, String.valueOf(direct)).build()) {
+                        boolean expectBigInt = version >= 2019 && bigInt;
+                        Assert.assertEquals(expectBigInt, context.eval(JavaScriptLanguage.ID, "typeof BigInt === 'function'").asBoolean());
+                        Assert.assertEquals(expectBigInt, context.eval(JavaScriptLanguage.ID, "typeof BigInt64Array === 'function'").asBoolean());
+                        Assert.assertEquals(expectBigInt, context.eval(JavaScriptLanguage.ID, "typeof BigUint64Array === 'function'").asBoolean());
+                        Assert.assertEquals(version >= 2025, context.eval(JavaScriptLanguage.ID, "typeof Float16Array === 'function'").asBoolean());
+                        if (version >= 2025) {
+                            Assert.assertTrue(context.eval(JavaScriptLanguage.ID, """
+                                            (() => {
+                                                const array = Float16Array.from([1.5, 2.5]);
+                                                const view = new Float16Array(new ArrayBuffer(8), 2, 2);
+                                                view.set(array);
+                                                return array[0] === 1.5 && array[1] === 2.5 && view[1] === 2.5 &&
+                                                    Object.getPrototypeOf(array) === Float16Array.prototype &&
+                                                    array.constructor === Float16Array && array.slice(1)[0] === 2.5 &&
+                                                    array.subarray(1).constructor === Float16Array;
+                                            })()
+                                            """).asBoolean());
+                        }
+                    }
+                }
+            }
+        }
     }
 
     @Test

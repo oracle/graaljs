@@ -69,6 +69,7 @@ import com.oracle.truffle.js.runtime.array.dyn.HolesIntArray;
 import com.oracle.truffle.js.runtime.array.dyn.ZeroBasedIntArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
+import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.test.JSTest;
 
@@ -109,6 +110,35 @@ public class DynamicArrayTest extends JSTest {
         assertEquals(Undefined.instance, array.getElement(arrayObject, 1));
 
         assertEquals(0, array.toArray(arrayObject).length);
+    }
+
+    /**
+     * Element searches in constant holey arrays must stay in bounds and return the not-found sentinels.
+     */
+    @Test
+    public void testConstantHolesArraySearchBounds() {
+        for (Object[] values : new Object[][]{{null, OBJECT, null, OBJECT, null}, {null, null}, {}}) {
+            JSArrayObject arrayObject = JSArray.create(testHelper.getJSContext(), testHelper.getRealm(), ConstantObjectArray.createConstantHolesObjectArray(), values, values.length);
+            ScriptArray array = arrayObject.getArrayType();
+            for (long index : new long[]{-1, 0, 1, 2, 3, 4, 5, 10, Integer.MAX_VALUE, (long) Integer.MAX_VALUE + 1, JSRuntime.MAX_SAFE_INTEGER_LONG}) {
+                long expectedNext = JSRuntime.MAX_SAFE_INTEGER_LONG;
+                long expectedPrevious = -1;
+                for (int i = 0; i < values.length; i++) {
+                    if (values[i] != null) {
+                        if (i > index && expectedNext == JSRuntime.MAX_SAFE_INTEGER_LONG) {
+                            expectedNext = i;
+                        }
+                        if (i < index) {
+                            expectedPrevious = i;
+                        }
+                    }
+                }
+                assertEquals(expectedNext, array.nextElementIndex(arrayObject, index));
+                if (index >= 0) {
+                    assertEquals(expectedPrevious, array.previousElementIndex(arrayObject, index));
+                }
+            }
+        }
     }
 
     @Test
@@ -503,6 +533,40 @@ public class DynamicArrayTest extends JSTest {
         }
     }
 
+    /**
+     * Deleting the last elements must reset used-range metadata so the array can be repopulated safely.
+     */
+    @Test
+    public void testDeleteAllElementsNormalizesEmptyRange() {
+        for (String value : new String[]{"1", "1.5", "'x'", "{}"}) {
+            for (int offset : new int[]{0, 20, 1_000_000}) {
+                for (int gap : new int[]{0, 2}) {
+                    JSArrayObject arrayObject = (JSArrayObject) testHelper.runNoPolyglot(
+                                    "globalThis.array = []; array[" + offset + "] = " + value + "; array[" + (offset + gap) + "] = " + value + "; array");
+                    testHelper.runNoPolyglot("delete array[" + offset + "]; delete array[" + (offset + gap) + "]");
+                    ScriptArray array = arrayObject.getArrayType();
+                    assertEquals(offset + gap + 1, array.length(arrayObject));
+                    assertEquals(0, arrayGetUsedLength(arrayObject));
+                    assertEquals(0, arrayGetHoleCount(arrayObject));
+                    assertEquals(0, arrayGetIndexOffset(arrayObject));
+                    assertEquals(0, arrayGetArrayOffset(arrayObject));
+                    assertEquals(0, array.firstElementIndex(arrayObject));
+                    assertEquals(-1, array.lastElementIndex(arrayObject));
+                    assertEquals(0, array.ownPropertyKeys(arrayObject).size());
+
+                    Object element = testHelper.runNoPolyglot("array[1] = " + value + "; array[3] = " + value);
+                    assertEquals(3, arrayGetUsedLength(arrayObject));
+                    assertEquals(1, arrayGetHoleCount(arrayObject));
+                    assertEquals(element, testHelper.runNoPolyglot("array[3]"));
+                    assertEquals(false, testHelper.runNoPolyglot("Object.hasOwn(array, 2)"));
+                    testHelper.runNoPolyglot("delete array[3]; delete array[1]; Object.seal(array); array.length = 0");
+                    assertEmpty(arrayObject);
+                    assertEquals(true, arrayObject.getArrayType().isSealed());
+                }
+            }
+        }
+    }
+
     @Test
     public void testSetLengthBeforeIndexOffsetClearsHoleCount() {
         for (String value : new String[]{"1", "1.5", "'x'", "{}"}) {
@@ -547,6 +611,104 @@ public class DynamicArrayTest extends JSTest {
                 assertEquals(element, testHelper.runNoPolyglot("array.shift()"));
                 assertEquals(0, arrayObject.getArrayType().length(arrayObject));
             }
+        }
+    }
+
+    /**
+     * Truncating away all used elements must normalize offsets and holes without losing the requested length.
+     */
+    @Test
+    public void testSetLengthBeforeIndexOffsetNormalizesEmptyRange() {
+        for (String value : new String[]{"1", "1.5", "'x'", "{}"}) {
+            for (int offset : new int[]{20, 1_000_000}) {
+                for (int gap : new int[]{0, 2}) {
+                    for (int length : new int[]{1, 5, offset}) {
+                        JSArrayObject arrayObject = (JSArrayObject) testHelper.runNoPolyglot(
+                                        "globalThis.array = []; array[" + offset + "] = " + value + "; array[" + (offset + gap) + "] = " + value + "; array.length = " + length + "; array");
+                        ScriptArray array = arrayObject.getArrayType();
+                        assertEquals(length, array.length(arrayObject));
+                        assertEquals(0, arrayGetUsedLength(arrayObject));
+                        assertEquals(0, arrayGetHoleCount(arrayObject));
+                        assertEquals(0, arrayGetIndexOffset(arrayObject));
+                        assertEquals(0, arrayGetArrayOffset(arrayObject));
+                        assertEquals(0, array.firstElementIndex(arrayObject));
+                        assertEquals(-1, array.lastElementIndex(arrayObject));
+                        assertEquals(0, array.ownPropertyKeys(arrayObject).size());
+
+                        testHelper.runNoPolyglot("Object.seal(array); array.length = 0");
+                        assertEmpty(arrayObject);
+                        assertEquals(true, arrayObject.getArrayType().isSealed());
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Shape integrity flags must account for strategy-backed elements and remain set when those
+     * elements become ordinary properties.
+     */
+    @Test
+    public void testArrayShapeIntegrityFlags() {
+        JSArrayObject arrayObject = (JSArrayObject) testHelper.runNoPolyglot("""
+                        globalThis.array = [1, 2];
+                        Object.defineProperties(array, {
+                            length: {writable: false},
+                            tag: {value: 1, configurable: true}
+                        });
+                        Object.preventExtensions(array);
+                        array;
+                        """);
+        int integrityFlags = JSShape.SEALED_FLAG | JSShape.FROZEN_FLAG;
+        assertEquals(0, arrayObject.getShape().getFlags() & integrityFlags);
+
+        testHelper.runNoPolyglot("Object.seal(array)");
+        assertEquals(JSShape.SEALED_FLAG, arrayObject.getShape().getFlags() & integrityFlags);
+        assertEquals(false, testHelper.runNoPolyglot("Reflect.defineProperty(array, '0', {enumerable: false})"));
+        assertEquals(JSShape.SEALED_FLAG, arrayObject.getShape().getFlags() & integrityFlags);
+        assertEquals(false, testHelper.runNoPolyglot("Object.isFrozen(array)"));
+
+        testHelper.runNoPolyglot("Object.freeze(array)");
+        assertEquals(integrityFlags, arrayObject.getShape().getFlags() & integrityFlags);
+        assertEquals(false, testHelper.runNoPolyglot("Reflect.defineProperty(array, '1', {enumerable: false})"));
+        assertEquals(integrityFlags, arrayObject.getShape().getFlags() & integrityFlags);
+        assertEquals(true, testHelper.runNoPolyglot("Object.isFrozen(array)"));
+    }
+
+    /**
+     * Clearing writable storage must preserve non-extensibility and continue rejecting indexed additions.
+     */
+    @Test
+    public void testSetLengthZeroPreservesIntegrityLevel() {
+        for (String value : new String[]{"1", "1.5", "'x'", "{}"}) {
+            for (int offset : new int[]{0, 20, 1_000_000}) {
+                for (int gap : new int[]{0, 2}) {
+                    JSArrayObject arrayObject = (JSArrayObject) testHelper.runNoPolyglot(
+                                    "globalThis.array = []; array[" + offset + "] = " + value + "; array[" + (offset + gap) + "] = " + value + "; array");
+                    testHelper.runNoPolyglot("Object.preventExtensions(array); array.length = 0");
+
+                    assertEquals(false, arrayObject.getArrayType().isExtensible());
+                    assertEquals(false, testHelper.runNoPolyglot("Object.isExtensible(array)"));
+                    assertEquals(false, testHelper.runNoPolyglot("array[0] = 42; Object.hasOwn(array, 0)"));
+                    assertEquals(false, testHelper.runNoPolyglot("Reflect.set(array, 0, 42)"));
+                    assertEquals(0, arrayObject.getArrayType().length(arrayObject));
+                }
+            }
+        }
+    }
+
+    /**
+     * Clearing an already-empty sealed array must preserve sealing while leaving length writable.
+     */
+    @Test
+    public void testSetLengthZeroPreservesSealedEmptyArray() {
+        for (String value : new String[]{"1", "1.5", "'x'", "{}"}) {
+            JSArrayObject arrayObject = (JSArrayObject) testHelper.runNoPolyglot(
+                            "globalThis.array = []; array[0] = " + value + "; delete array[0]; Object.seal(array); array.length = 0; array");
+            assertEquals(true, arrayObject.getArrayType().isSealed());
+            assertEquals(false, arrayObject.getArrayType().isLengthNotWritable());
+            assertEquals(0, arrayObject.getArrayType().length(arrayObject));
+            assertEquals(false, testHelper.runNoPolyglot("array[0] = 42; Object.hasOwn(array, 0)"));
         }
     }
 
