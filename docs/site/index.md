@@ -168,6 +168,7 @@ implementation("org.graalvm.polyglot:js:{{ site.language_version }}")
         </div>
       </div>
     </div>
+  </div>
 </section>
 <!-- GraalJS Starter Guide -->
 <section class="content-section">
