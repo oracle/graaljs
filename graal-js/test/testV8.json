@@ -505,10 +505,6 @@
     "filePath" : "mjsunit/es6/destructuring.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es6/for-of-iterator-protocol-integrity.js",
-    "status" : "FAIL",
-    "comment" : "For-of reads iterator value even when done is true."
-  }, {
     "filePath" : "mjsunit/es6/generator-destructuring.js",
     "status" : "FAIL"
   }, {

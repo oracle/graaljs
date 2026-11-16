@@ -2244,8 +2244,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
      * break: while (true) {
      *     var nextResult = IteratorNext(iterator);
      *     var done = IteratorComplete(nextResult);
-     *     var nextValue = IteratorValue(nextResult);
      *     if (done) break;
+     *     var nextValue = IteratorValue(nextResult);
      *     continue: {{ // per-iteration scope
      *         let [[binding]];
      *         try {

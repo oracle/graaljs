@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -338,10 +338,10 @@ public final class WhileNode extends StatementNode {
         protected boolean doGeneric(VirtualFrame frame) {
             Object nextResult = nextResultNode.execute(frame);
             boolean done = iteratorCompleteNode.execute(nextResult);
-            Object nextValue = iteratorValueNode.execute(nextResult);
             if (done) {
                 return false;
             }
+            Object nextValue = iteratorValueNode.execute(nextResult);
             writeNextValueNode.executeWrite(frame, nextValue);
             try {
                 executeBody(frame);
@@ -357,10 +357,10 @@ public final class WhileNode extends StatementNode {
             if (state == 0) {
                 Object nextResult = nextResultNode.execute(frame);
                 boolean done = iteratorCompleteNode.execute(nextResult);
-                Object nextValue = iteratorValueNode.execute(nextResult);
                 if (done) {
                     return false;
                 }
+                Object nextValue = iteratorValueNode.execute(nextResult);
                 writeNextValueNode.executeWrite(frame, nextValue);
             }
             try {
