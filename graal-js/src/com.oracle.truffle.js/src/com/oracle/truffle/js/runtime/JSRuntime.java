@@ -474,9 +474,13 @@ public final class JSRuntime {
      */
     @TruffleBoundary
     public static double parseDoubleOrNaN(TruffleString input) {
-        // A valid JS number must end with either a digit or '.'.
-        // Double.parseDouble also accepts a trailing 'd', 'D', 'f', 'F'.
-        if (Strings.isEmpty(input) || Strings.charAt(input, Strings.length(input) - 1) > '9') {
+        if (Strings.isEmpty(input)) {
+            return Double.NaN;
+        }
+        // Strings.parseDouble accepts trailing characters <= U+0020, including controls that are not
+        // ECMAScript whitespace. Require a final ASCII digit or '.', also excluding Java's d/f suffixes.
+        char last = Strings.charAt(input, Strings.length(input) - 1);
+        if (!isAsciiDigit(last) && last != '.') {
             return Double.NaN;
         }
         try {
