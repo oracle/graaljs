@@ -561,7 +561,8 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
         @Specialization
         public JSArrayObject doDefault(VirtualFrame frame,
                         @Cached InlinedBranchProfile growProfile,
-                        @Cached InlinedConditionProfile holesProfile) {
+                        @Cached InlinedConditionProfile holesProfile,
+                        @Cached InlinedConditionProfile emptyProfile) {
             SimpleArrayList<Object> evaluatedElements = new SimpleArrayList<>(elements.length + JSConfig.SpreadArgumentPlaceholderCount);
             int holeCount = 0;
             int holesBeforeLastNonEmpty = 0;
@@ -592,9 +593,12 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
                     holesBeforeLastNonEmpty = holeCount;
                 }
             }
+            JSRealm realm = getRealm();
+            if (emptyProfile.profile(this, lastNonEmptyPlusOne == 0)) {
+                return JSArray.createConstantEmptyArray(context, realm, evaluatedElements.size());
+            }
             int usedLength = lastNonEmptyPlusOne - arrayOffset;
             int holesInUsedLength = holesBeforeLastNonEmpty - arrayOffset;
-            JSRealm realm = getRealm();
             Object[] objectArray = evaluatedElements.toArray();
             if (holesProfile.profile(this, holeCount == 0)) {
                 return JSArray.createZeroBasedObjectArray(context, realm, objectArray);
