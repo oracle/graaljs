@@ -468,7 +468,8 @@ public final class JSRuntime {
     }
 
     /**
-     * Like {@link Double#parseDouble(String)}, but does not allow trailing {@code d} or {@code f}.
+     * Like {@link Double#parseDouble(String)}, but does not allow hexadecimal floats or trailing
+     * {@code d} or {@code f}.
      *
      * @return double value or {@link Double#NaN} if not parsable.
      */
@@ -482,6 +483,15 @@ public final class JSRuntime {
         char last = Strings.charAt(input, Strings.length(input) - 1);
         if (!isAsciiDigit(last) && last != '.') {
             return Double.NaN;
+        }
+        // Strings.parseDouble accepts Java hexadecimal floats such as -0x1p0; StringNumericLiteral does not.
+        char first = Strings.charAt(input, 0);
+        int start = first == '+' || first == '-' ? 1 : 0;
+        if (Strings.length(input) > start + 1 && Strings.charAt(input, start) == '0') {
+            char next = Strings.charAt(input, start + 1);
+            if (next == 'x' || next == 'X') {
+                return Double.NaN;
+            }
         }
         try {
             return Strings.parseDouble(input);
