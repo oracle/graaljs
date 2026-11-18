@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -185,7 +185,7 @@ abstract class JSStringToNumberNoTrimNode extends JavaScriptBaseNode {
     @TruffleBoundary
     protected static double doHex(TruffleString input,
                     @Cached @Shared @SuppressWarnings("unused") TruffleString.ReadCharUTF16Node readChar) {
-        return parseNonDecimalInteger(input, 16);
+        return JSRuntime.parseNonDecimalInteger(input, 16);
     }
 
     @Specialization(guards = {"isOctal(input, readChar)", "stringLength(input) <= SAFE_OCTAL_DIGITS"})
@@ -199,7 +199,7 @@ abstract class JSStringToNumberNoTrimNode extends JavaScriptBaseNode {
     @TruffleBoundary
     protected static double doOctal(TruffleString input,
                     @Cached @Shared @SuppressWarnings("unused") TruffleString.ReadCharUTF16Node readChar) {
-        return parseNonDecimalInteger(input, 8);
+        return JSRuntime.parseNonDecimalInteger(input, 8);
     }
 
     @Specialization(guards = {"isBinary(input, readChar)", "stringLength(input) <= SAFE_BINARY_DIGITS"})
@@ -213,7 +213,7 @@ abstract class JSStringToNumberNoTrimNode extends JavaScriptBaseNode {
     @TruffleBoundary
     protected static double doBinary(TruffleString input,
                     @Cached @Shared @SuppressWarnings("unused") TruffleString.ReadCharUTF16Node readChar) {
-        return parseNonDecimalInteger(input, 2);
+        return JSRuntime.parseNonDecimalInteger(input, 2);
     }
 
     @Specialization(guards = {"stringLength(input) > 0",
@@ -254,21 +254,6 @@ abstract class JSStringToNumberNoTrimNode extends JavaScriptBaseNode {
     protected static double doDouble(TruffleString input,
                     @Cached @Shared @SuppressWarnings("unused") TruffleString.ReadCharUTF16Node readChar) {
         return JSRuntime.parseDoubleOrNaN(input);
-    }
-
-    private static double parseNonDecimalInteger(TruffleString input, int radix) {
-        // BigInteger accepts signs and Unicode digits, which StringNumericLiteral does not allow here.
-        if (JSRuntime.valueInRadix(Strings.charAt(input, PREFIX_LENGTH), radix) < 0) {
-            return Double.NaN;
-        }
-        if (!TruffleString.CodeRangeEqualsNode.getUncached().execute(input, TruffleString.CodeRange.ASCII)) {
-            return Double.NaN;
-        }
-        try {
-            return Strings.parseBigInteger(Strings.lazySubstring(input, PREFIX_LENGTH), radix).doubleValue();
-        } catch (NumberFormatException ex) {
-            return Double.NaN;
-        }
     }
 
     private static double safeIntegerToDouble(long result) {

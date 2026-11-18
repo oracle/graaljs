@@ -435,7 +435,15 @@ public final class JSRuntime {
 
     private static Number stringToNumberParse(TruffleString str) {
         assert Strings.length(str) > 0;
-        boolean hex = Strings.startsWith(str, Strings.LC_0X) || Strings.startsWith(str, Strings.UC_0X);
+        boolean hex = false;
+        if (Strings.length(str) >= 2 && Strings.charAt(str, 0) == '0') {
+            char prefix = Strings.charAt(str, 1);
+            hex = prefix == 'x' || prefix == 'X';
+            if (prefix == 'o' || prefix == 'O' || prefix == 'b' || prefix == 'B') {
+                int radix = prefix == 'o' || prefix == 'O' ? 8 : 2;
+                return doubleToNarrowestNumber(parseNonDecimalInteger(str, radix));
+            }
+        }
         int eIndex = firstExpIndexInString(str);
         boolean sci = !hex && (0 <= eIndex && eIndex < Strings.length(str) - 1);
         try {
@@ -444,18 +452,26 @@ public final class JSRuntime {
                 if (!TruffleString.CodeRangeEqualsNode.getUncached().execute(str, TruffleString.CodeRange.ASCII)) {
                     return Double.NaN;
                 }
-                // 18 digits always fit into long
                 if (hex) {
+                    // Require a hexadecimal digit after the prefix; Strings.parseLong also accepts a sign.
+                    if (Strings.length(str) <= 2 || valueInRadix(Strings.charAt(str, 2), 16) < 0) {
+                        return Double.NaN;
+                    }
                     return Strings.parseLong(Strings.lazySubstring(str, 2), 16);
                 } else {
+                    // 18 decimal digits always fit into long.
                     return stringToNumberLong(str);
                 }
-            } else {
+            } else if (!hex) {
                 return parseDoubleOrNaN(str);
             }
         } catch (TruffleString.NumberFormatException e) {
-            return Double.NaN;
+            if (!hex) {
+                return Double.NaN;
+            }
         }
+        // Hexadecimal integers may overflow long or contain more than 18 characters.
+        return doubleToNarrowestNumber(parseNonDecimalInteger(str, 16));
     }
 
     private static Number stringToNumberLong(TruffleString strLower) throws TruffleString.NumberFormatException {
@@ -468,6 +484,25 @@ public final class JSRuntime {
             return (int) num;
         } else {
             return (double) num;
+        }
+    }
+
+    /**
+     * Parses a trimmed non-decimal integer string, including its two-character radix prefix.
+     */
+    @TruffleBoundary
+    public static double parseNonDecimalInteger(TruffleString input, int radix) {
+        // BigInteger accepts signs and Unicode digits, which StringNumericLiteral does not allow here.
+        if (Strings.length(input) <= 2 || valueInRadix(Strings.charAt(input, 2), radix) < 0) {
+            return Double.NaN;
+        }
+        if (!TruffleString.CodeRangeEqualsNode.getUncached().execute(input, TruffleString.CodeRange.ASCII)) {
+            return Double.NaN;
+        }
+        try {
+            return Strings.parseBigInteger(Strings.lazySubstring(input, 2), radix).doubleValue();
+        } catch (NumberFormatException ex) {
+            return Double.NaN;
         }
     }
 
