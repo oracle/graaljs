@@ -440,6 +440,10 @@ public final class JSRuntime {
         boolean sci = !hex && (0 <= eIndex && eIndex < Strings.length(str) - 1);
         try {
             if (!sci && Strings.length(str) <= 18 && Strings.indexOf(str, '.') == -1) {
+                // Strings.parseLong accepts Unicode digits; StringNumericLiteral allows only ASCII digits.
+                if (!TruffleString.CodeRangeEqualsNode.getUncached().execute(str, TruffleString.CodeRange.ASCII)) {
+                    return Double.NaN;
+                }
                 // 18 digits always fit into long
                 if (hex) {
                     return Strings.parseLong(Strings.lazySubstring(str, 2), 16);
