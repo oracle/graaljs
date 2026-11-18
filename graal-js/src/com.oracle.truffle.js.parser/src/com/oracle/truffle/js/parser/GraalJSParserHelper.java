@@ -66,6 +66,7 @@ import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSParserOptions;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.RegexCompilerInterface;
+import com.oracle.truffle.js.runtime.Strings;
 
 public final class GraalJSParserHelper {
 
@@ -174,7 +175,10 @@ public final class GraalJSParserHelper {
 
             @Override
             protected Function<Number, TruffleString> getNumberToStringConverter() {
-                return JSRuntime::numberToString;
+                // Parser Long values must use JavaScript Number rounding and formatting.
+                return number -> number instanceof Integer integer
+                                ? Strings.fromInt(integer)
+                                : JSRuntime.doubleToString(number.doubleValue());
             }
         };
     }
