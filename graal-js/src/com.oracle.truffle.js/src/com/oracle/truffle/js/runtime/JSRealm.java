@@ -3062,8 +3062,13 @@ public class JSRealm {
      * Counted from the start of the application, as required by Node.js' `performance.now()`.
      */
     public long nanoTime() {
-        long ns = System.nanoTime() + nanoToZeroTimeOffset;
+        long ns = getNanoTime() + nanoToZeroTimeOffset;
         return updateResolution(ns);
+    }
+
+    @TruffleBoundary
+    private static long getNanoTime() {
+        return System.nanoTime();
     }
 
     /**
