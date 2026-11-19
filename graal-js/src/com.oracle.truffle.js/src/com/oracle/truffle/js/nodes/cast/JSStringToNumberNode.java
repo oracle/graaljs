@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -185,11 +185,7 @@ abstract class JSStringToNumberNoTrimNode extends JavaScriptBaseNode {
     @TruffleBoundary
     protected static double doHex(TruffleString input,
                     @Cached @Shared @SuppressWarnings("unused") TruffleString.ReadCharUTF16Node readChar) {
-        try {
-            return Strings.parseBigInteger(Strings.lazySubstring(input, 2), 16).doubleValue();
-        } catch (NumberFormatException ex) {
-            return Double.NaN;
-        }
+        return JSRuntime.parseNonDecimalInteger(input, 16);
     }
 
     @Specialization(guards = {"isOctal(input, readChar)", "stringLength(input) <= SAFE_OCTAL_DIGITS"})
@@ -203,11 +199,7 @@ abstract class JSStringToNumberNoTrimNode extends JavaScriptBaseNode {
     @TruffleBoundary
     protected static double doOctal(TruffleString input,
                     @Cached @Shared @SuppressWarnings("unused") TruffleString.ReadCharUTF16Node readChar) {
-        try {
-            return Strings.parseBigInteger(Strings.lazySubstring(input, 2), 8).doubleValue();
-        } catch (NumberFormatException ex) {
-            return Double.NaN;
-        }
+        return JSRuntime.parseNonDecimalInteger(input, 8);
     }
 
     @Specialization(guards = {"isBinary(input, readChar)", "stringLength(input) <= SAFE_BINARY_DIGITS"})
@@ -221,11 +213,7 @@ abstract class JSStringToNumberNoTrimNode extends JavaScriptBaseNode {
     @TruffleBoundary
     protected static double doBinary(TruffleString input,
                     @Cached @Shared @SuppressWarnings("unused") TruffleString.ReadCharUTF16Node readChar) {
-        try {
-            return Strings.parseBigInteger(Strings.lazySubstring(input, 2), 2).doubleValue();
-        } catch (NumberFormatException ex) {
-            return Double.NaN;
-        }
+        return JSRuntime.parseNonDecimalInteger(input, 2);
     }
 
     @Specialization(guards = {"stringLength(input) > 0",

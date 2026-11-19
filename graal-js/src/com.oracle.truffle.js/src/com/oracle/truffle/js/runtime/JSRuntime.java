@@ -435,23 +435,42 @@ public final class JSRuntime {
 
     private static Number stringToNumberParse(TruffleString str) {
         assert Strings.length(str) > 0;
-        boolean hex = Strings.startsWith(str, Strings.LC_0X) || Strings.startsWith(str, Strings.UC_0X);
-        int eIndex = firstExpIndexInString(str);
-        boolean sci = !hex && (0 <= eIndex && eIndex < Strings.length(str) - 1);
+        boolean hex = false;
+        if (Strings.length(str) >= 2 && Strings.charAt(str, 0) == '0') {
+            char prefix = Strings.charAt(str, 1);
+            hex = prefix == 'x' || prefix == 'X';
+            if (prefix == 'o' || prefix == 'O' || prefix == 'b' || prefix == 'B') {
+                int radix = prefix == 'o' || prefix == 'O' ? 8 : 2;
+                return doubleToNarrowestNumber(parseNonDecimalInteger(str, radix));
+            }
+        }
+        boolean sci = !hex && Strings.indexOfAny(str, 'e', 'E') >= 0;
         try {
             if (!sci && Strings.length(str) <= 18 && Strings.indexOf(str, '.') == -1) {
-                // 18 digits always fit into long
+                // Strings.parseLong accepts Unicode digits; StringNumericLiteral allows only ASCII digits.
+                if (!TruffleString.CodeRangeEqualsNode.getUncached().execute(str, TruffleString.CodeRange.ASCII)) {
+                    return Double.NaN;
+                }
                 if (hex) {
+                    // Require a hexadecimal digit after the prefix; Strings.parseLong also accepts a sign.
+                    if (Strings.length(str) <= 2 || valueInRadix(Strings.charAt(str, 2), 16) < 0) {
+                        return Double.NaN;
+                    }
                     return Strings.parseLong(Strings.lazySubstring(str, 2), 16);
                 } else {
+                    // 18 decimal digits always fit into long.
                     return stringToNumberLong(str);
                 }
-            } else {
+            } else if (!hex) {
                 return parseDoubleOrNaN(str);
             }
         } catch (TruffleString.NumberFormatException e) {
-            return Double.NaN;
+            if (!hex) {
+                return Double.NaN;
+            }
         }
+        // Hexadecimal integers may overflow long or contain more than 18 characters.
+        return doubleToNarrowestNumber(parseNonDecimalInteger(str, 16));
     }
 
     private static Number stringToNumberLong(TruffleString strLower) throws TruffleString.NumberFormatException {
@@ -468,34 +487,55 @@ public final class JSRuntime {
     }
 
     /**
-     * Like {@link Double#parseDouble(String)}, but does not allow trailing {@code d} or {@code f}.
+     * Parses a trimmed non-decimal integer string, including its two-character radix prefix.
+     */
+    @TruffleBoundary
+    public static double parseNonDecimalInteger(TruffleString input, int radix) {
+        // BigInteger accepts signs and Unicode digits, which StringNumericLiteral does not allow here.
+        if (Strings.length(input) <= 2 || valueInRadix(Strings.charAt(input, 2), radix) < 0) {
+            return Double.NaN;
+        }
+        if (!TruffleString.CodeRangeEqualsNode.getUncached().execute(input, TruffleString.CodeRange.ASCII)) {
+            return Double.NaN;
+        }
+        try {
+            return Strings.parseBigInteger(Strings.lazySubstring(input, 2), radix).doubleValue();
+        } catch (NumberFormatException ex) {
+            return Double.NaN;
+        }
+    }
+
+    /**
+     * Like {@link Double#parseDouble(String)}, but does not allow hexadecimal floats or trailing
+     * {@code d} or {@code f}.
      *
      * @return double value or {@link Double#NaN} if not parsable.
      */
     @TruffleBoundary
     public static double parseDoubleOrNaN(TruffleString input) {
-        // A valid JS number must end with either a digit or '.'.
-        // Double.parseDouble also accepts a trailing 'd', 'D', 'f', 'F'.
-        if (Strings.isEmpty(input) || Strings.charAt(input, Strings.length(input) - 1) > '9') {
+        if (Strings.isEmpty(input)) {
             return Double.NaN;
+        }
+        // Strings.parseDouble accepts trailing characters <= U+0020, including controls that are not
+        // ECMAScript whitespace. Require a final ASCII digit or '.', also excluding Java's d/f suffixes.
+        char last = Strings.charAt(input, Strings.length(input) - 1);
+        if (!isAsciiDigit(last) && last != '.') {
+            return Double.NaN;
+        }
+        // Strings.parseDouble accepts Java hexadecimal floats such as -0x1p0; StringNumericLiteral does not.
+        char first = Strings.charAt(input, 0);
+        int start = first == '+' || first == '-' ? 1 : 0;
+        if (Strings.length(input) > start + 1 && Strings.charAt(input, start) == '0') {
+            char next = Strings.charAt(input, start + 1);
+            if (next == 'x' || next == 'X') {
+                return Double.NaN;
+            }
         }
         try {
             return Strings.parseDouble(input);
         } catch (TruffleString.NumberFormatException e) {
             return Double.NaN;
         }
-    }
-
-    /**
-     * Returns the first index of a String that contains either 'e' or 'E'.
-     */
-    @TruffleBoundary
-    public static int firstExpIndexInString(TruffleString str) {
-        int firstIdx = Strings.indexOf(str, 'e', 0);
-        if (firstIdx >= 0) {
-            return firstIdx;
-        }
-        return Strings.indexOf(str, 'E', 0);
     }
 
     public static double identifyInfinity(char firstChar, int len) {
