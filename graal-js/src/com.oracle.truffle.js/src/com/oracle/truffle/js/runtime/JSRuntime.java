@@ -444,8 +444,7 @@ public final class JSRuntime {
                 return doubleToNarrowestNumber(parseNonDecimalInteger(str, radix));
             }
         }
-        int eIndex = firstExpIndexInString(str);
-        boolean sci = !hex && (0 <= eIndex && eIndex < Strings.length(str) - 1);
+        boolean sci = !hex && Strings.indexOfAny(str, 'e', 'E') >= 0;
         try {
             if (!sci && Strings.length(str) <= 18 && Strings.indexOf(str, '.') == -1) {
                 // Strings.parseLong accepts Unicode digits; StringNumericLiteral allows only ASCII digits.
@@ -537,18 +536,6 @@ public final class JSRuntime {
         } catch (TruffleString.NumberFormatException e) {
             return Double.NaN;
         }
-    }
-
-    /**
-     * Returns the first index of a String that contains either 'e' or 'E'.
-     */
-    @TruffleBoundary
-    public static int firstExpIndexInString(TruffleString str) {
-        int firstIdx = Strings.indexOf(str, 'e', 0);
-        if (firstIdx >= 0) {
-            return firstIdx;
-        }
-        return Strings.indexOf(str, 'E', 0);
     }
 
     public static double identifyInfinity(char firstChar, int len) {

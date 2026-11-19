@@ -706,6 +706,10 @@ public final class Strings {
         return string.charIndexOfAnyCharUTF16Uncached(0, length(string), new char[]{c});
     }
 
+    public static int indexOfAny(TruffleString string, char... chars) {
+        return string.charIndexOfAnyCharUTF16Uncached(0, length(string), chars);
+    }
+
     public static int indexOfAny(TruffleString.CharIndexOfAnyCharUTF16Node node, TruffleString s, char... chars) {
         return node.execute(s, 0, length(s), chars);
     }
