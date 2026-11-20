@@ -666,6 +666,10 @@ public class NodeFactory {
         return GlobalPropertyNode.createLexicalGlobal(context, name, hasTemporalDeadZone);
     }
 
+    public WritePropertyNode createWriteLexicalGlobal(TruffleString name, JavaScriptNode rhs, boolean hasTemporalDeadZone, JSContext context, boolean required) {
+        return WritePropertyNode.createLexicalGlobal(context, name, rhs, hasTemporalDeadZone, required);
+    }
+
     public JavaScriptNode createGlobalScope(JSContext context) {
         return GlobalScopeNode.create(context);
     }

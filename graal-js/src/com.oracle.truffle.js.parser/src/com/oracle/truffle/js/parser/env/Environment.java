@@ -897,8 +897,7 @@ public abstract class Environment {
 
         @Override
         public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
-            JavaScriptNode globalScope = factory.createGlobalScopeTDZCheck(context, getName(), checkTDZ);
-            return factory.createWriteProperty(globalScope, getName(), rhs, context, true, required, false);
+            return factory.createWriteLexicalGlobal(getName(), rhs, checkTDZ, context, required);
         }
 
         @Override
