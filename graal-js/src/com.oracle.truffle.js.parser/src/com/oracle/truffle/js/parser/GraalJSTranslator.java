@@ -2998,12 +2998,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         if (binaryOp == null) {
             assert assignedValue != null;
             if (constAssignment) {
-                if (scopeVar.isGlobal()) {
-                    JavaScriptNode tdzCheck = scopeVar.hasTDZCheck() ? scopeVar.createReadNode() : null;
-                    rhs = factory.createWriteConstantVariable(rhs, true, scopeVar.getName(), tdzCheck);
-                } else {
-                    rhs = checkMutableBinding(rhs, scopeVar.getName());
-                }
+                JavaScriptNode tdzCheck = scopeVar.createTDZCheckNode();
+                rhs = factory.createWriteConstantVariable(rhs, true, scopeVar.getName(), tdzCheck);
             }
             return scopeVar.createWriteNode(rhs);
         } else {

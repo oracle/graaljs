@@ -66,13 +66,28 @@ public class AssignmentExpressions extends FineGrainedAccessTest {
     }
 
     @Test
+    public void localConstAssignment() {
+        assertConstWriteEvent(true, true, WriteVariableTag.class);
+    }
+
+    @Test
     public void globalConstAssignmentStandardTag() {
         assertConstWriteEvent(false, true, StandardTags.WriteVariableTag.class);
     }
 
     @Test
+    public void localConstAssignmentStandardTag() {
+        assertConstWriteEvent(true, true, StandardTags.WriteVariableTag.class);
+    }
+
+    @Test
     public void globalConstAssignmentTDZ() {
         assertConstWriteEvent(false, false, WriteVariableTag.class);
+    }
+
+    @Test
+    public void localConstAssignmentTDZ() {
+        assertConstWriteEvent(true, false, WriteVariableTag.class);
     }
 
     private void assertConstWriteEvent(boolean local, boolean initialized, Class<? extends Tag> tag) {

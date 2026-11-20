@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,26 +76,45 @@ public final class TemporalDeadZoneCheckNode extends FrameSlotNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
+        Object value = child.execute(frame);
         checkNotDead(frame);
-        return child.execute(frame);
+        return value;
     }
 
     @Override
     public int executeInt(VirtualFrame frame) throws UnexpectedResultException {
-        checkNotDead(frame);
-        return child.executeInt(frame);
+        try {
+            int value = child.executeInt(frame);
+            checkNotDead(frame);
+            return value;
+        } catch (UnexpectedResultException e) {
+            checkNotDead(frame);
+            throw e;
+        }
     }
 
     @Override
     public double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
-        checkNotDead(frame);
-        return child.executeDouble(frame);
+        try {
+            double value = child.executeDouble(frame);
+            checkNotDead(frame);
+            return value;
+        } catch (UnexpectedResultException e) {
+            checkNotDead(frame);
+            throw e;
+        }
     }
 
     @Override
     public boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException {
-        checkNotDead(frame);
-        return child.executeBoolean(frame);
+        try {
+            boolean value = child.executeBoolean(frame);
+            checkNotDead(frame);
+            return value;
+        } catch (UnexpectedResultException e) {
+            checkNotDead(frame);
+            throw e;
+        }
     }
 
     @Override
