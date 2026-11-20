@@ -740,9 +740,9 @@ public class NodeFactory {
     }
 
     public JavaScriptNode createFunctionCall(@SuppressWarnings("unused") JSContext context, JavaScriptNode expression, JavaScriptNode[] arguments) {
-        if (expression instanceof PropertyNode || expression instanceof ReadElementNode || expression instanceof WithVarWrapperNode || expression instanceof PrivateFieldGetNode ||
-                        expression instanceof OptionalChainNode.ShortCircuitTargetableNode || expression instanceof OptionalChainNode.OptionalTargetableNode) {
-            assert !(expression instanceof PropertyNode) || ((PropertyNode) expression).isMethod();
+        JavaScriptNode reference = unwrapOptionalCallReference(expression);
+        if (reference instanceof PropertyNode || reference instanceof ReadElementNode || reference instanceof WithVarWrapperNode || reference instanceof PrivateFieldGetNode) {
+            assert !(reference instanceof PropertyNode) || ((PropertyNode) reference).isMethod();
             return JSFunctionCallNode.createInvoke((JSTargetableNode) expression, arguments, false, false);
         } else if (expression instanceof JSTargetableWrapperNode) {
             JavaScriptNode function = ((JSTargetableWrapperNode) expression).getDelegate();
@@ -758,6 +758,23 @@ public class NodeFactory {
                 ((GlobalScopeVarWrapperNode) function).setMethod();
             }
             return JSFunctionCallNode.createCall(function, target, arguments, false, false);
+        }
+    }
+
+    /**
+     * Optional wrappers preserve the call receiver of the underlying reference. Being targetable
+     * only describes how a lookup is evaluated; it does not imply that its target is a receiver.
+     */
+    private static JavaScriptNode unwrapOptionalCallReference(JavaScriptNode expression) {
+        JavaScriptNode reference = expression;
+        while (true) {
+            if (reference instanceof OptionalChainNode.ShortCircuitTargetableNode shortCircuit) {
+                reference = shortCircuit.getExpressionNode();
+            } else if (reference instanceof OptionalChainNode.OptionalTargetableNode optional) {
+                reference = optional.getDelegateNode();
+            } else {
+                return reference;
+            }
         }
     }
 
