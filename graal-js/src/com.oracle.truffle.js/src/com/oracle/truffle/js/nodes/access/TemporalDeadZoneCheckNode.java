@@ -117,6 +117,10 @@ public final class TemporalDeadZoneCheckNode extends FrameSlotNode {
         }
     }
 
+    public JavaScriptNode getRhs() {
+        return child;
+    }
+
     @Override
     public ScopeFrameNode getLevelFrameNode() {
         return levelFrameNode;
