@@ -90,6 +90,10 @@ public final class GlobalScopeVarWrapperNode extends VarWrapperNode implements R
         return scopeAccessNode instanceof WritePropertyNode;
     }
 
+    private boolean isRead() {
+        return scopeAccessNode instanceof ReadNode;
+    }
+
     @Override
     public Object execute(VirtualFrame frame) {
         Object dynamicScope = dynamicScopeNode.execute(frame);
@@ -101,7 +105,9 @@ public final class GlobalScopeVarWrapperNode extends VarWrapperNode implements R
                 return value;
             } else {
                 // read or delete
-                scopeLookup.checkTDZ(dynamicScope);
+                if (isRead()) {
+                    scopeLookup.checkTDZ(dynamicScope);
+                }
                 return scopeAccessNode.executeWithTarget(frame, dynamicScope);
             }
         }
