@@ -372,12 +372,12 @@ public class WritePropertyNode extends JSTargetableWriteNode {
 
         private WriteGlobalLexicalVariableWithTDZCheckNode(JavaScriptNode target, TruffleString name, JavaScriptNode rhs, JSContext context, boolean required) {
             super(target, rhs, name, required, context, true, false);
-            this.tdzCheck = GlobalScopeLookupNode.create(name, false);
+            this.tdzCheck = GlobalScopeLookupNode.create(name);
         }
 
         @Override
         protected void verifyBinding(Object target) {
-            tdzCheck.execute(target);
+            tdzCheck.checkTDZ(target);
         }
 
         @Override
