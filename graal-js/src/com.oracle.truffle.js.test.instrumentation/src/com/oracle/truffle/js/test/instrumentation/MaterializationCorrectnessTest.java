@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.test.instrumentation;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
@@ -71,6 +72,25 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 
 public class MaterializationCorrectnessTest extends FineGrainedAccessTest {
+    @Test
+    public void testGlobalLexicalWriteTDZ() {
+        evalWithTags("const f = function* f() { x = yield 1; };" +
+                        "const before = f();" +
+                        "const yielded = before.next();" +
+                        "let errorName = 'no error';" +
+                        "try { before.next(42); } catch (e) { errorName = e.name; }" +
+                        "let x;" +
+                        "const after = f();" +
+                        "after.next();" +
+                        "after.next(43);", new Class<?>[]{JSTags.WritePropertyTag.class}, new Class<?>[]{});
+
+        enter(JSTags.WritePropertyTag.class, e -> assertAttribute(e, KEY, "x")).exitExceptional();
+        enter(JSTags.WritePropertyTag.class, e -> assertAttribute(e, KEY, "x")).exit(assertReturnValue(43));
+        assertEquals("ReferenceError", context.eval("js", "errorName").asString());
+        assertTrue(context.eval("js", "yielded.value === 1 && !yielded.done").asBoolean());
+        assertEquals(43, context.eval("js", "x").asInt());
+    }
+
     @Test
     public void testNoDoubleMaterializationReadElementNode() {
         Source source = evalAllTags("var a = [1]; a[0];");

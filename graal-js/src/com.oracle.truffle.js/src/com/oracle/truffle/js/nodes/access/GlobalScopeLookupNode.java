@@ -53,36 +53,53 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 
 /**
- * Checks if a scope binding is present and guards against TDZ and const assignment.
+ * Looks up global lexical bindings, with explicit operations for checking TDZ and const assignment.
+ * Lookup and validation share the same shape cache.
  */
 public abstract class GlobalScopeLookupNode extends JavaScriptBaseNode {
     final TruffleString varName;
-    final boolean write;
 
-    GlobalScopeLookupNode(TruffleString varName, boolean write) {
+    enum Checks {
+        NONE,
+        TDZ,
+        TDZ_AND_CONST
+    }
+
+    GlobalScopeLookupNode(TruffleString varName) {
         this.varName = varName;
-        this.write = write;
     }
 
-    public static GlobalScopeLookupNode create(TruffleString varName, boolean write) {
-        return GlobalScopeLookupNodeGen.create(varName, write);
+    public static GlobalScopeLookupNode create(TruffleString varName) {
+        return GlobalScopeLookupNodeGen.create(varName);
     }
 
-    public abstract boolean execute(Object scope);
+    public final boolean hasBinding(Object scope) {
+        return execute(scope, Checks.NONE);
+    }
+
+    public final void checkTDZ(Object scope) {
+        execute(scope, Checks.TDZ);
+    }
+
+    public final void checkWrite(Object scope) {
+        execute(scope, Checks.TDZ_AND_CONST);
+    }
+
+    protected abstract boolean execute(Object scope, Checks checks);
 
     @SuppressWarnings("unused")
     @Specialization(guards = {"scope.getShape() == cachedShape"}, assumptions = {"cachedShape.getValidAssumption()"}, limit = "cacheLimit")
-    final boolean doCached(JSDynamicObject scope,
+    final boolean doCached(JSDynamicObject scope, Checks checks,
                     @Cached("scope.getShape()") Shape cachedShape,
                     @Cached("cachedShape.hasProperty(varName)") boolean exists,
                     @Cached("isDead(cachedShape)") boolean dead,
-                    @Cached("isConstAssignment(cachedShape)") boolean constAssignment,
+                    @Cached("isConstBinding(cachedShape)") boolean constBinding,
                     @Cached("getPropertyCacheLimit()") int cacheLimit) {
         assert !exists || dead == (JSDynamicObject.getOrNull(scope, varName) == Dead.instance());
-        if (dead) {
+        if (checks != Checks.NONE && dead) {
             throw Errors.createReferenceErrorNotDefined(varName, this);
         }
-        if (constAssignment) {
+        if (checks == Checks.TDZ_AND_CONST && constBinding) {
             throw Errors.createTypeErrorConstReassignment(varName, this);
         }
         return exists;
@@ -93,14 +110,14 @@ public abstract class GlobalScopeLookupNode extends JavaScriptBaseNode {
     }
 
     @Specialization(replaces = "doCached")
-    final boolean doUncached(JSDynamicObject scope,
+    final boolean doUncached(JSDynamicObject scope, Checks checks,
                     @Cached InlinedBranchProfile errorBranch) {
         Property property = scope.getShape().getProperty(varName);
         if (property != null) {
-            if (JSDynamicObject.getOrNull(scope, varName) == Dead.instance()) {
+            if (checks != Checks.NONE && JSDynamicObject.getOrNull(scope, varName) == Dead.instance()) {
                 errorBranch.enter(this);
                 throw Errors.createReferenceErrorNotDefined(varName, this);
-            } else if (write && JSProperty.isConst(property)) {
+            } else if (checks == Checks.TDZ_AND_CONST && JSProperty.isConst(property)) {
                 errorBranch.enter(this);
                 throw Errors.createTypeErrorConstReassignment(varName, this);
             }
@@ -115,11 +132,8 @@ public abstract class GlobalScopeLookupNode extends JavaScriptBaseNode {
         return property != null && property.getLocation().isConstant();
     }
 
-    final boolean isConstAssignment(Shape shape) {
-        if (write) {
-            Property property = shape.getProperty(varName);
-            return property != null && JSProperty.isConst(property);
-        }
-        return false;
+    final boolean isConstBinding(Shape shape) {
+        Property property = shape.getProperty(varName);
+        return property != null && JSProperty.isConst(property);
     }
 }

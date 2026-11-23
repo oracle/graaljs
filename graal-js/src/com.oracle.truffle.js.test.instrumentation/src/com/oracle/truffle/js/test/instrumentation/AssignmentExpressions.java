@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,17 +40,74 @@
  */
 package com.oracle.truffle.js.test.instrumentation;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
+
+import org.graalvm.polyglot.PolyglotException;
 import org.junit.Test;
 
+import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryOperationTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag.Type;
 
 public class AssignmentExpressions extends FineGrainedAccessTest {
+
+    @Test
+    public void globalConstAssignment() {
+        assertConstWriteEvent(false, true, WriteVariableTag.class);
+    }
+
+    @Test
+    public void localConstAssignment() {
+        assertConstWriteEvent(true, true, WriteVariableTag.class);
+    }
+
+    @Test
+    public void globalConstAssignmentStandardTag() {
+        assertConstWriteEvent(false, true, StandardTags.WriteVariableTag.class);
+    }
+
+    @Test
+    public void localConstAssignmentStandardTag() {
+        assertConstWriteEvent(true, true, StandardTags.WriteVariableTag.class);
+    }
+
+    @Test
+    public void globalConstAssignmentTDZ() {
+        assertConstWriteEvent(false, false, WriteVariableTag.class);
+    }
+
+    @Test
+    public void localConstAssignmentTDZ() {
+        assertConstWriteEvent(true, false, WriteVariableTag.class);
+    }
+
+    private void assertConstWriteEvent(boolean local, boolean initialized, Class<? extends Tag> tag) {
+        String declaration = "const x = 0;";
+        String assignment = "x = (globalThis.rhsCalls++, 1);";
+        String source = initialized ? declaration + assignment : assignment + declaration;
+        context.eval("js", "globalThis.rhsCalls = 0;");
+        PolyglotException error = assertThrows(PolyglotException.class,
+                        () -> evalWithTags(local ? "(() => {" + source + "})();" : source, new Class<?>[]{tag}, new Class<?>[]{}));
+        if (initialized) {
+            enter(tag, e -> assertAttribute(e, NAME, "x")).exit();
+        }
+        enter(tag, e -> {
+            assertAttribute(e, NAME, "x");
+            assertAttribute(e, StandardTags.WriteVariableTag.NAME, "x");
+        }).exitExceptional();
+        assertTrue(error.isGuestException());
+        assertEquals(initialized ? "TypeError" : "ReferenceError", error.getGuestObject().getMetaObject().getMetaSimpleName());
+        assertEquals(1, context.eval("js", "globalThis.rhsCalls").asInt());
+    }
 
     @Test
     public void plusEqual() {

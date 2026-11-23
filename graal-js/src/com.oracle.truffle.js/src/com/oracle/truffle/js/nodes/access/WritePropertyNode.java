@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,7 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
@@ -99,6 +100,14 @@ public class WritePropertyNode extends JSTargetableWriteNode {
         return new WritePropertyNode(target, rhs, propertyKey, isGlobal, ctx, isStrict, verifyHasProperty);
     }
 
+    public static WritePropertyNode createLexicalGlobal(JSContext ctx, TruffleString name, JavaScriptNode rhs, boolean checkTDZ, boolean required) {
+        JavaScriptNode globalScope = GlobalScopeNode.create(ctx);
+        if (checkTDZ) {
+            return new WriteGlobalLexicalVariableWithTDZCheckNode(globalScope, name, rhs, ctx, required);
+        }
+        return create(globalScope, name, rhs, ctx, true, required, false);
+    }
+
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
         if ((tag == WriteVariableTag.class || tag == StandardTags.WriteVariableTag.class) && isScopeAccess()) {
@@ -144,7 +153,7 @@ public class WritePropertyNode extends JSTargetableWriteNode {
                 if (clonedRhs == rhsNode) {
                     clonedRhs = cloneUninitialized(rhsNode, materializedTags);
                 }
-                WritePropertyNode clone = create(clonedTarget, cache.getKey(), clonedRhs, cache.getContext(), cache.isStrict(), cache.isGlobal(), verifyHasProperty);
+                WritePropertyNode clone = copyWith(clonedTarget, clonedRhs);
                 transferSourceSectionAndTags(this, clone);
                 return clone;
             }
@@ -175,24 +184,24 @@ public class WritePropertyNode extends JSTargetableWriteNode {
     }
 
     public final Object executeWithValue(Object obj, Object value) {
-        verifyBindingStillExists(obj);
+        verifyBinding(obj);
         cache.setValue(obj, value);
         return value;
     }
 
     private void executeEvaluated(Object obj, Object value, Object receiver) {
-        verifyBindingStillExists(obj);
+        verifyBinding(obj);
         cache.setValue(obj, value, receiver);
     }
 
     private int executeIntEvaluated(Object obj, int value, Object receiver) {
-        verifyBindingStillExists(obj);
+        verifyBinding(obj);
         cache.setValueInt(obj, value, receiver);
         return value;
     }
 
     private double executeDoubleEvaluated(Object obj, double value, Object receiver) {
-        verifyBindingStillExists(obj);
+        verifyBinding(obj);
         cache.setValueDouble(obj, value, receiver);
         return value;
     }
@@ -310,10 +319,10 @@ public class WritePropertyNode extends JSTargetableWriteNode {
     }
 
     /**
-     * Object Environment SetMutableBinding: Verify that the binding still exists; and if not, throw
-     * a ReferenceError in strict mode.
+     * Verifies the binding before storing the evaluated RHS. Object Environment SetMutableBinding
+     * checks that the binding still exists and throws a ReferenceError in strict mode otherwise.
      */
-    private void verifyBindingStillExists(Object target) {
+    protected void verifyBinding(Object target) {
         // target == null corresponds to IsUnresolvableReference() branch in PutValue()
         if (verifyHasProperty && (target == null || !bindingExists(target))) {
             unresolvablePropertyInStrictMode(target);
@@ -345,12 +354,36 @@ public class WritePropertyNode extends JSTargetableWriteNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return create(cloneUninitialized(targetNode, materializedTags), cache.getKey(), cloneUninitialized(rhsNode, materializedTags),
-                        cache.getContext(), cache.isStrict(), cache.isGlobal(), verifyHasProperty);
+        return copyWith(cloneUninitialized(targetNode, materializedTags), cloneUninitialized(rhsNode, materializedTags));
+    }
+
+    protected WritePropertyNode copyWith(JavaScriptNode target, JavaScriptNode rhs) {
+        return create(target, cache.getKey(), rhs, cache.getContext(), cache.isStrict(), cache.isGlobal(), verifyHasProperty);
     }
 
     @Override
     public boolean isResultAlwaysOfType(Class<?> clazz) {
         return getRhs().isResultAlwaysOfType(clazz);
+    }
+
+    /** Checks a global lexical binding's TDZ after evaluating the RHS. */
+    private static final class WriteGlobalLexicalVariableWithTDZCheckNode extends WritePropertyNode {
+        @Child private GlobalScopeLookupNode tdzCheck;
+
+        private WriteGlobalLexicalVariableWithTDZCheckNode(JavaScriptNode target, TruffleString name, JavaScriptNode rhs, JSContext context, boolean required) {
+            super(target, rhs, name, required, context, true, false);
+            this.tdzCheck = GlobalScopeLookupNode.create(name);
+        }
+
+        @Override
+        protected void verifyBinding(Object target) {
+            tdzCheck.checkTDZ(target);
+        }
+
+        @Override
+        protected WritePropertyNode copyWith(JavaScriptNode target, JavaScriptNode rhs) {
+            return new WriteGlobalLexicalVariableWithTDZCheckNode(target, (TruffleString) getKey(), rhs,
+                            cache.getContext(), cache.isGlobal());
+        }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,14 +61,14 @@ public final class GlobalScopeVarWrapperNode extends VarWrapperNode implements R
     @Child private JavaScriptNode dynamicScopeNode;
     @Child private JavaScriptNode defaultDelegate;
     @Child private JSTargetableNode scopeAccessNode;
-    @Child private GlobalScopeLookupNode scopeHasBinding;
+    @Child private GlobalScopeLookupNode scopeLookup;
 
     public GlobalScopeVarWrapperNode(TruffleString varName, JavaScriptNode defaultDelegate, JavaScriptNode dynamicScope, JSTargetableNode scopeAccessNode) {
         this.varName = varName;
         this.dynamicScopeNode = dynamicScope;
         this.defaultDelegate = Objects.requireNonNull(defaultDelegate);
         this.scopeAccessNode = scopeAccessNode;
-        this.scopeHasBinding = GlobalScopeLookupNode.create(varName, isWrite());
+        this.scopeLookup = GlobalScopeLookupNode.create(varName);
     }
 
     @Override
@@ -90,16 +90,24 @@ public final class GlobalScopeVarWrapperNode extends VarWrapperNode implements R
         return scopeAccessNode instanceof WritePropertyNode;
     }
 
+    private boolean isRead() {
+        return scopeAccessNode instanceof ReadNode;
+    }
+
     @Override
     public Object execute(VirtualFrame frame) {
         Object dynamicScope = dynamicScopeNode.execute(frame);
-        if (scopeHasBinding.execute(dynamicScope)) {
+        if (scopeLookup.hasBinding(dynamicScope)) {
             if (isWrite()) {
                 Object value = getRhs().execute(frame);
+                scopeLookup.checkWrite(dynamicScope);
                 ((WritePropertyNode) scopeAccessNode).executeWithValue(dynamicScope, value);
                 return value;
             } else {
                 // read or delete
+                if (isRead()) {
+                    scopeLookup.checkTDZ(dynamicScope);
+                }
                 return scopeAccessNode.executeWithTarget(frame, dynamicScope);
             }
         }

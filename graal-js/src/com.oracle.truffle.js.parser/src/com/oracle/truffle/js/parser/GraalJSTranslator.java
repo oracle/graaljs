@@ -2992,14 +2992,14 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         TruffleString ident = identNode.getNameTS();
         VarRef scopeVar = findScopeVarCheckTDZ(ident, initializationAssignment);
 
-        // if scopeVar is const, the assignment will never succeed and is only there to perform
-        // the temporal dead zone check and throw a ReferenceError instead of a TypeError
+        // An uninitialized const binding must throw ReferenceError instead of TypeError.
         boolean constAssignment = !initializationAssignment && scopeVar.isConst();
 
         if (binaryOp == null) {
             assert assignedValue != null;
             if (constAssignment) {
-                rhs = checkMutableBinding(rhs, scopeVar.getName());
+                JavaScriptNode tdzCheck = scopeVar.createTDZCheckNode();
+                rhs = factory.createWriteConstantVariable(rhs, true, scopeVar.getName(), tdzCheck);
             }
             return scopeVar.createWriteNode(rhs);
         } else {

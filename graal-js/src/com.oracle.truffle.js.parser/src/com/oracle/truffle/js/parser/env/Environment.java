@@ -582,6 +582,13 @@ public abstract class Environment {
             return false;
         }
 
+        /**
+         * Creates a TDZ check for this binding, or {@code null} if no check is needed.
+         */
+        public JavaScriptNode createTDZCheckNode() {
+            return hasTDZCheck() ? createReadNode() : null;
+        }
+
         public boolean hasBeenDeclared() {
             JSFrameSlot frameSlot = getFrameSlot();
             return frameSlot != null && (frameSlot.hasBeenDeclared() || !JSFrameUtil.hasTemporalDeadZone(frameSlot));
@@ -693,6 +700,11 @@ public abstract class Environment {
                 return factory.createReadImportBinding(readNode);
             }
             return readNode;
+        }
+
+        @Override
+        public JavaScriptNode createTDZCheckNode() {
+            return checkTDZ ? factory.createReadFrameSlot(frameSlot, createScopeFrameNode(), true) : null;
         }
 
         @Override
@@ -896,9 +908,13 @@ public abstract class Environment {
         }
 
         @Override
+        public JavaScriptNode createTDZCheckNode() {
+            return checkTDZ ? factory.createGlobalScopeTDZCheck(context, getName(), true) : null;
+        }
+
+        @Override
         public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
-            JavaScriptNode globalScope = factory.createGlobalScopeTDZCheck(context, getName(), checkTDZ);
-            return factory.createWriteProperty(globalScope, getName(), rhs, context, true, required, false);
+            return factory.createWriteLexicalGlobal(getName(), rhs, checkTDZ, context, required);
         }
 
         @Override
@@ -986,7 +1002,7 @@ public abstract class Environment {
 
         protected final JavaScriptNode createWriteDelegate(JavaScriptNode rhs) {
             if (wrappee.isConst()) {
-                JavaScriptNode tdzCheck = wrappee.hasTDZCheck() ? wrappee.createReadNode() : null;
+                JavaScriptNode tdzCheck = wrappee.createTDZCheckNode();
                 return factory.createWriteConstantVariable(rhs, true, getName(), tdzCheck);
             }
             return wrappee.createWriteNode(rhs);

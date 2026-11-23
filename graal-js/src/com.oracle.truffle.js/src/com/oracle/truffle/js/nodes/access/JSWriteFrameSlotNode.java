@@ -201,12 +201,15 @@ abstract class JSWriteScopeFrameSlotNode extends JSWriteFrameSlotNode {
 
     @Override
     public JavaScriptNode getRhs() {
-        return rhsNode;
+        // Dynamic-scope wrappers reuse the RHS when writing a shadowing binding. Exclude the
+        // TDZ check, which applies only to this frame-slot binding.
+        return rhsNode instanceof TemporalDeadZoneCheckNode tdzCheck ? tdzCheck.getRhs() : rhsNode;
     }
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return JSWriteScopeFrameSlotNodeGen.create(getSlotIndex(), getIdentifier(), getLevelFrameNode(), cloneUninitialized(getRhs(), materializedTags));
+        // Clone the stored child to preserve its TDZ check.
+        return JSWriteScopeFrameSlotNodeGen.create(getSlotIndex(), getIdentifier(), getLevelFrameNode(), cloneUninitialized(rhsNode, materializedTags));
     }
 }
 
