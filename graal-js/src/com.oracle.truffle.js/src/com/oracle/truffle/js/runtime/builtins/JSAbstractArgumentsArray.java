@@ -166,9 +166,11 @@ public abstract class JSAbstractArgumentsArray extends JSAbstractArray {
         if (JSRuntime.isArrayIndex(index)) {
             makeSlowArray(thisObj);
             indexConnected = isMappedArguments && isIndexConnected(thisObj, index);
-            oldValue = super.get(thisObj, index);
 
             ScriptArray arrayType = arrayGetArrayType(thisObj);
+            if (indexConnected || arrayType.hasElement(thisObj, index)) {
+                oldValue = super.get(thisObj, index);
+            }
             if (arrayType.hasElement(thisObj, index)) {
                 // apply the default attributes to the property first
                 JSObjectUtil.defineDataProperty(thisObj, key, oldValue, JSAttributes.getDefault());

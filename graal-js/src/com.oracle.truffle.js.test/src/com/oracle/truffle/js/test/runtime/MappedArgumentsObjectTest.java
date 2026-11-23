@@ -212,6 +212,50 @@ public class MappedArgumentsObjectTest extends JSTest {
     }
 
     @Test
+    public void testRedefineAccessorDoesNotCallGetter() {
+        for (String strict : new String[]{"", "'use strict';"}) {
+            for (String key : new String[]{"0", "1"}) {
+                assertEquals(0, testHelper.runNoPolyglot("""
+                                var calls = 0;
+                                (function (a) {
+                                    %1$s
+                                    const getter = function () { calls++; };
+                                    Object.defineProperty(arguments, '%2$s', {get: getter, configurable: true});
+                                    Object.defineProperty(arguments, '%2$s', {enumerable: false});
+                                    const desc = Object.getOwnPropertyDescriptor(arguments, '%2$s');
+                                    if (desc.get !== getter || desc.enumerable || a !== 0) {
+                                        throw new Error('redefining an arguments accessor changed its getter or parameter');
+                                    }
+                                })(0, 1);
+                                calls;
+                                """.formatted(strict, key)));
+            }
+        }
+    }
+
+    @Test
+    public void testDefinePropertyDoesNotCallInheritedGetter() {
+        for (String strict : new String[]{"", "'use strict';"}) {
+            assertEquals(0, testHelper.runNoPolyglot("""
+                            var calls = 0;
+                            (function (a) {
+                                %s
+                                delete arguments[0];
+                                const proto = Object.create(Object.getPrototypeOf(arguments), {
+                                    0: {get() { calls++; }}
+                                });
+                                Object.setPrototypeOf(arguments, proto);
+                                Object.defineProperty(arguments, '0', {value: 42});
+                                if (arguments[0] !== 42 || a !== 0) {
+                                    throw new Error('defining an arguments property changed its value or parameter');
+                                }
+                            })(0);
+                            calls;
+                            """.formatted(strict)));
+        }
+    }
+
+    @Test
     public void testMakeExcessArgumentNonWritable() {
         assertExcessArgumentNotDisconnected("Object.defineProperty(arguments, '%1$d', {writable: false}); delete arguments[%1$d]", false);
         assertExcessArgumentNotDisconnected("Object.defineProperty(arguments, '%d', {value: 42, writable: false})", false);
