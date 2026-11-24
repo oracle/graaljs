@@ -120,12 +120,11 @@ public class JSArgumentsObject extends JSArrayBase {
     @ExportMessage
     public final Object getMembers(@SuppressWarnings("unused") boolean includeInternal,
                     @CachedLibrary("this") InteropLibrary self) {
-        assert JSObject.getJSClass(this) == JSArgumentsArray.INSTANCE;
         boolean includeArrayIndices = language(self).getJSContext().getLanguageOptions().arrayElementsAmongMembers();
         if (includeArrayIndices) {
             return InteropArray.create(JSObject.enumerableOwnNames(this));
         } else {
-            return InteropArray.create(filterEnumerableNames(this, JSObject.ownPropertyKeys(this), JSArgumentsArray.INSTANCE));
+            return InteropArray.create(filterEnumerableNames(this, JSObject.ownPropertyKeys(this), JSObject.getJSClass(this)));
         }
     }
 

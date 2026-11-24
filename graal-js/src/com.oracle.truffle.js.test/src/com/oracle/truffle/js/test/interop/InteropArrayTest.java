@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,6 +62,7 @@ import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.Test;
 
+import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.test.JSTest;
 import com.oracle.truffle.js.test.polyglot.ForeignTestMap;
 
@@ -147,6 +148,22 @@ public class InteropArrayTest {
             assertEquals(1, array.getMember("2").asInt());
             assertEquals(1, array.getArrayElement(2).asInt());
             assertEquals(array.getMemberKeys().toString(), Set.of("0", "1", "2", "3"), array.getMemberKeys());
+        }
+    }
+
+    @Test
+    public void testSlowArgumentsObjectGetMembers() {
+        for (boolean includeIndices : new boolean[]{true, false}) {
+            try (Context context = JSTest.newContextBuilder().option(JSContextOptions.ARRAY_ELEMENTS_AMONG_MEMBERS_NAME, Boolean.toString(includeIndices)).build()) {
+                Value arguments = context.eval(ID, """
+                                (function (a) {
+                                    Object.defineProperty(arguments, '0', {writable: false});
+                                    arguments.saved = true;
+                                    return arguments;
+                                })(1);
+                                """);
+                assertEquals(includeIndices ? Set.of("0", "saved") : Set.of("saved"), arguments.getMemberKeys());
+            }
         }
     }
 
