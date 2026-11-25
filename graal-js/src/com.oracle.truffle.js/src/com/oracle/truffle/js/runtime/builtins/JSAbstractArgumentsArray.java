@@ -45,11 +45,9 @@ import java.util.Map;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
-import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -159,54 +157,30 @@ public abstract class JSAbstractArgumentsArray extends JSAbstractArray {
     @TruffleBoundary
     @Override
     public boolean defineOwnProperty(JSDynamicObject thisObj, Object key, PropertyDescriptor descriptor, boolean doThrow) {
-        boolean isMappedArguments = isMappedArguments(thisObj);
+        PropertyDescriptor current = getOwnProperty(thisObj, key);
         long index = JSRuntime.propertyKeyToArrayIndex(key);
-        Object oldValue = null;
-        boolean indexConnected = false;
         if (JSRuntime.isArrayIndex(index)) {
             makeSlowArray(thisObj);
-            indexConnected = isMappedArguments && isIndexConnected(thisObj, index);
-            oldValue = super.get(thisObj, index);
-
             ScriptArray arrayType = arrayGetArrayType(thisObj);
             if (arrayType.hasElement(thisObj, index)) {
-                // apply the default attributes to the property first
-                JSObjectUtil.defineDataProperty(thisObj, key, oldValue, JSAttributes.getDefault());
-                if (arrayType.canDeleteElement(thisObj, index, false)) {
-                    arraySetArrayType(thisObj, arrayType.deleteElement(thisObj, index, false));
-                }
+                assert current != null && current.isDataDescriptor();
+                // Move the property to ordinary storage, preserving sealed and frozen attributes.
+                JSObjectUtil.defineDataProperty(thisObj, key, current.getValue(), current.getFlags());
+                arraySetArrayType(thisObj, arrayType.deleteElementImpl(thisObj, index, false));
             }
         }
 
-        boolean allowed = DefinePropertyUtil.ordinaryDefineOwnProperty(thisObj, key, descriptor, doThrow);
-        if (!allowed) {
-            return DefinePropertyUtil.reject(doThrow, "not allowed to defineProperty on an arguments object");
+        if (!DefinePropertyUtil.validateAndApplyPropertyDescriptor(thisObj, key, JSObject.isExtensible(thisObj), descriptor, current, doThrow)) {
+            return false;
         }
 
-        if (indexConnected) {
-            definePropertyMapped(thisObj, (TruffleString) key, descriptor, index, oldValue, thisObj);
+        // A connected parameter shares the data property's value until its mapping is removed.
+        if (isMappedArguments(thisObj) && isIndexConnected(thisObj, index) && (descriptor.isAccessorDescriptor() || !descriptor.getIfHasWritable(true))) {
+            assert current != null && current.isDataDescriptor();
+            Object parameterValue = descriptor.hasValue() ? descriptor.getValue() : current.getValue();
+            disconnectIndex(thisObj, index, parameterValue);
         }
         return true;
-    }
-
-    @TruffleBoundary
-    private static void definePropertyMapped(JSDynamicObject thisObj, TruffleString name, PropertyDescriptor descriptor, long index, Object oldValueParam, JSDynamicObject obj) {
-        if (descriptor.isAccessorDescriptor()) {
-            disconnectIndex(thisObj, index, oldValueParam);
-        } else {
-            Object oldValue = oldValueParam;
-            if (descriptor.hasValue()) {
-                Object value = descriptor.getValue();
-                JSObject.set(obj, name, value);
-                oldValue = value;
-            }
-            if (descriptor.hasWritable()) {
-                Object value = descriptor.getWritable();
-                if (Boolean.FALSE.equals(value)) {
-                    disconnectIndex(thisObj, index, oldValue);
-                }
-            }
-        }
     }
 
     @TruffleBoundary
@@ -221,9 +195,6 @@ public abstract class JSAbstractArgumentsArray extends JSAbstractArray {
         long index = JSRuntime.propertyKeyToArrayIndex(key);
         if (index >= 0 && isMappedArguments(thisObj) && isIndexConnected(thisObj, index)) {
             desc.setValue(super.get(thisObj, index));
-        }
-        if (desc.isDataDescriptor() && CALLER.equals(key) && desc.getValue() instanceof JSFunctionObject function && JSFunction.isStrict(function)) {
-            throw Errors.createTypeError("caller not allowed in strict mode");
         }
         return desc;
     }

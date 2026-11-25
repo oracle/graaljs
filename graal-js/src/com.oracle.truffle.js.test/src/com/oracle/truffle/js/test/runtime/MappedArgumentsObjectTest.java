@@ -138,8 +138,9 @@ public class MappedArgumentsObjectTest extends JSTest {
     @Test
     public void testRejectedDeleteKeepsFastArguments() {
         for (String operation : new String[]{"seal", "freeze"}) {
+            String parameters = operation.equals("seal") ? "a" : "";
             JSArgumentsObject.Mapped arguments = (JSArgumentsObject.Mapped) testHelper.runNoPolyglot("""
-                            (function (a) {
+                            (function (%s) {
                                 Object.%s(arguments);
                                 for (var index of [0, 1]) {
                                     if (Reflect.deleteProperty(arguments, index)) {
@@ -154,7 +155,7 @@ public class MappedArgumentsObjectTest extends JSTest {
                                 }
                                 return arguments;
                             })(1, 2);
-                            """.formatted(operation));
+                            """.formatted(parameters, operation));
             assertEquals(1, JSObject.get(arguments, 0));
             assertEquals(2, JSObject.get(arguments, 1));
             assertEquals(2, JSObject.get(arguments, JSArgumentsArray.LENGTH));
@@ -209,6 +210,173 @@ public class MappedArgumentsObjectTest extends JSTest {
     @Test
     public void testRedefineExcessArgument() {
         assertExcessArgumentNotDisconnected("Object.defineProperty(arguments, '%d', {get() { return 42; }})", false);
+    }
+
+    @Test
+    public void testRedefineAccessorDoesNotCallGetter() {
+        for (String strict : new String[]{"", "'use strict';"}) {
+            for (String key : new String[]{"0", "1"}) {
+                assertEquals(0, testHelper.runNoPolyglot("""
+                                var calls = 0;
+                                (function (a) {
+                                    %1$s
+                                    const getter = function () { calls++; };
+                                    Object.defineProperty(arguments, '%2$s', {get: getter, configurable: true});
+                                    Object.defineProperty(arguments, '%2$s', {enumerable: false});
+                                    const desc = Object.getOwnPropertyDescriptor(arguments, '%2$s');
+                                    if (desc.get !== getter || desc.enumerable || a !== 0) {
+                                        throw new Error('redefining an arguments accessor changed its getter or parameter');
+                                    }
+                                })(0, 1);
+                                calls;
+                                """.formatted(strict, key)));
+            }
+        }
+    }
+
+    @Test
+    public void testDefinePropertyDoesNotCallInheritedGetter() {
+        for (String strict : new String[]{"", "'use strict';"}) {
+            assertEquals(0, testHelper.runNoPolyglot("""
+                            var calls = 0;
+                            (function (a) {
+                                %s
+                                delete arguments[0];
+                                const proto = Object.create(Object.getPrototypeOf(arguments), {
+                                    0: {get() { calls++; }}
+                                });
+                                Object.setPrototypeOf(arguments, proto);
+                                Object.defineProperty(arguments, '0', {value: 42});
+                                if (arguments[0] !== 42 || a !== 0) {
+                                    throw new Error('defining an arguments property changed its value or parameter');
+                                }
+                            })(0);
+                            calls;
+                            """.formatted(strict)));
+        }
+    }
+
+    @Test
+    public void testIndexedAccessAfterPrototypeChange() {
+        for (String strict : new String[]{"", "'use strict';"}) {
+            try (TestHelper helper = new TestHelper(newContextBuilder())) {
+                assertEquals(true, helper.runNoPolyglot("""
+                                (function () {
+                                    %s
+                                    const args = arguments;
+                                    const read = () => args[3];
+                                    if (read() !== undefined) {
+                                        throw new Error('arguments unexpectedly had index 3');
+                                    }
+                                    const proto = {3: 'from prototype'};
+                                    Object.setPrototypeOf(args, proto);
+                                    if (!(3 in args) || read() !== 'from prototype' || Reflect.get(args, 3) !== 'from prototype') {
+                                        throw new Error('indexed read missed the new prototype');
+                                    }
+                                    let written;
+                                    Object.defineProperty(proto, '4', {set(value) { written = value; }});
+                                    args[4] = 42;
+                                    if (written !== 42) {
+                                        throw new Error('indexed assignment missed the inherited setter');
+                                    }
+                                    return Reflect.set(args, 4, 43) && written === 43 && !Object.hasOwn(args, 4);
+                                })(0, 1, 2);
+                                """.formatted(strict)));
+            }
+        }
+    }
+
+    @Test
+    public void testRedefineSealedArgument() {
+        for (String strict : new String[]{"", "'use strict';"}) {
+            assertEquals(true, testHelper.runNoPolyglot("""
+                            (function (a, b) {
+                                %s
+                                const mapped = %s;
+                                Object.seal(arguments);
+                                if (Reflect.defineProperty(arguments, '0', {get() { return 42; }})) {
+                                    throw new Error('replaced a sealed argument with an accessor');
+                                }
+                                a = 2;
+                                if (arguments[0] !== (mapped ? 2 : 1)) {
+                                    throw new Error('rejected definition changed the parameter mapping');
+                                }
+                                Object.defineProperty(arguments, '0', {value: 3});
+                                const updated = Object.getOwnPropertyDescriptor(arguments, '0');
+                                if (arguments[0] !== 3 || a !== (mapped ? 3 : 2) || updated.value !== 3 ||
+                                                !updated.writable || !updated.enumerable || updated.configurable) {
+                                    throw new Error('updating a sealed argument changed its attributes or failed to update its value');
+                                }
+                                a = 4;
+                                Object.defineProperty(arguments, '0', {writable: false});
+                                a = 5;
+                                const locked = Object.getOwnPropertyDescriptor(arguments, '0');
+                                Object.defineProperty(arguments, '1', {value: 8, writable: false});
+                                if (b !== (mapped ? 8 : 2)) {
+                                    throw new Error('making a sealed argument non-writable failed to update its mapped parameter');
+                                }
+                                b = 9;
+                                return arguments[0] === (mapped ? 4 : 3) && locked.value === arguments[0] &&
+                                                !locked.writable && !Reflect.set(arguments, '0', 6) &&
+                                                Reflect.ownKeys(arguments).filter(key => key === '0').length === 1 &&
+                                                arguments[1] === 8;
+                            })(1, 2);
+                            """.formatted(strict, strict.isEmpty())));
+        }
+    }
+
+    @Test
+    public void testRedefineFrozenArgument() {
+        for (String strict : new String[]{"", "'use strict';"}) {
+            assertEquals(true, testHelper.runNoPolyglot("""
+                            (function (a) {
+                                %s
+                                Object.freeze(arguments);
+                                return !Reflect.defineProperty(arguments, '0', {value: 2}) &&
+                                                Reflect.defineProperty(arguments, '0', {value: 1}) &&
+                                                !Reflect.set(arguments, '0', 2) && arguments[0] === 1 &&
+                                                Reflect.ownKeys(arguments).filter(key => key === '0').length === 1;
+                            })(1);
+                            """.formatted(strict)));
+        }
+    }
+
+    @Test
+    public void testFreezeDisconnectsMappedArguments() {
+        testHelper.runNoPolyglot("""
+                        (function (a, b, c) {
+                            Object.defineProperty(arguments, '0', {enumerable: false});
+                            Object.defineProperty(arguments, '1', {get() { throw new Error('called getter'); }});
+                            a = 4;
+                            b = 5;
+                            c = 6;
+                            Object.freeze(arguments);
+                            if (a !== 4 || b !== 5 || c !== 6) {
+                                throw new Error('freezing changed a parameter value');
+                            }
+                            a = 7;
+                            b = 8;
+                            c = 9;
+                            if (!Object.isFrozen(arguments) || arguments[0] !== 4 || arguments[2] !== 6 || a !== 7 || b !== 8 || c !== 9) {
+                                throw new Error('freezing failed to disconnect a parameter mapping');
+                            }
+                        })(1, 2, 3);
+                        """);
+    }
+
+    @Test
+    public void testCallerWithStrictFunctionValue() {
+        assertEquals(42, testHelper.runNoPolyglot("""
+                        (function () {
+                            const strictFunction = function () { 'use strict'; };
+                            Object.defineProperty(arguments, 'caller', {value: strictFunction, configurable: true});
+                            if (Object.getOwnPropertyDescriptor(arguments, 'caller').value !== strictFunction) {
+                                throw new Error('caller descriptor did not preserve the strict function');
+                            }
+                            Object.defineProperty(arguments, 'caller', {value: 42});
+                            return arguments.caller;
+                        })();
+                        """));
     }
 
     @Test

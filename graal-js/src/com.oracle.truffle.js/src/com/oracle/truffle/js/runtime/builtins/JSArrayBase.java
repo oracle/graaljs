@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -119,7 +119,7 @@ public abstract class JSArrayBase extends JSNonProxyObject {
 
     @TruffleBoundary
     @Override
-    public final boolean setIntegrityLevel(boolean freeze, boolean doThrow) {
+    public boolean setIntegrityLevel(boolean freeze, boolean doThrow) {
         if (testIntegrityLevel(freeze)) {
             return true;
         }
