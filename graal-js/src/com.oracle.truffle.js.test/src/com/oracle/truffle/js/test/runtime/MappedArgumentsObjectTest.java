@@ -335,6 +335,21 @@ public class MappedArgumentsObjectTest extends JSTest {
     }
 
     @Test
+    public void testCallerWithStrictFunctionValue() {
+        assertEquals(42, testHelper.runNoPolyglot("""
+                        (function () {
+                            const strictFunction = function () { 'use strict'; };
+                            Object.defineProperty(arguments, 'caller', {value: strictFunction, configurable: true});
+                            if (Object.getOwnPropertyDescriptor(arguments, 'caller').value !== strictFunction) {
+                                throw new Error('caller descriptor did not preserve the strict function');
+                            }
+                            Object.defineProperty(arguments, 'caller', {value: 42});
+                            return arguments.caller;
+                        })();
+                        """));
+    }
+
+    @Test
     public void testMakeExcessArgumentNonWritable() {
         assertExcessArgumentNotDisconnected("Object.defineProperty(arguments, '%1$d', {writable: false}); delete arguments[%1$d]", false);
         assertExcessArgumentNotDisconnected("Object.defineProperty(arguments, '%d', {value: 42, writable: false})", false);

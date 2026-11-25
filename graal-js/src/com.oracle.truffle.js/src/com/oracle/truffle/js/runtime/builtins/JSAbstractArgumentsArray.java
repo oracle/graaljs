@@ -45,7 +45,6 @@ import java.util.Map;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -196,9 +195,6 @@ public abstract class JSAbstractArgumentsArray extends JSAbstractArray {
         long index = JSRuntime.propertyKeyToArrayIndex(key);
         if (index >= 0 && isMappedArguments(thisObj) && isIndexConnected(thisObj, index)) {
             desc.setValue(super.get(thisObj, index));
-        }
-        if (desc.isDataDescriptor() && CALLER.equals(key) && desc.getValue() instanceof JSFunctionObject function && JSFunction.isStrict(function)) {
-            throw Errors.createTypeError("caller not allowed in strict mode");
         }
         return desc;
     }
