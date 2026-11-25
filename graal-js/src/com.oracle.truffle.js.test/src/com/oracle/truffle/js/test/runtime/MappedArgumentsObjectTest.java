@@ -138,8 +138,9 @@ public class MappedArgumentsObjectTest extends JSTest {
     @Test
     public void testRejectedDeleteKeepsFastArguments() {
         for (String operation : new String[]{"seal", "freeze"}) {
+            String parameters = operation.equals("seal") ? "a" : "";
             JSArgumentsObject.Mapped arguments = (JSArgumentsObject.Mapped) testHelper.runNoPolyglot("""
-                            (function (a) {
+                            (function (%s) {
                                 Object.%s(arguments);
                                 for (var index of [0, 1]) {
                                     if (Reflect.deleteProperty(arguments, index)) {
@@ -154,7 +155,7 @@ public class MappedArgumentsObjectTest extends JSTest {
                                 }
                                 return arguments;
                             })(1, 2);
-                            """.formatted(operation));
+                            """.formatted(parameters, operation));
             assertEquals(1, JSObject.get(arguments, 0));
             assertEquals(2, JSObject.get(arguments, 1));
             assertEquals(2, JSObject.get(arguments, JSArgumentsArray.LENGTH));
@@ -308,6 +309,29 @@ public class MappedArgumentsObjectTest extends JSTest {
                             })(1);
                             """.formatted(strict)));
         }
+    }
+
+    @Test
+    public void testFreezeDisconnectsMappedArguments() {
+        testHelper.runNoPolyglot("""
+                        (function (a, b, c) {
+                            Object.defineProperty(arguments, '0', {enumerable: false});
+                            Object.defineProperty(arguments, '1', {get() { throw new Error('called getter'); }});
+                            a = 4;
+                            b = 5;
+                            c = 6;
+                            Object.freeze(arguments);
+                            if (a !== 4 || b !== 5 || c !== 6) {
+                                throw new Error('freezing changed a parameter value');
+                            }
+                            a = 7;
+                            b = 8;
+                            c = 9;
+                            if (!Object.isFrozen(arguments) || arguments[0] !== 4 || arguments[2] !== 6 || a !== 7 || b !== 8 || c !== 9) {
+                                throw new Error('freezing failed to disconnect a parameter mapping');
+                            }
+                        })(1, 2, 3);
+                        """);
     }
 
     @Test

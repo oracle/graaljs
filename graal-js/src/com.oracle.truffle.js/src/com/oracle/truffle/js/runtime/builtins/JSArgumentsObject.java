@@ -61,7 +61,9 @@ import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.array.DynamicArray;
+import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.interop.InteropArray;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -104,6 +106,24 @@ public class JSArgumentsObject extends JSArrayBase {
         public void initDisconnectedIndices() {
             assert JSAbstractArgumentsArray.hasDisconnectedIndices(this);
             this.disconnectedIndices = new HashMap<>();
+        }
+
+        @TruffleBoundary
+        @Override
+        public boolean setIntegrityLevel(boolean freeze, boolean doThrow) {
+            if (freeze && connectedArgumentCount != 0 && !testIntegrityLevel(true)) {
+                // The bulk freeze makes every indexed data property non-writable.
+                ScriptArray array = getArrayType();
+                for (int index = 0; index < connectedArgumentCount; index++) {
+                    if (JSAbstractArgumentsArray.isIndexConnected(this, index)) {
+                        // A connected index is always an own data property.
+                        Object value = array.hasElement(this, index) ? array.getElement(this, index) : JSDynamicObject.getOrNull(this, Strings.fromInt(index));
+                        assert value != null;
+                        JSAbstractArgumentsArray.disconnectIndex(this, index, value);
+                    }
+                }
+            }
+            return super.setIntegrityLevel(freeze, doThrow);
         }
     }
 
