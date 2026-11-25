@@ -257,6 +257,36 @@ public class MappedArgumentsObjectTest extends JSTest {
     }
 
     @Test
+    public void testIndexedAccessAfterPrototypeChange() {
+        for (String strict : new String[]{"", "'use strict';"}) {
+            try (TestHelper helper = new TestHelper(newContextBuilder())) {
+                assertEquals(true, helper.runNoPolyglot("""
+                                (function () {
+                                    %s
+                                    const args = arguments;
+                                    const read = () => args[3];
+                                    if (read() !== undefined) {
+                                        throw new Error('arguments unexpectedly had index 3');
+                                    }
+                                    const proto = {3: 'from prototype'};
+                                    Object.setPrototypeOf(args, proto);
+                                    if (!(3 in args) || read() !== 'from prototype' || Reflect.get(args, 3) !== 'from prototype') {
+                                        throw new Error('indexed read missed the new prototype');
+                                    }
+                                    let written;
+                                    Object.defineProperty(proto, '4', {set(value) { written = value; }});
+                                    args[4] = 42;
+                                    if (written !== 42) {
+                                        throw new Error('indexed assignment missed the inherited setter');
+                                    }
+                                    return Reflect.set(args, 4, 43) && written === 43 && !Object.hasOwn(args, 4);
+                                })(0, 1, 2);
+                                """.formatted(strict)));
+            }
+        }
+    }
+
+    @Test
     public void testRedefineSealedArgument() {
         for (String strict : new String[]{"", "'use strict';"}) {
             assertEquals(true, testHelper.runNoPolyglot("""

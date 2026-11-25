@@ -659,18 +659,21 @@ public abstract class JSNonProxy extends JSClass {
     }
 
     /**
-     * If this object is an Array instance, the %Array.prototype%, or an Array subclass prototype,
-     * changing the prototype invalidates the assumption that there are no elements on the prototype
-     * chain of arrays, unless the new prototype is either already marked and vetted, or null.
+     * Changing the prototype of an Array or arguments instance, %Array.prototype%, or an Array
+     * subclass prototype invalidates the no-elements assumption unless the new prototype is already
+     * marked and vetted, or null.
      */
     private static void validatePrototypeAssumptions(JSDynamicObject thisObj, JSDynamicObject newPrototype) {
-        if (JSShape.isArrayPrototypeOrDerivative(thisObj) || JSArray.isJSArray(thisObj)) {
+        boolean isArrayPrototype = JSShape.isArrayPrototypeOrDerivative(thisObj);
+        boolean isArgumentsObject = JSArgumentsArray.isJSArgumentsObject(thisObj);
+        if (isArrayPrototype || JSArray.isJSArray(thisObj) || isArgumentsObject) {
             /*
              * Setting the prototype to *null* is always OK. If [[SetPrototypeOf]] is ever called
              * with another prototype object, we'll repeat this check anyway.
              */
             if (newPrototype != Null.instance && !JSShape.hasNoElementsAssumption(newPrototype)) {
-                String reason = JSShape.isArrayPrototypeOrDerivative(newPrototype) ? "Prototype of Array prototype changed" : "Prototype of Array changed";
+                String reason = isArgumentsObject ? "Prototype of arguments object changed"
+                                : isArrayPrototype ? "Prototype of Array prototype changed" : "Prototype of Array changed";
                 JSObject.getJSContext(thisObj).getArrayPrototypeNoElementsAssumption().invalidate(reason);
             }
         }
