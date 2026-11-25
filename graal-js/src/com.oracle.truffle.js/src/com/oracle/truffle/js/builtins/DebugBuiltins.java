@@ -58,6 +58,7 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugArrayTypeNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugAssertIntNodeGen;
+import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugBlackholeNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugClassNameNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugClassNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugContinueInInterpreterNodeGen;
@@ -85,6 +86,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
+import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
@@ -140,6 +142,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         srcattr(1),
         arraytype(1),
         assertInt(2),
+        blackhole(1),
         continueInInterpreter(0),
         stringCompare(2),
         isHolesArray(1),
@@ -188,6 +191,8 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                 return DebugArrayTypeNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case assertInt:
                 return DebugAssertIntNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
+            case blackhole:
+                return DebugBlackholeNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case continueInInterpreter:
                 return DebugContinueInInterpreterNodeGen.create(context, builtin, false, args().createArgumentNodes(context));
             case stringCompare:
@@ -217,6 +222,61 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                 return DebugHeapDumpNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
         }
         return null;
+    }
+
+    /**
+     * Keeps a benchmark value live without retaining it or coercing it.
+     */
+    public abstract static class DebugBlackhole extends JSBuiltinNode implements JSBuiltinNode.Inlineable, JSBuiltinNode.Inlined {
+
+        public DebugBlackhole(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        protected abstract Object executeWithArgument(Object value);
+
+        @Override
+        public Object callInlined(Object[] arguments) {
+            Object value = JSArguments.getUserArgumentCount(arguments) == 0 ? Undefined.instance : JSArguments.getUserArgument(arguments, 0);
+            return executeWithArgument(value);
+        }
+
+        @Override
+        public Inlined createInlined() {
+            // Keep primitive and object specializations independent at different call sites.
+            return DebugBlackholeNodeGen.create(getContext(), getBuiltin(), getArguments());
+        }
+
+        @Specialization
+        protected static Object blackholeBoolean(boolean value) {
+            CompilerDirectives.blackhole(value);
+            return Undefined.instance;
+        }
+
+        @Specialization
+        protected static Object blackholeInt(int value) {
+            CompilerDirectives.blackhole(value);
+            return Undefined.instance;
+        }
+
+        @Specialization
+        protected static Object blackholeLong(long value) {
+            CompilerDirectives.blackhole(value);
+            return Undefined.instance;
+        }
+
+        @Specialization
+        protected static Object blackholeDouble(double value) {
+            CompilerDirectives.blackhole(value);
+            return Undefined.instance;
+        }
+
+        // Replace primitive specializations once a generic value is encountered.
+        @Specialization(replaces = {"blackholeBoolean", "blackholeInt", "blackholeLong", "blackholeDouble"})
+        protected static Object blackholeObject(Object value) {
+            CompilerDirectives.blackhole(value);
+            return Undefined.instance;
+        }
     }
 
     public abstract static class DebugContinueInInterpreter extends JSBuiltinNode {
