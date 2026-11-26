@@ -182,15 +182,15 @@ public class WebAssemblyGlobalPrototypeBuiltins extends JSBuiltinsContainer.Swit
                 valueTypeError(global.getValueType());
             }
             Object wasmGlobal = global.getWASMGlobal();
+            Object value;
+            if (args.length == 0) {
+                errorBranch.enter(this);
+                throw Errors.createTypeError("set WebAssembly.Global.value: Argument 0 is required");
+            } else {
+                value = args[0];
+            }
+            Object webAssemblyValue = toWebAssemblyValueNode.execute(value, global.getValueType());
             try {
-                Object value;
-                if (args.length == 0) {
-                    errorBranch.enter(this);
-                    throw Errors.createTypeError("set WebAssembly.Global.value: Argument 0 is required");
-                } else {
-                    value = args[0];
-                }
-                Object webAssemblyValue = toWebAssemblyValueNode.execute(value, global.getValueType());
                 Object globalWrite = getRealm().getWASMGlobalWrite();
                 globalWriteLib.execute(globalWrite, wasmGlobal, webAssemblyValue);
                 return Undefined.instance;
