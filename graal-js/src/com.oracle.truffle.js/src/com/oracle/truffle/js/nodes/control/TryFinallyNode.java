@@ -49,6 +49,7 @@ import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -137,25 +138,26 @@ public class TryFinallyNode extends StatementNode implements ResumableNode.WithO
             } catch (StackOverflowError ste) {
                 throwable = ste;
             }
-        } else {
+        } else if (state instanceof Throwable) {
             // resuming into finally block
-            if (state instanceof Throwable) {
-                throwable = (Throwable) state;
-            }
+            throwable = (Throwable) state;
+        } else if (state instanceof Completion) {
+            // resuming into finally block after the try block completed normally
+            result = ((Completion) state).getValue();
         }
 
         try {
             finallyBlock.execute(frame);
         } catch (YieldException e) {
-            setState(frame, stateSlot, throwable);
+            // Remember the try block's result, too: it is the value of a block that ends here,
+            // e.g. a function body whose `await using` disposal awaits.
+            setState(frame, stateSlot, throwable != null ? throwable : Completion.forNormal(result));
             throw e;
         }
 
         if (throwable != null) {
             throw JSRuntime.rethrow(throwable);
         }
-        // Since we're in a generator function, we may ignore the result and return undefined;
-        // otherwise we'd have to remember the result when yielding from the finally block.
         return result;
     }
 }
